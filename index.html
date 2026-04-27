@@ -419,8 +419,9 @@ async function uploadGuestPhotoToFirebase(file, albumId, guestName) {
 }
 
 function getAlbumShareUrl(userEmail) {
-  const albumId = ld('album_id_'+userEmail, null);
-  if(!albumId) return null;
+  // Always use deterministic albumId
+  const albumId = btoa(userEmail).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
+  sv('album_id_'+userEmail, albumId);
   const base = window.location.href.split('?')[0];
   return base + '?album=' + albumId;
 }
@@ -1396,7 +1397,8 @@ function renameMenuItem(sid,iid){const s=MENU.find(s=>s.id===sid);const item=s.i
 
 // ── ALBUM ─────────────────────────────────────────────────────────────────────
 function renderAlbum(){
-  const albumId = ld('album_id_'+USER.email, null) || btoa(USER.email).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
+  // Always compute albumId deterministically from email
+  const albumId = btoa(USER.email).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
   sv('album_id_'+USER.email, albumId);
   const shareUrl = window.location.href.split('?')[0] + '?album=' + albumId;
   const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}&color=d4607a&bgcolor=fff9fb&margin=6`;
