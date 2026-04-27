@@ -494,6 +494,7 @@ function showGuestAlbumPage(albumId) {
     </div>
     <div style="background:#fff;border:1.5px solid ${br};border-radius:14px;width:100%;max-width:500px;padding:24px;margin-bottom:20px;">
       <h2 style="font-family:'Playfair Display',serif;font-size:18px;color:${tx};margin-bottom:16px;text-align:center;">Partagez vos photos !</h2>
+      <div style="font-size:10px;color:#b07a90;word-break:break-all;text-align:center;margin-bottom:8px;">ID: ${albumId}</div>
       <div style="margin-bottom:16px;">
         <label style="font-size:13px;color:${tl};font-weight:700;display:block;margin-bottom:6px;">Votre prénom</label>
         <input id="guest-name" type="text" placeholder="ex: Sophie" style="width:100%;border:1.5px solid ${br};border-radius:10px;padding:10px 12px;font-size:14px;outline:none;background:#fffafc;color:${tx};box-sizing:border-box;">
@@ -1435,6 +1436,7 @@ function renderAlbum(){
   el('page-6').innerHTML=`
   <div class="card" style="padding:16px;margin-bottom:16px;background:linear-gradient(135deg,${sf},#fff);">
     <div style="font-family:'Playfair Display',serif;font-size:18px;color:${tx};margin-bottom:12px;">📸 Album partagé</div>
+    <div style="font-size:10px;color:${tl};word-break:break-all;">ID: ${albumId}</div>
     <p style="font-size:13px;color:${tl};margin-bottom:14px;">Partagez ce lien ou QR code avec vos invités pour qu'ils puissent ajouter leurs photos !</p>
     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:16px;">
       <img src="${qrUrl}" style="border-radius:12px;box-shadow:0 2px 12px rgba(180,100,130,0.2);" alt="QR Code Album">
