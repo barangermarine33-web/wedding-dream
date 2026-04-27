@@ -369,7 +369,7 @@ async function syncUserToFirebase(u) {
 async function uploadToCloudinary(file) {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', 'Wedding-dream');
+  formData.append('upload_preset', 'dpmv0wnuz');
   formData.append('cloud_name', 'dpmv0wnuz');
   try {
     const res = await fetch('https://api.cloudinary.com/v1_1/dpmv0wnuz/image/upload', {
@@ -400,17 +400,20 @@ async function uploadPhotoToFirebase(file, userEmail) {
 }
 
 async function uploadGuestPhotoToFirebase(file, albumId, guestName) {
-  if(!window.firebaseDB) return null;
   try {
-    const {collection, addDoc, serverTimestamp} = window.firebaseLib;
+    // Upload to Cloudinary first (no Firebase needed)
     const url = await uploadToCloudinary(file);
     if(!url) return null;
-    await addDoc(collection(window.firebaseDB, 'mariages', albumId, 'photos'), {
-      url: url,
-      name: file.name,
-      uploadedBy: guestName || 'invité',
-      createdAt: serverTimestamp()
-    });
+    // Then save to Firestore if available
+    if(window.firebaseDB && window.firebaseLib) {
+      const {collection, addDoc, serverTimestamp} = window.firebaseLib;
+      await addDoc(collection(window.firebaseDB, 'mariages', albumId, 'photos'), {
+        url: url,
+        name: file.name,
+        uploadedBy: guestName || 'invité',
+        createdAt: serverTimestamp()
+      });
+    }
     return url;
   } catch(e) { console.warn('Guest upload error:', e); return null; }
 }
