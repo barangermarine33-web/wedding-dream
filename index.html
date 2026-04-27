@@ -178,6 +178,10 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
         <button class="btn" onclick="saveSettings()" style="flex:1;">Enregistrer</button>
         <button class="btn-sec" onclick="closeSettings()" style="flex:1;">Annuler</button>
       </div>
+      <hr style="border:none;border-top:1px solid #f5d5e0;margin:4px 0;">
+      <button onclick="deleteAccount()" style="width:100%;background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:11px;padding:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;">
+        🗑️ Supprimer mon compte
+      </button>
     </div>
   </div>
 </div>
@@ -345,6 +349,31 @@ function doRegister(){
 }
 
 function doLogout(){sv('sess',null);location.reload();}
+
+function deleteAccount(){
+  if(!confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Toutes vos données locales seront effacées.')) return;
+  if(!USER) return;
+  // Remove all localStorage keys for this user
+  const email = USER.email;
+  const keysToRemove = [];
+  for(let i=0; i<localStorage.length; i++){
+    const key = localStorage.key(i);
+    if(key && (key.includes(email) || key === 'sess' || key === 'rem_e' || key === 'rem_p')) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+  // Also delete from Firebase if available
+  if(window.firebaseDB && window.firebaseLib){
+    try{
+      const {doc, deleteDoc} = window.firebaseLib;
+      const albumId = btoa(email).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
+      deleteDoc(doc(window.firebaseDB,'mariages',albumId)).catch(e=>console.warn(e));
+    }catch(e){console.warn(e);}
+  }
+  alert('Compte supprimé. Vous allez être redirigé.');
+  location.reload();
+}
 
 
 // ── FIREBASE SYNC ─────────────────────────────────────────────────────────────
