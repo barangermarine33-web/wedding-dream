@@ -369,10 +369,10 @@ async function syncUserToFirebase(u) {
 async function uploadToCloudinary(file) {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', 'dpmv0wnuz');
-  formData.append('cloud_name', 'Wedding-dream');
+  formData.append('upload_preset', 'Wedding-dream');
+  formData.append('cloud_name', 'dpmv0wnuz');
   try {
-    const res = await fetch('https://api.cloudinary.com/v1_1/Wedding-dream/image/upload', {
+    const res = await fetch('https://api.cloudinary.com/v1_1/dpmv0wnuz/image/upload', {
       method: 'POST',
       body: formData
     });
