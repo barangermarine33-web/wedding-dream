@@ -399,15 +399,15 @@ async function uploadToCloudinary(file) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', 'dpmv0wnuz');
-  formData.append('cloud_name', 'dpmv0wnuz');
   try {
     const res = await fetch('https://api.cloudinary.com/v1_1/dpmv0wnuz/image/upload', {
       method: 'POST',
       body: formData
     });
     const data = await res.json();
+    if(data.error) { alert('Cloudinary: ' + data.error.message); return null; }
     return data.secure_url || null;
-  } catch(e) { console.warn('Cloudinary upload error:', e); return null; }
+  } catch(e) { alert('Erreur réseau: ' + e.message); return null; }
 }
 
 async function uploadPhotoToFirebase(file, userEmail) {
