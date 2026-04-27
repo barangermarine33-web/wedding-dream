@@ -549,20 +549,33 @@ window.submitGuestPhotos = async function(albumId) {
   status.textContent='Upload en cours... 0/' + files.length;
   
   let ok=0;
+  const uploaded=[];
   for(let i=0;i<files.length;i++) {
     const url = await uploadGuestPhotoToFirebase(files[i], albumId, name);
-    if(url) ok++;
+    if(url){ok++;uploaded.push({url,uploadedBy:name});}
     status.textContent='Upload en cours... '+(i+1)+'/'+files.length;
   }
   
   btn.disabled=false;
-  if(ok>0) {
+
+  // Show uploaded photos immediately without waiting for Firebase
+  if(ok>0){
+    const grid=document.getElementById('shared-photos');
+    if(grid){
+      uploaded.forEach(p=>{
+        grid.innerHTML+=`<div style="position:relative;aspect-ratio:1;overflow:hidden;">
+          <img src="${p.url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:#fff;font-size:9px;padding:3px 5px;">${p.uploadedBy}</div>
+        </div>`;
+      });
+      const empty=grid.querySelector('p');
+      if(empty)empty.remove();
+    }
     btn.textContent='Envoyer d\'autres photos 💌';
     status.style.color='#5a8a6a';
-    status.textContent='✓ '+ok+' photo(s) envoyée(s) avec succès !';
+    status.textContent='✓ '+ok+' photo(s) partagée(s) avec succès !';
     document.getElementById('guest-files').value='';
     document.getElementById('guest-preview').innerHTML='';
-    document.getElementById('guest-name').value='';
   } else {
     btn.textContent='Envoyer mes photos 💌';
     status.style.color='#c43a3a';
