@@ -397,17 +397,17 @@ async function syncUserToFirebase(u) {
 
 async function uploadToCloudinary(file) {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', 'dpmv0wnuz');
+  formData.append('key', '3f05b1a037eee587fcf6ca459b39f8ff');
+  formData.append('image', file);
   try {
-    const res = await fetch('https://api.cloudinary.com/v1_1/dpmv0wnuz/image/upload', {
+    const res = await fetch('https://api.imgbb.com/1/upload', {
       method: 'POST',
       body: formData
     });
     const data = await res.json();
-    if(data.error) { alert('Cloudinary: ' + data.error.message); return null; }
-    return data.secure_url || null;
-  } catch(e) { alert('Erreur réseau: ' + e.message); return null; }
+    if(!data.success) { console.warn('ImgBB error:', data); return null; }
+    return data.data.url || null;
+  } catch(e) { console.warn('ImgBB upload error:', e); return null; }
 }
 
 async function uploadPhotoToFirebase(file, userEmail) {
