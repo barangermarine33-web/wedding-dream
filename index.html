@@ -396,27 +396,26 @@ async function syncUserToFirebase(u) {
 }
 
 async function uploadToCloudinary(file) {
-  // Store as base64 dataURL directly - no external service needed
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      // Compress image before storing
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxSize = 800;
-        let w = img.width, h = img.height;
-        if(w > maxSize || h > maxSize) {
-          if(w > h) { h = h * maxSize / w; w = maxSize; }
-          else { w = w * maxSize / h; h = maxSize; }
+    reader.onload = async (e) => {
+      try {
+        const base64 = e.target.result.split(',')[1];
+        const fd = new FormData();
+        fd.append('key', '3f05b1a037eee587fcf6ca459b39f8ff');
+        fd.append('image', base64);
+        const res = await fetch('https://api.imgbb.com/1/upload', {method:'POST', body:fd});
+        const data = await res.json();
+        if(data.success && data.data && data.data.url) {
+          resolve(data.data.url);
+        } else {
+          console.warn('ImgBB error:', JSON.stringify(data));
+          resolve(null);
         }
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
-      };
-      img.onerror = () => resolve(e.target.result);
-      img.src = e.target.result;
+      } catch(e) {
+        console.warn('ImgBB upload error:', e);
+        resolve(null);
+      }
     };
     reader.onerror = () => resolve(null);
     reader.readAsDataURL(file);
@@ -428,13 +427,11 @@ async function uploadPhotoToFirebase(file, userEmail) {
     const url = await uploadToCloudinary(file);
     if(!url) return null;
     if(window.firebaseDB && window.firebaseLib) {
-      const {doc, getDoc, setDoc} = window.firebaseLib;
+      const {collection, addDoc} = window.firebaseLib;
       const albumId = btoa(userEmail).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
-      const ref = doc(window.firebaseDB, 'albums', albumId);
-      const snap = await getDoc(ref);
-      const existing = snap.exists() ? (snap.data().photos || []) : [];
-      existing.push({url, name: file.name, uploadedBy: 'organisateur', createdAt: new Date().toISOString()});
-      await setDoc(ref, {photos: existing}, {merge: true});
+      await addDoc(collection(window.firebaseDB,'albums',albumId,'photos'),{
+        url, name: file.name, uploadedBy: 'organisateur', createdAt: new Date().toISOString()
+      });
     }
     return url;
   } catch(e) { console.warn('Upload error:', e); return null; }
@@ -542,19 +539,15 @@ function showGuestAlbumPage(albumId) {
   if(window.firebaseDB) {
     const {collection, onSnapshot} = window.firebaseLib;
     try {
-      const {doc, onSnapshot} = window.firebaseLib;
-      const ref = doc(window.firebaseDB, 'albums', albumId);
-      onSnapshot(ref, (snap) => {
+      const {collection, onSnapshot} = window.firebaseLib;
+      onSnapshot(collection(window.firebaseDB,'albums',albumId,'photos'),(snap)=>{
         const div = document.getElementById('shared-photos');
         if(!div) return;
-        const photos = snap.exists() ? (snap.data().photos || []) : [];
         div.innerHTML = '';
-        photos.forEach(data => {
+        snap.forEach(d => {
+          const data = d.data();
           if(data.url) {
-            div.innerHTML += `<div style="position:relative;aspect-ratio:1;overflow:hidden;">
-              <img src="${data.url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
-              <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:#fff;font-size:9px;padding:3px 5px;font-family:Nunito,sans-serif;">${data.uploadedBy||'invité'}</div>
-            </div>`;
+            div.innerHTML += '<div style="position:relative;aspect-ratio:1;overflow:hidden;"><img src="'+data.url+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:#fff;font-size:9px;padding:3px 5px;font-family:Nunito,sans-serif;">'+(data.uploadedBy||'invité')+'</div></div>';
           }
         });
         if(div.innerHTML==='') div.innerHTML = '<p style="text-align:center;color:#b07a90;font-style:italic;font-size:13px;grid-column:1/-1;padding:20px;">Aucune photo pour l\'instant. Soyez le premier !</p>';
@@ -1594,16 +1587,10 @@ function loadAlbumPhotos(albumId){
     return;
   }
   try{
-    const {doc, onSnapshot, getDoc} = window.firebaseLib;
-    const ref = doc(window.firebaseDB, 'albums', albumId);
-    // Load immediately
-    getDoc(ref).then(snap => {
-      const photos = snap.exists() ? (snap.data().photos || []) : [];
-      renderAlbumGrid(photos);
-    }).catch(e => console.warn(e));
-    // Then listen for updates
-    onSnapshot(ref, (snap) => {
-      const photos = snap.exists() ? (snap.data().photos || []) : [];
+    const {collection, onSnapshot} = window.firebaseLib;
+    onSnapshot(collection(window.firebaseDB,'albums',albumId,'photos'),(snap)=>{
+      const photos=[];
+      snap.forEach(d=>photos.push({id:d.id,...d.data()}));
       renderAlbumGrid(photos);
     });
   }catch(e){console.warn('loadAlbumPhotos error:',e);renderAlbumGrid([]);}
