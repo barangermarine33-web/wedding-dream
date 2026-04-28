@@ -396,18 +396,25 @@ async function syncUserToFirebase(u) {
 }
 
 async function uploadToCloudinary(file) {
-  const formData = new FormData();
-  formData.append('key', '3f05b1a037eee587fcf6ca459b39f8ff');
-  formData.append('image', file);
-  try {
-    const res = await fetch('https://api.imgbb.com/1/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const data = await res.json();
-    if(!data.success) { console.warn('ImgBB error:', data); return null; }
-    return data.data.url || null;
-  } catch(e) { console.warn('ImgBB upload error:', e); return null; }
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const base64 = e.target.result.split(',')[1];
+        const formData = new FormData();
+        formData.append('key', '3f05b1a037eee587fcf6ca459b39f8ff');
+        formData.append('image', base64);
+        const res = await fetch('https://api.imgbb.com/1/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if(!data.success) { console.warn('ImgBB error:', JSON.stringify(data)); resolve(null); return; }
+        resolve(data.data.url || null);
+      } catch(e) { console.warn('ImgBB upload error:', e); resolve(null); }
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 async function uploadPhotoToFirebase(file, userEmail) {
