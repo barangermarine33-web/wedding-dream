@@ -442,12 +442,10 @@ async function uploadGuestPhotoToFirebase(file, albumId, guestName) {
     const url = await uploadToCloudinary(file);
     if(!url) return null;
     if(window.firebaseDB && window.firebaseLib) {
-      const {doc, getDoc, setDoc} = window.firebaseLib;
-      const ref = doc(window.firebaseDB, 'albums', albumId);
-      const snap = await getDoc(ref);
-      const existing = snap.exists() ? (snap.data().photos || []) : [];
-      existing.push({url, name: file.name, uploadedBy: guestName || 'invité', createdAt: new Date().toISOString()});
-      await setDoc(ref, {photos: existing}, {merge: true});
+      const {collection, addDoc} = window.firebaseLib;
+      await addDoc(collection(window.firebaseDB,'albums',albumId,'photos'),{
+        url, name: file.name, uploadedBy: guestName || 'invité', createdAt: new Date().toISOString()
+      });
     }
     return url;
   } catch(e) { console.warn('Guest upload error:', e); return null; }
@@ -663,14 +661,16 @@ function doGuestUpload(albumId) {
           if(empty) empty.remove();
         }
         if(window.firebaseDB && window.firebaseLib) {
-          var _ref = window.firebaseLib;
-          var docFn = _ref.doc; var getDocFn = _ref.getDoc; var setDocFn = _ref.setDoc;
-          var fbRef = docFn(window.firebaseDB, 'albums', albumId);
-          getDocFn(fbRef).then(function(snap){
-            var existing = snap.exists() ? (snap.data().photos || []) : [];
-            uploaded.forEach(function(p){ existing.push({url:p.url,uploadedBy:p.uploadedBy,createdAt:new Date().toISOString()}); });
-            setDocFn(fbRef, {photos: existing}, {merge: true});
-          }).catch(function(e){console.warn(e);});
+          var addDocFn = window.firebaseLib.addDoc;
+          var collFn = window.firebaseLib.collection;
+          var promises = uploaded.map(function(p){
+            return addDocFn(collFn(window.firebaseDB,'albums',albumId,'photos'),{
+              url: p.url,
+              uploadedBy: p.uploadedBy,
+              createdAt: new Date().toISOString()
+            });
+          });
+          Promise.all(promises).catch(function(e){console.warn('Firestore save error:',e);});
         }
       } else {
         if(btn) btn.textContent='Envoyer mes photos 💌';
@@ -694,12 +694,12 @@ function doGuestUpload(albumId) {
             ok++;
             uploaded.push({url: data.data.url, uploadedBy: name});
           } else {
-            if(status){status.textContent='Erreur upload photo.';}
+            if(status){status.textContent='ImgBB err: '+(data.error?data.error.message:JSON.stringify(data).substring(0,60));}
           }
           processNext();
         })
         .catch(function(e){
-          if(status){status.textContent='Erreur réseau.';}
+          if(status){status.textContent='Net err: '+e.message;}
           processNext();
         });
     };
