@@ -1594,8 +1594,14 @@ function loadAlbumPhotos(albumId){
     return;
   }
   try{
-    const {doc, onSnapshot} = window.firebaseLib;
+    const {doc, onSnapshot, getDoc} = window.firebaseLib;
     const ref = doc(window.firebaseDB, 'albums', albumId);
+    // Load immediately
+    getDoc(ref).then(snap => {
+      const photos = snap.exists() ? (snap.data().photos || []) : [];
+      renderAlbumGrid(photos);
+    }).catch(e => console.warn(e));
+    // Then listen for updates
     onSnapshot(ref, (snap) => {
       const photos = snap.exists() ? (snap.data().photos || []) : [];
       renderAlbumGrid(photos);
