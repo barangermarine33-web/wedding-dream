@@ -728,6 +728,16 @@ function doGuestUpload(albumId) {
 // ── APP START ─────────────────────────────────────────────────────────────────
 function startApp(u){
   USER=u;
+  // Load driveUrl from Firebase if not in localStorage
+  if(!ld('drive_url_'+u.email,'') && window.firebaseDB && window.firebaseLib){
+    const {doc, getDoc} = window.firebaseLib;
+    const albumId = btoa(u.email).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
+    getDoc(doc(window.firebaseDB,'mariages',albumId)).then(snap=>{
+      if(snap.exists() && snap.data().driveUrl){
+        sv('drive_url_'+u.email, snap.data().driveUrl);
+      }
+    }).catch(e=>console.warn(e));
+  }
   el('auth-screen').style.display='none';
   el('app').style.display='block';
   // Force reload if old data has fewer than 50 tasks (old version)
@@ -1536,67 +1546,111 @@ function renameMenuItem(sid,iid){const s=MENU.find(s=>s.id===sid);const item=s.i
 
 // ── ALBUM ─────────────────────────────────────────────────────────────────────
 function renderAlbum(){
-  // Always compute albumId deterministically from email
-  const albumId = btoa(USER.email).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
-  sv('album_id_'+USER.email, albumId);
-  const shareUrl = window.location.href.split('?')[0] + '?album=' + albumId;
-  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}&color=d4607a&bgcolor=fff9fb&margin=6`;
+  const driveUrl = ld('drive_url_'+USER.email, '');
+  const qrUrl = driveUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(driveUrl)}&color=d4607a&bgcolor=fff9fb&margin=6`
+    : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('https://drive.google.com')}&color=d4607a&bgcolor=fff9fb&margin=6`;
 
   el('page-6').innerHTML=`
   <div class="card" style="padding:16px;margin-bottom:16px;background:linear-gradient(135deg,${sf},#fff);">
     <div style="font-family:'Playfair Display',serif;font-size:18px;color:${tx};margin-bottom:12px;">📸 Album partagé</div>
-    <p style="font-size:13px;color:${tl};margin-bottom:14px;">Partagez ce lien ou QR code avec vos invités pour qu'ils puissent ajouter leurs photos !</p>
+    <p style="font-size:13px;color:${tl};margin-bottom:14px;">Partagez votre album <strong>Google Photos</strong> avec vos invités. Ils pourront y ajouter leurs photos facilement depuis leur téléphone.</p>
+
+    <div style="margin-bottom:16px;">
+      <label class="lbl">Lien de votre album Google Photos</label>
+      <div style="display:flex;gap:8px;">
+        <input class="inp" id="drive-url-input" type="text" placeholder="https://photos.google.com/share/..." style="flex:1;">
+        <button class="btn" onclick="saveDriveUrl()" style="white-space:nowrap;">Enregistrer</button>
+      </div>
+    </div>
+
+    ${driveUrl ? `
     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:16px;">
       <img src="${qrUrl}" style="border-radius:12px;box-shadow:0 2px 12px rgba(180,100,130,0.2);" alt="QR Code Album">
-      <button class="btn" onclick="shareAlbumLink('${shareUrl}')" style="width:100%;">📤 Partager le lien</button>
-      <button class="btn-sec" onclick="copyAlbumLink('${shareUrl}')" style="width:100%;font-size:12px;">📋 Copier le lien</button>
+      <button class="btn" onclick="shareCurrentDriveUrl()" style="width:100%;">📤 Partager le lien</button>
+      <button class="btn-sec" onclick="copyCurrentDriveUrl()" style="width:100%;">📋 Copier le lien</button>
+      <a id="drive-open-link" href="#" target="_blank" class="btn" style="width:100%;text-align:center;text-decoration:none;display:block;">📂 Ouvrir mon album Google Photos</a>
     </div>
-  </div>
-
-  <div class="card" style="padding:16px;margin-bottom:16px;">
-    <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:12px;">Ajouter vos photos</div>
-    <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,${pk},#b84060);color:#fff;border-radius:11px;padding:12px;cursor:pointer;font-weight:700;font-size:14px;font-family:'Nunito',sans-serif;">
-      📷 Choisir des photos
-      <input type="file" accept="image/*" multiple onchange="uploadPhotosAlbum(this.files)" style="display:none;">
-    </label>
-    <div id="upload-progress" style="display:none;margin-top:10px;text-align:center;color:${tl};font-size:13px;"></div>
+    ` : `
+    <div style="background:${sf};border:2px dashed ${br};border-radius:12px;padding:20px;text-align:center;color:${tl};font-size:13px;font-style:italic;">
+      Ajoutez votre lien Google Photos ci-dessus et cliquez sur Enregistrer pour générer le QR code à partager avec vos invités.
+    </div>
+    `}
   </div>
 
   <div class="card" style="padding:16px;">
-    <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:12px;">Photos de l'album <span id="photo-count" style="background:${sf};color:${pk};font-size:11px;border-radius:20px;padding:2px 9px;font-weight:700;">0</span></div>
-    <div id="album-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
-      <div style="text-align:center;color:${tl};font-size:13px;font-style:italic;grid-column:1/-1;padding:20px;">Chargement des photos...</div>
+    <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:12px;">Comment créer votre album partagé ?</div>
+    <div style="font-size:13px;color:${tl};line-height:2;">
+      <div>1️⃣ Ouvrez l\'application <strong>Google Photos</strong> sur votre téléphone</div>
+      <div>2️⃣ Appuyez sur <strong>"Bibliothèque"</strong> en bas → <strong>"Albums"</strong></div>
+      <div>3️⃣ Appuyez sur <strong>"+"</strong> pour créer un nouvel album → nommez-le (ex: "Mariage Marine & Julian")</div>
+      <div>4️⃣ Appuyez sur les <strong>3 points ⋮</strong> de l\'album → <strong>"Options de partage"</strong></div>
+      <div>5️⃣ Activez <strong>"Partage collaboratif"</strong> — vos invités pourront ajouter leurs photos</div>
+      <div>6️⃣ Appuyez sur <strong>"Envoyer le lien"</strong> → <strong>"Copier le lien"</strong></div>
+      <div>7️⃣ Collez ce lien dans le champ ci-dessus et appuyez sur <strong>Enregistrer</strong></div>
+    </div>
+    <div style="margin-top:12px;background:#fff8f0;border-radius:10px;padding:10px 12px;font-size:12px;color:#a07820;">
+      💡 Vos invités scannent le QR code, ouvrent l\'album et appuient sur <strong>"Rejoindre"</strong> pour ajouter leurs photos. Un compte Google est nécessaire pour rejoindre l\'album et ajouter des photos.
     </div>
   </div>
   `;
-
-  loadAlbumPhotos(albumId);
+  // Set input value after render to avoid template literal issues
+  const inp = document.getElementById('drive-url-input');
+  if(inp) inp.value = driveUrl;
+  const openLink = document.getElementById('drive-open-link');
+  if(openLink) openLink.href = driveUrl || '#';
 }
 
+function saveDriveUrl(){
+  const url = document.getElementById('drive-url-input')?.value.trim();
+  if(!url){alert('Veuillez entrer un lien Google Drive.');return;}
+  sv('drive_url_'+USER.email, url);
+  // Save to Firebase for cross-device persistence
+  if(window.firebaseDB && window.firebaseLib){
+    const {doc, setDoc} = window.firebaseLib;
+    const albumId = btoa(USER.email).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
+    setDoc(doc(window.firebaseDB,'mariages',albumId),{driveUrl: url},{merge:true})
+      .then(()=>console.log('Drive URL saved to Firebase'))
+      .catch(e=>console.warn('Firebase save error:',e));
+  }
+  renderAlbum();
+}
+
+function getCurrentDriveUrl(){
+  return ld('drive_url_'+USER.email, '');
+}
+function shareCurrentDriveUrl(){
+  const url = getCurrentDriveUrl();
+  if(!url){alert('Aucun lien enregistré.');return;}
+  shareAlbumLink(url);
+}
+function copyCurrentDriveUrl(){
+  const url = getCurrentDriveUrl();
+  if(!url){alert('Aucun lien enregistré.');return;}
+  copyAlbumLink(url);
+}
 function shareAlbumLink(url){
-  if(navigator.share){navigator.share({title:'Album Wedding Dream',text:'Ajoutez vos photos !',url:url});}
+  if(navigator.share){navigator.share({title:'Album photo de notre mariage',text:'Ajoutez vos photos ici !',url:url});}
   else{copyAlbumLink(url);}
 }
 
 function copyAlbumLink(url){
-  navigator.clipboard.writeText(url).then(()=>{alert('Lien copié !');}).catch(()=>{prompt('Copiez ce lien :',url);});
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.position='fixed';
+    ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('Lien copié !');
+  } catch(e) {
+    prompt('Copiez ce lien :', url);
+  }
 }
 
-async function uploadPhotosAlbum(files){
-  if(!files||files.length===0) return;
-  const progress=document.getElementById('upload-progress');
-  if(progress){progress.style.display='block';progress.textContent='Envoi en cours... 0/'+files.length;}
-  let ok=0;
-  for(let i=0;i<files.length;i++){
-    const url=await uploadPhotoToFirebase(files[i],USER.email);
-    if(url){ok++;ALBUM.push({id:Date.now(),url,name:files[i].name});}
-    if(progress)progress.textContent='Envoi en cours... '+(i+1)+'/'+files.length;
-  }
-  if(progress){
-    if(ok>0){progress.textContent='✓ '+ok+' photo(s) ajoutée(s) !';progress.style.color='#5a8a6a';}
-    else{progress.textContent='Erreur lors de l\'envoi.';progress.style.color='#c43a3a';}
-  }
-}
 
 function loadAlbumPhotos(albumId){
   if(!window.firebaseDB){
