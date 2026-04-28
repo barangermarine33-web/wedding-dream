@@ -484,11 +484,20 @@ function checkGuestAlbumMode() {
 }
 
 function showGuestAlbumPage(albumId) {
-  document.body.innerHTML = '';
+  // Hide auth and app screens instead of replacing body
+  const authScreen = document.getElementById('auth-screen');
+  const appScreen = document.getElementById('app');
+  if(authScreen) authScreen.style.display='none';
+  if(appScreen) appScreen.style.display='none';
+  
+  // Remove existing guest page if any
+  const existing = document.getElementById('guest-page');
+  if(existing) existing.remove();
   const pk="#d4607a",sf="#fef2f6",br="#f5d5e0",tx="#3e1828",tl="#b07a90",gn="#5a8a6a",rd="#c43a3a";
   
   const page = document.createElement('div');
-  page.style.cssText = 'min-height:100vh;background:linear-gradient(160deg,#fff0f5,#fce8f0);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;font-family:Nunito,sans-serif;';
+  page.id = 'guest-page';
+  page.style.cssText = 'position:fixed;inset:0;overflow-y:auto;background:linear-gradient(160deg,#fff0f5,#fce8f0);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;font-family:Nunito,sans-serif;z-index:9999;';
   
   page.innerHTML = `
     <div style="text-align:center;margin-bottom:24px;margin-top:20px;">
@@ -521,11 +530,7 @@ function showGuestAlbumPage(albumId) {
   `;
   document.body.appendChild(page);
 
-  // Load Playfair Display
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Nunito:wght@400;700&display=swap';
-  document.head.appendChild(link);
+
 
   // Listen for photos
   if(window.firebaseDB) {
