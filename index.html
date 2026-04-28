@@ -663,12 +663,14 @@ function doGuestUpload(albumId) {
         if(window.firebaseDB && window.firebaseLib) {
           var addDocFn = window.firebaseLib.addDoc;
           var collFn = window.firebaseLib.collection;
+          if(status) status.textContent += ' | Saving to Firebase...';
           var promises = uploaded.map(function(p){
             return addDocFn(collFn(window.firebaseDB,'albums',albumId,'photos'),{
               url: p.url,
               uploadedBy: p.uploadedBy,
               createdAt: new Date().toISOString()
-            });
+            }).then(function(){ if(status) status.textContent += ' ✓'; })
+              .catch(function(e){ if(status) status.textContent += ' FB_ERR:'+e.message; });
           });
           Promise.all(promises).catch(function(e){console.warn('Firestore save error:',e);});
         }
