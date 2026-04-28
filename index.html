@@ -629,6 +629,17 @@ window._old_submitGuestPhotos = async function(albumId) {
 };
 
 
+function waitForFirebase(callback, attempts) {
+  attempts = attempts || 0;
+  if(window.firebaseDB && window.firebaseLib) {
+    callback();
+  } else if(attempts < 20) {
+    setTimeout(function(){ waitForFirebase(callback, attempts+1); }, 300);
+  } else {
+    console.warn('Firebase not available after 6 seconds');
+  }
+}
+
 function doGuestUpload(albumId) {
   const name = (document.getElementById('guest-name') ? document.getElementById('guest-name').value : '').trim() || 'Invité';
   const filesEl = document.getElementById('guest-files');
@@ -663,16 +674,20 @@ function doGuestUpload(albumId) {
         if(window.firebaseDB && window.firebaseLib) {
           var addDocFn = window.firebaseLib.addDoc;
           var collFn = window.firebaseLib.collection;
-          if(status) status.textContent += ' | Saving to Firebase...';
-          var promises = uploaded.map(function(p){
-            return addDocFn(collFn(window.firebaseDB,'albums',albumId,'photos'),{
-              url: p.url,
-              uploadedBy: p.uploadedBy,
-              createdAt: new Date().toISOString()
-            }).then(function(){ if(status) status.textContent += ' ✓'; })
-              .catch(function(e){ if(status) status.textContent += ' FB_ERR:'+e.message; });
+          waitForFirebase(function(){
+            if(status) status.textContent += ' | Saving...';
+            var addDocFn2 = window.firebaseLib.addDoc;
+            var collFn2 = window.firebaseLib.collection;
+            var promises = uploaded.map(function(p){
+              return addDocFn2(collFn2(window.firebaseDB,'albums',albumId,'photos'),{
+                url: p.url,
+                uploadedBy: p.uploadedBy,
+                createdAt: new Date().toISOString()
+              }).then(function(){ if(status) status.textContent += ' ✓'; })
+                .catch(function(e){ if(status) status.textContent += ' ERR:'+e.message; });
+            });
+            Promise.all(promises).catch(function(e){ if(status) status.textContent += ' ERR2:'+e.message; });
           });
-          Promise.all(promises).catch(function(e){console.warn('Firestore save error:',e);});
         }
       } else {
         if(btn) btn.textContent='Envoyer mes photos 💌';
