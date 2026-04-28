@@ -396,23 +396,29 @@ async function syncUserToFirebase(u) {
 }
 
 async function uploadToCloudinary(file) {
+  // Store as base64 dataURL directly - no external service needed
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const base64 = e.target.result.split(',')[1];
-        const formData = new FormData();
-        formData.append('key', '3f05b1a037eee587fcf6ca459b39f8ff');
-        formData.append('image', base64);
-        const res = await fetch('https://api.imgbb.com/1/upload', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-        if(!data.success) { console.warn('ImgBB error:', JSON.stringify(data)); resolve(null); return; }
-        resolve(data.data.url || null);
-      } catch(e) { console.warn('ImgBB upload error:', e); resolve(null); }
+    reader.onload = (e) => {
+      // Compress image before storing
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 800;
+        let w = img.width, h = img.height;
+        if(w > maxSize || h > maxSize) {
+          if(w > h) { h = h * maxSize / w; w = maxSize; }
+          else { w = w * maxSize / h; h = maxSize; }
+        }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = () => resolve(e.target.result);
+      img.src = e.target.result;
     };
+    reader.onerror = () => resolve(null);
     reader.readAsDataURL(file);
   });
 }
@@ -518,7 +524,7 @@ function showGuestAlbumPage(albumId) {
         </button>
         <div id="guest-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;"></div>
       </div>
-      <button id="guest-upload-btn" onclick="submitGuestPhotos('${albumId}')" style="width:100%;background:linear-gradient(135deg,${pk},#b84060);color:#fff;border:none;border-radius:11px;padding:14px;cursor:pointer;font-size:15px;font-weight:700;font-family:Nunito,sans-serif;">
+      <button id="guest-upload-btn" onclick="doGuestUpload('${albumId}')" style="width:100%;background:linear-gradient(135deg,${pk},#b84060);color:#fff;border:none;border-radius:11px;padding:14px;cursor:pointer;font-size:15px;font-weight:700;font-family:Nunito,sans-serif;">
         Envoyer mes photos 💌
       </button>
       <div id="guest-status" style="display:none;margin-top:12px;text-align:center;font-size:13px;"></div>
@@ -569,7 +575,8 @@ window.previewGuestPhotos = function(input) {
   });
 };
 
-window.submitGuestPhotos = async function(albumId) {
+window.submitGuestPhotos = function(albumId) { doGuestUpload(albumId); };
+window._old_submitGuestPhotos = async function(albumId) {
   const name = (document.getElementById('guest-name')?.value||'').trim() || 'Invité';
   const files = document.getElementById('guest-files')?.files;
   const btn = document.getElementById('guest-upload-btn');
@@ -629,6 +636,84 @@ window.submitGuestPhotos = async function(albumId) {
     status.textContent='Erreur lors de l\'envoi. Vérifiez votre connexion.';
   }
 };
+
+
+function doGuestUpload(albumId) {
+  const name = (document.getElementById('guest-name') ? document.getElementById('guest-name').value : '').trim() || 'Invité';
+  const filesEl = document.getElementById('guest-files');
+  const files = filesEl ? filesEl.files : null;
+  const btn = document.getElementById('guest-upload-btn');
+  const status = document.getElementById('guest-status');
+  if(!files || files.length === 0) {
+    if(status){status.style.display='block';status.style.color='#c43a3a';status.textContent='Veuillez sélectionner une photo.';}
+    return;
+  }
+  if(btn){btn.disabled=true;btn.textContent='Envoi en cours...';}
+  if(status){status.style.display='block';status.style.color='#b07a90';status.textContent='Envoi en cours...';}
+  
+  let ok=0;
+  const uploaded=[];
+  let i=0;
+  
+  function processNext() {
+    if(i >= files.length) {
+      if(btn){btn.disabled=false;}
+      if(ok > 0) {
+        if(btn) btn.textContent='Envoyer autres photos 💌';
+        if(status){status.style.color='#5a8a6a';status.textContent='✓ '+ok+' photo(s) partagée(s) !';}
+        const grid = document.getElementById('shared-photos');
+        if(grid){
+          uploaded.forEach(function(p){
+            grid.innerHTML += '<div style="position:relative;aspect-ratio:1;overflow:hidden;"><img src="'+p.url+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:#fff;font-size:9px;padding:3px 5px;">'+p.uploadedBy+'</div></div>';
+          });
+          const empty = grid.querySelector('p');
+          if(empty) empty.remove();
+        }
+        if(window.firebaseDB && window.firebaseLib) {
+          var _ref = window.firebaseLib;
+          var docFn = _ref.doc; var getDocFn = _ref.getDoc; var setDocFn = _ref.setDoc;
+          var fbRef = docFn(window.firebaseDB, 'albums', albumId);
+          getDocFn(fbRef).then(function(snap){
+            var existing = snap.exists() ? (snap.data().photos || []) : [];
+            uploaded.forEach(function(p){ existing.push({url:p.url,uploadedBy:p.uploadedBy,createdAt:new Date().toISOString()}); });
+            setDocFn(fbRef, {photos: existing}, {merge: true});
+          }).catch(function(e){console.warn(e);});
+        }
+      } else {
+        if(btn) btn.textContent='Envoyer mes photos 💌';
+        if(status){status.style.color='#c43a3a';status.textContent='Erreur envoi. Vérifiez connexion.';}
+      }
+      return;
+    }
+    var file = files[i];
+    i++;
+    if(status) status.textContent='Envoi photo '+i+'/'+files.length+'...';
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var base64 = e.target.result.split(',')[1];
+      var fd = new FormData();
+      fd.append('key', '3f05b1a037eee587fcf6ca459b39f8ff');
+      fd.append('image', base64);
+      fetch('https://api.imgbb.com/1/upload', {method:'POST', body:fd})
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          if(data.success && data.data && data.data.url) {
+            ok++;
+            uploaded.push({url: data.data.url, uploadedBy: name});
+          } else {
+            if(status){status.textContent='Erreur upload photo.';}
+          }
+          processNext();
+        })
+        .catch(function(e){
+          if(status){status.textContent='Erreur réseau.';}
+          processNext();
+        });
+    };
+    reader.readAsDataURL(file);
+  }
+  processNext();
+}
 
 // ── APP START ─────────────────────────────────────────────────────────────────
 function startApp(u){
