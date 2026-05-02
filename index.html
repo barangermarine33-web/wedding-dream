@@ -10,11 +10,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Wedding Dream">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:#fff9fb;font-family:'Nunito',sans-serif;color:#3e1828;min-height:100vh;}
-input,select,button,textarea{font-family:'Nunito',sans-serif;}
+body{background:#fff9fb;font-family:Lora,serif;color:#3e1828;min-height:100vh;}
+input,select,button,textarea{font-family:Lora,serif;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-thumb{background:#f0a8b8;border-radius:2px;}
 @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
@@ -26,15 +26,15 @@ input,select,button,textarea{font-family:'Nunito',sans-serif;}
   animation:shimmer 4s linear infinite;
   display:inline-block;
 }
-.btn{background:linear-gradient(135deg,#d4607a,#b84060);color:#fff;border:none;border-radius:11px;padding:10px 18px;cursor:pointer;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;transition:all .2s;}
+.btn{background:linear-gradient(135deg,#d4607a,#b84060);color:#fff;border:none;border-radius:11px;padding:10px 18px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;transition:all .2s;}
 .btn:active{transform:scale(.97);}
 .btn:disabled{opacity:.5;}
-.btn-sec{background:#fff;color:#d4607a;border:1.5px solid #f5d5e0;border-radius:11px;padding:10px 14px;cursor:pointer;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;}
+.btn-sec{background:#fff;color:#d4607a;border:1.5px solid #f5d5e0;border-radius:11px;padding:10px 14px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;}
 .inp{border:1.5px solid #f5d5e0;border-radius:10px;padding:9px 12px;font-size:13px;outline:none;background:#fffafc;color:#3e1828;width:100%;}
 .inp:focus{border-color:#d4607a;}
 .card{background:#fff;border:1.5px solid #f5d5e0;border-radius:14px;}
 .lbl{font-size:10px;color:#b07a90;letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px;font-weight:700;}
-.tab-btn{background:#fff;border:1.5px solid #e8d48a;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;font-family:'Nunito',sans-serif;flex-shrink:0;color:#b8922a;}
+.tab-btn{background:#fff;border:1.5px solid #e8d48a;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;font-family:Lora,serif;flex-shrink:0;color:#b8922a;}
 .tab-btn.active{background:#c9a84c;color:#fff;border-color:#c9a84c;}
 .page{display:none;padding:14px 12px 60px;}
 .page.active{display:block;}
@@ -87,11 +87,11 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
       <!-- Toggle buttons -->
       <div style="display:flex;background:#fef2f6;border-radius:12px;padding:4px;margin-bottom:20px;">
         <button id="btn-login" onclick="showLogin()"
-          style="flex:1;background:#fff;border:none;border-radius:9px;padding:14px 9px;cursor:pointer;font-size:14px;font-weight:700;color:#d4607a;font-family:'Nunito',sans-serif;min-height:48px;">
+          style="flex:1;background:#fff;border:none;border-radius:9px;padding:14px 9px;cursor:pointer;font-size:14px;font-weight:700;color:#d4607a;font-family:Lora,serif;min-height:48px;">
           Se connecter
         </button>
         <button id="btn-register" onclick="showRegister()"
-          style="flex:1;background:transparent;border:none;border-radius:9px;padding:14px 9px;cursor:pointer;font-size:14px;font-weight:700;color:#b07a90;font-family:'Nunito',sans-serif;min-height:48px;">
+          style="flex:1;background:transparent;border:none;border-radius:9px;padding:14px 9px;cursor:pointer;font-size:14px;font-weight:700;color:#b07a90;font-family:Lora,serif;min-height:48px;">
           Créer un compte
         </button>
       </div>
@@ -102,6 +102,10 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
           <div><label class="lbl">Email</label><input class="inp" type="email" id="a-email-l" placeholder="votre@email.com"></div>
           <div><label class="lbl">Mot de passe</label><input class="inp" type="password" id="a-pass-l" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
           <div id="err-login" style="display:none;background:#fff0f0;border:1px solid #ffccd0;border-radius:8px;padding:8px 12px;font-size:12px;color:#c43a3a;"></div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#b07a90;">
+            <input type="checkbox" id="remember-me" style="accent-color:#d4607a;width:16px;height:16px;">
+            Se souvenir de moi
+          </label>
           <button class="btn" onclick="doLogin()" style="font-size:15px;padding:14px;margin-top:4px;">Se connecter</button>
         </div>
       </div>
@@ -138,9 +142,9 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7a3a52" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
         </button>
         <div id="power-menu" style="display:none;position:absolute;top:42px;right:0;background:#fff;border:1.5px solid #f5d5e0;border-radius:12px;box-shadow:0 8px 28px rgba(62,24,40,.12);overflow:hidden;min-width:185px;z-index:300;">
-          <button onclick="openSettings()" style="width:100%;background:none;border:none;padding:12px 16px;cursor:pointer;font-size:13px;color:#3e1828;font-weight:600;text-align:left;font-family:'Nunito',sans-serif;">Paramètres du compte</button>
+          <button onclick="openSettings()" style="width:100%;background:none;border:none;padding:12px 16px;cursor:pointer;font-size:13px;color:#3e1828;font-weight:600;text-align:left;font-family:Lora,serif;">Paramètres du compte</button>
           <div style="height:1px;background:#f5d5e0;"></div>
-          <button onclick="doLogout()" style="width:100%;background:none;border:none;padding:12px 16px;cursor:pointer;font-size:13px;color:#c43a3a;font-weight:600;text-align:left;font-family:'Nunito',sans-serif;">Déconnecter</button>
+          <a href="javascript:void(0)" ontouchstart="doLogout()" onclick="doLogout()" style="display:block;width:100%;padding:12px 16px;font-size:13px;color:#c43a3a;font-weight:600;text-align:left;font-family:Lora,serif;text-decoration:none;box-sizing:border-box;">Déconnecter</a>
         </div>
       </div>
     </div>
@@ -148,7 +152,7 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
   </div>
 
   <!-- TABS -->
-  <div style="background:rgba(255,255,255,.9);border-bottom:1px solid #f5d5e0;display:flex;overflow-x:auto;padding:6px 8px;gap:6px;position:sticky;top:120px;z-index:100;" id="tabs-bar"></div>
+  <div style="background:rgba(255,255,255,.9);border-bottom:1px solid #f5d5e0;display:flex;overflow-x:auto;padding:6px 8px;gap:6px;position:sticky;top:120px;z-index:100;-webkit-overflow-scrolling:touch;justify-content:safe center;" id="tabs-bar"></div>
 
   <!-- PAGES -->
   <div style="max-width:900px;margin:0 auto;">
@@ -160,6 +164,7 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
     <div class="page" id="page-5"></div>
     <div class="page" id="page-6"></div>
     <div class="page" id="page-7"></div>
+    <div class="page" id="page-8"></div>
   </div>
 </div>
 
@@ -179,7 +184,7 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
         <button class="btn-sec" onclick="closeSettings()" style="flex:1;">Annuler</button>
       </div>
       <hr style="border:none;border-top:1px solid #f5d5e0;margin:4px 0;">
-      <button onclick="deleteAccount()" style="width:100%;background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:11px;padding:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;">
+      <button onclick="deleteAccount()" style="width:100%;background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:11px;padding:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;">
         🗑️ Supprimer mon compte
       </button>
     </div>
@@ -191,9 +196,9 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
   <div class="card" style="width:100%;max-width:300px;padding:18px;max-height:75vh;overflow:auto;">
     <div style="font-family:'Playfair Display',serif;font-size:16px;margin-bottom:12px;font-weight:700;">Placer un invité</div>
     <div id="seat-guest-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
-    <button id="seat-remove-btn" onclick="removeSeat()" style="display:none;width:100%;background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:10px;padding:9px;cursor:pointer;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;margin-bottom:8px;">Retirer l'invité</button>
-    <button id="seat-hide-btn" onclick="toggleHideSeat()" style="width:100%;background:#fef2f6;color:#7a3a52;border:1.5px solid #f5d5e0;border-radius:10px;padding:9px;cursor:pointer;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;margin-bottom:8px;">Masquer ce siège</button>
-    <button onclick="closeSeatModal()" style="width:100%;background:#fff;border:1.5px solid #f5d5e0;border-radius:10px;padding:9px;cursor:pointer;font-size:13px;font-weight:600;font-family:'Nunito',sans-serif;">Fermer</button>
+    <button id="seat-remove-btn" onclick="removeSeat()" style="display:none;width:100%;background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:10px;padding:9px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;margin-bottom:8px;">Retirer l'invité</button>
+    <button id="seat-hide-btn" onclick="toggleHideSeat()" style="width:100%;background:#fef2f6;color:#7a3a52;border:1.5px solid #f5d5e0;border-radius:10px;padding:9px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;margin-bottom:8px;">Masquer ce siège</button>
+    <button onclick="closeSeatModal()" style="width:100%;background:#fff;border:1.5px solid #f5d5e0;border-radius:10px;padding:9px;cursor:pointer;font-size:13px;font-weight:600;font-family:Lora,serif;">Fermer</button>
   </div>
 </div>
 
@@ -202,7 +207,7 @@ input[type=checkbox]{accent-color:#d4607a;width:17px;height:17px;cursor:pointer;
   <div onclick="event.stopPropagation()" style="max-width:92vw;max-height:90vh;position:relative;">
     <img id="lb-img" style="max-width:100%;max-height:78vh;object-fit:contain;border-radius:12px;display:block;">
     <div id="lb-info" style="background:rgba(0,0,0,.6);color:#fff;padding:7px 14px;border-radius:0 0 12px 12px;text-align:center;"></div>
-    <button onclick="deletePhoto()" style="position:absolute;top:8px;right:8px;background:rgba(196,58,58,.85);color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;font-weight:bold;font-family:'Nunito',sans-serif;">×</button>
+    <button onclick="deletePhoto()" style="position:absolute;top:8px;right:8px;background:rgba(196,58,58,.85);color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;font-weight:bold;font-family:Lora,serif;">×</button>
   </div>
 </div>
 
@@ -218,9 +223,55 @@ const pk="#d4607a",pm="#f0a8b8",sf="#fef2f6",br="#f5d5e0",tx="#3e1828",tm="#7a3a
 let USER=null, cdInt=null, currentTab=0;
 let TASKS=[], BUDGET=[], GUESTS=[], TABLES=[], VENDORS_FAV=[], VENDORS_CHO=[], ALBUM=[], NOTES='', MENU=[];
 let seatPicker=null, lbPhotoId=null;
-const TABS=["Checklist","Budget","Invités","Plan de table","Prestataires","Menu & quantités","Album","Notes"];
+const TABS=["Checklist","Budget","Invités","Plan de table","Prestataires","Menu & quantités","Décorations","Album","Notes"];
 const ROLES=["Invité·e","Demoiselle d'honneur","Garçon d'honneur","Témoin"];
 const REGIMES=["Aucun","Végétarien","Vegan","Sans gluten","Sans lactose","Halal","Sans porc","Sans fruits à coque et arachides","Sans poisson","Sans alcool"];
+function editGuestRegimes(id){
+  const g=GUESTS.find(x=>x.id===id);
+  if(!g)return;
+  const current=g.regime?g.regime.split(', '):[];
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(62,24,40,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  const box=document.createElement('div');
+  box.style.cssText='background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;max-height:80vh;overflow-y:auto;';
+  const title=document.createElement('div');
+  title.style.cssText='font-family:Playfair Display,serif;font-size:16px;color:#3e1828;margin-bottom:16px;';
+  title.textContent='Régimes de '+g.nom;
+  box.appendChild(title);
+  REGIMES.filter(r=>r!=='Aucun').forEach(r=>{
+    const lbl=document.createElement('label');
+    lbl.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5d5e0;cursor:pointer;';
+    const cb=document.createElement('input');
+    cb.type='checkbox';cb.value=r;cb.checked=current.includes(r);
+    cb.style.cssText='accent-color:#d4607a;width:17px;height:17px;';
+    const span=document.createElement('span');
+    span.style.cssText='font-size:13px;color:#3e1828;';
+    span.textContent=r;
+    lbl.appendChild(cb);lbl.appendChild(span);
+    box.appendChild(lbl);
+  });
+  const btns=document.createElement('div');
+  btns.style.cssText='display:flex;gap:8px;margin-top:16px;';
+  const save=document.createElement('button');
+  save.style.cssText='flex:1;background:linear-gradient(135deg,#d4607a,#b84060);color:#fff;border:none;border-radius:10px;padding:10px;cursor:pointer;font-weight:700;font-family:Lora,serif;';
+  save.textContent='Enregistrer';
+  save.onclick=function(){
+    const checked=Array.from(box.querySelectorAll('input:checked')).map(i=>i.value);
+    updGuest(id,'regime',checked.length>0?checked.join(', '):'Aucun');
+    overlay.remove();
+  };
+  const cancel=document.createElement('button');
+  cancel.style.cssText='flex:1;background:#fef2f6;color:#b07a90;border:1.5px solid #f5d5e0;border-radius:10px;padding:10px;cursor:pointer;font-weight:700;font-family:Lora,serif;';
+  cancel.textContent='Annuler';
+  cancel.onclick=function(){overlay.remove();};
+  btns.appendChild(save);btns.appendChild(cancel);
+  box.appendChild(btns);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+
+
 const MONTHS=["12 à 18 mois avant","9 à 12 mois avant","6 à 9 mois avant","3 à 6 mois avant","2 à 3 mois avant","1 mois avant","2 semaines avant","1 semaine avant","La veille","Jour J","Après le mariage"];
 const VCAT=["Traiteur","Photographe","Salle","Fleuriste","DJ / Musique","Wedding Planner","Autre"];
 const VCOLS={Photographe:"#7a5a9a",Traiteur:"#5a8a5a",Salle:"#9a5a3a",Fleuriste:"#c4697e","DJ / Musique":"#3a6a9a","Wedding Planner":"#8a6a2a",Autre:"#6a6a6a"};
@@ -240,7 +291,24 @@ const DEF_TASKS=[
   {id:87,text:"Envoyer les remerciements (dans le mois)",done:false,month:"Après le mariage"},{id:88,text:"Trier et sélectionner les photos pour un album",done:false,month:"Après le mariage"},{id:89,text:"Régler les derniers paiements",done:false,month:"Après le mariage"},{id:90,text:"Mettre à jour les documents administratifs",done:false,month:"Après le mariage"}
 ];
 const DEF_BUDGET=[
-  {id:1,cat:"Lieu de réception",est:6000,reel:0,paye:0},{id:2,cat:"Traiteur",est:8000,reel:0,paye:0},{id:3,cat:"Photographe",est:2000,reel:0,paye:0},{id:4,cat:"Vidéaste",est:1500,reel:0,paye:0},{id:5,cat:"DJ ou groupe de musique",est:1200,reel:0,paye:0},{id:6,cat:"Officiant de cérémonie",est:800,reel:0,paye:0},{id:7,cat:"Fleuriste",est:1500,reel:0,paye:0},{id:8,cat:"Boutique de robe de mariée",est:2500,reel:0,paye:0},{id:9,cat:"Costumier / tailleur",est:800,reel:0,paye:0},{id:10,cat:"Coiffeur·se",est:400,reel:0,paye:0},{id:11,cat:"Maquilleur·se",est:350,reel:0,paye:0},{id:12,cat:"Accessoiriste",est:300,reel:0,paye:0},{id:13,cat:"Location de matériel",est:600,reel:0,paye:0},{id:14,cat:"Animateurs",est:500,reel:0,paye:0},{id:15,cat:"Créateur faire-parts / Imprimeur",est:300,reel:0,paye:0},{id:16,cat:"Location voiture de mariage",est:600,reel:0,paye:0},{id:17,cat:"Navettes / transport invités",est:500,reel:0,paye:0},{id:18,cat:"Hébergement des invités",est:1000,reel:0,paye:0}
+  {id:1,cat:"Lieu de réception",est:2000,reel:0},
+  {id:2,cat:"Traiteur",est:2000,reel:0},
+  {id:3,cat:"Photographe",est:500,reel:0},
+  {id:4,cat:"Vidéaste",est:500,reel:0},
+  {id:5,cat:"DJ ou groupe de musique",est:1000,reel:0},
+  {id:6,cat:"Officiant de cérémonie",est:100,reel:0},
+  {id:7,cat:"Fleuriste",est:600,reel:0},
+  {id:8,cat:"Boutique de robe de mariée",est:2000,reel:0},
+  {id:9,cat:"Costumier / tailleur",est:1000,reel:0},
+  {id:10,cat:"Coiffeur(se)",est:200,reel:0},
+  {id:11,cat:"Maquilleur(se)",est:100,reel:0},
+  {id:12,cat:"Accessoiriste",est:100,reel:0},
+  {id:13,cat:"Location de matériel",est:1000,reel:0},
+  {id:14,cat:"Animateurs",est:800,reel:0},
+  {id:15,cat:"Faire-parts / Imprimeur",est:100,reel:0},
+  {id:16,cat:"Location de véhicule",est:500,reel:0},
+  {id:17,cat:"Navettes / transport invités",est:500,reel:0},
+  {id:18,cat:"Hébergement des invités",est:2000,reel:0}
 ];
 const DEF_GUESTS=[
   {id:1,nom:"Marie Dupont",email:"marie@email.com",invitation:"envoyée",presence:"confirmée",cote:"p1",role:"Invité·e",regime:"Aucun",vinHonneur:false,age:"Adulte",seatTableId:null,seatIdx:null},
@@ -248,22 +316,21 @@ const DEF_GUESTS=[
   {id:3,nom:"Sophie Bernard",email:"sophie@email.com",invitation:"envoyée",presence:"en attente",cote:"p1",role:"Demoiselle d'honneur",regime:"Végétarien",vinHonneur:true,age:"Adulte",seatTableId:null,seatIdx:null}
 ];
 const DEF_TABLES=[
-  {id:1,nom:"Table des mariés",shape:"round",seats:8,x:60,y:70,hiddenSeats:[]},
-  {id:2,nom:"Table famille",shape:"round",seats:8,x:280,y:70,hiddenSeats:[]},
-  {id:3,nom:"Table amis",shape:"rect",seats:10,x:160,y:250,hiddenSeats:[]}
+  {id:1,nom:"Table des mariés",shape:"round",seats:8,x:80,y:80,hiddenSeats:[]},
+  {id:2,nom:"Table famille",shape:"round",seats:8,x:300,y:80,hiddenSeats:[]}
 ];
 const DEF_MENU=[
   {id:1,section:"Vin d'honneur / Cocktail",items:[{id:11,text:"Champagne & vins"},{id:12,text:"Cocktails & softs"},{id:13,text:"Amuse-bouches (canapés, verrines, petits fours)"}]},
-  {id:2,section:"Entrée",items:[{id:21,text:"Entrée froide ou chaude"},{id:22,text:"Ex : foie gras, tartare de poisson, salade raffinée"}]},
+  {id:2,section:"Entrée",items:[{id:21,text:"Froide ou chaude (foie gras, tartare de poisson, salade raffinée...)"}]},
   {id:3,section:"Plat principal",items:[{id:31,text:"Viande, poisson ou option végétarienne"},{id:32,text:"Accompagnements (légumes, féculents)"}]},
   {id:4,section:"Fromage",items:[{id:41,text:"Plateau de fromages variés"},{id:42,text:"Salade"}]},
   {id:5,section:"Dessert",items:[{id:51,text:"Pièce montée, Wedding cake ou dessert à l'assiette"}]}
 ];
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-const h=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const h=s=>(s===undefined||s===null?'':String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const fmt=n=>Number(n||0).toLocaleString('fr-FR');
 const el=id=>document.getElementById(id);
-const fmt=n=>Number(n||0).toLocaleString("fr-FR");
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 let authMode='login';
@@ -297,6 +364,19 @@ async function doLogin(){
   if(!email||!pass){err.textContent='Veuillez remplir tous les champs.';err.style.display='block';return;}
 
   let u=ld('u_'+email,null);
+
+  // Local login - works offline
+  if(u && u.pass===pass){
+    sv('sess',email);
+    const remember = document.getElementById('remember-me')?.checked;
+    if(remember){
+      sv('rem_e',email);sv('rem_p',pass);
+    } else {
+      sv('rem_e',null);sv('rem_p',null);
+    }
+    startApp(u);
+    return;
+  }
 
   if((!u||u.pass!==pass) && window.firebaseDB){
     if(btn){btn.textContent='Connexion...';btn.disabled=true;}
@@ -348,7 +428,7 @@ function doRegister(){
   startApp(u);
 }
 
-function doLogout(){sv('sess',null);location.reload();}
+function doLogout(){localStorage.setItem('sess','null');window.location.href=window.location.href;}
 
 function deleteAccount(){
   if(!confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Toutes vos données locales seront effacées.')) return;
@@ -377,357 +457,9 @@ function deleteAccount(){
 
 
 // ── FIREBASE SYNC ─────────────────────────────────────────────────────────────
-async function syncUserToFirebase(u) {
-  if(!window.firebaseDB) return;
-  try {
-    const {doc, setDoc} = window.firebaseLib;
-    const albumId = btoa(u.email).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
-    sv('album_id_'+u.email, albumId);
-    await setDoc(doc(window.firebaseDB, 'mariages', albumId), {
-      email: u.email,
-      pass: u.pass,
-      p1: u.p1, p2: u.p2,
-      wDate: u.wDate,
-      albumId: albumId,
-      createdAt: new Date().toISOString()
-    }, {merge: true});
-    console.log('Utilisateur synchronisé Firebase ✓', albumId);
-  } catch(e) { console.warn('Firebase sync error:', e); }
-}
-
-async function uploadToCloudinary(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const base64 = e.target.result.split(',')[1];
-        const fd = new FormData();
-        fd.append('key', '3f05b1a037eee587fcf6ca459b39f8ff');
-        fd.append('image', base64);
-        const res = await fetch('https://api.imgbb.com/1/upload', {method:'POST', body:fd});
-        const data = await res.json();
-        if(data.success && data.data && data.data.url) {
-          resolve(data.data.url);
-        } else {
-          console.warn('ImgBB error:', JSON.stringify(data));
-          resolve(null);
-        }
-      } catch(e) {
-        console.warn('ImgBB upload error:', e);
-        resolve(null);
-      }
-    };
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
-
-async function uploadPhotoToFirebase(file, userEmail) {
-  try {
-    const url = await uploadToCloudinary(file);
-    if(!url) return null;
-    if(window.firebaseDB && window.firebaseLib) {
-      const {collection, addDoc} = window.firebaseLib;
-      const albumId = btoa(userEmail).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
-      await addDoc(collection(window.firebaseDB,'albums',albumId,'photos'),{
-        url, name: file.name, uploadedBy: 'organisateur', createdAt: new Date().toISOString()
-      });
-    }
-    return url;
-  } catch(e) { console.warn('Upload error:', e); return null; }
-}
-
-async function uploadGuestPhotoToFirebase(file, albumId, guestName) {
-  try {
-    const url = await uploadToCloudinary(file);
-    if(!url) return null;
-    if(window.firebaseDB && window.firebaseLib) {
-      const {collection, addDoc} = window.firebaseLib;
-      await addDoc(collection(window.firebaseDB,'albums',albumId,'photos'),{
-        url, name: file.name, uploadedBy: guestName || 'invité', createdAt: new Date().toISOString()
-      });
-    }
-    return url;
-  } catch(e) { console.warn('Guest upload error:', e); return null; }
-}
-
-function getAlbumShareUrl(userEmail) {
-  // Always use deterministic albumId
-  const albumId = btoa(userEmail).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
-  sv('album_id_'+userEmail, albumId);
-  const base = window.location.href.split('?')[0];
-  return base + '?album=' + albumId;
-}
-
-function listenFirebasePhotos(userEmail, callback) {
-  if(!window.firebaseDB) return;
-  try {
-    const {collection, onSnapshot} = window.firebaseLib;
-    const albumId = ld('album_id_'+userEmail, null);
-    if(!albumId) return;
-    onSnapshot(collection(window.firebaseDB, 'mariages', albumId, 'photos'), (snap) => {
-      const photos = [];
-      snap.forEach(d => photos.push({id: d.id, ...d.data()}));
-      callback(photos);
-    });
-  } catch(e) { console.warn('Firebase listen error:', e); }
-}
-
 // Check if guest album mode on load
-function checkGuestAlbumMode() {
-  const params = new URLSearchParams(window.location.search);
-  const albumId = params.get('album');
-  if(albumId) {
-    showGuestAlbumPage(albumId);
-    return true;
-  }
-  return false;
-}
-
-function showGuestAlbumPage(albumId) {
-  // Hide auth and app screens instead of replacing body
-  const authScreen = document.getElementById('auth-screen');
-  const appScreen = document.getElementById('app');
-  if(authScreen) authScreen.style.display='none';
-  if(appScreen) appScreen.style.display='none';
-  
-  // Remove existing guest page if any
-  const existing = document.getElementById('guest-page');
-  if(existing) existing.remove();
-  const pk="#d4607a",sf="#fef2f6",br="#f5d5e0",tx="#3e1828",tl="#b07a90",gn="#5a8a6a",rd="#c43a3a";
-  
-  const page = document.createElement('div');
-  page.id = 'guest-page';
-  page.style.cssText = 'position:fixed;inset:0;overflow-y:auto;background:linear-gradient(160deg,#fff0f5,#fce8f0);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;font-family:Nunito,sans-serif;z-index:9999;';
-  
-  page.innerHTML = `
-    <div style="text-align:center;margin-bottom:24px;margin-top:20px;">
-      <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;background:linear-gradient(135deg,#a8872e,#c9a84c 45%,#96711a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Wedding Dream</h1>
-      <p style="color:${tl};font-size:14px;margin-top:4px;font-style:italic;">Album photo partagé 💍</p>
-    </div>
-    <div style="background:#fff;border:1.5px solid ${br};border-radius:14px;width:100%;max-width:500px;padding:24px;margin-bottom:20px;">
-      <h2 style="font-family:'Playfair Display',serif;font-size:18px;color:${tx};margin-bottom:16px;text-align:center;">Partagez vos photos !</h2>
-      <div style="margin-bottom:16px;">
-        <label style="font-size:13px;color:${tl};font-weight:700;display:block;margin-bottom:6px;">Votre prénom</label>
-        <input id="guest-name" type="text" placeholder="ex: Sophie" style="width:100%;border:1.5px solid ${br};border-radius:10px;padding:10px 12px;font-size:14px;outline:none;background:#fffafc;color:${tx};box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="font-size:13px;color:${tl};font-weight:700;display:block;margin-bottom:6px;">Sélectionner vos photos</label>
-        <input id="guest-files" type="file" accept="image/*" multiple style="display:none;" onchange="previewGuestPhotos(this)">
-        <button onclick="document.getElementById('guest-files').click()" style="width:100%;background:${sf};border:2px dashed ${br};border-radius:10px;padding:20px;cursor:pointer;font-size:14px;color:${tl};font-family:Nunito,sans-serif;">
-          📷 Appuyer pour choisir des photos
-        </button>
-        <div id="guest-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;"></div>
-      </div>
-      <button id="guest-upload-btn" onclick="doGuestUpload('${albumId}')" style="width:100%;background:linear-gradient(135deg,${pk},#b84060);color:#fff;border:none;border-radius:11px;padding:14px;cursor:pointer;font-size:15px;font-weight:700;font-family:Nunito,sans-serif;">
-        Envoyer mes photos 💌
-      </button>
-      <div id="guest-status" style="display:none;margin-top:12px;text-align:center;font-size:13px;"></div>
-    </div>
-    <div id="shared-gallery" style="width:100%;max-width:500px;">
-      <h3 style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:12px;text-align:center;">📸 Photos partagées</h3>
-      <div id="shared-photos" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:10px;overflow:hidden;"></div>
-    </div>
-  `;
-  document.body.appendChild(page);
-
-
-
-  // Listen for photos
-  if(window.firebaseDB) {
-    const {collection, onSnapshot} = window.firebaseLib;
-    try {
-      const {collection, onSnapshot} = window.firebaseLib;
-      onSnapshot(collection(window.firebaseDB,'albums',albumId,'photos'),(snap)=>{
-        const div = document.getElementById('shared-photos');
-        if(!div) return;
-        div.innerHTML = '';
-        snap.forEach(d => {
-          const data = d.data();
-          if(data.url) {
-            div.innerHTML += '<div style="position:relative;aspect-ratio:1;overflow:hidden;"><img src="'+data.url+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:#fff;font-size:9px;padding:3px 5px;font-family:Nunito,sans-serif;">'+(data.uploadedBy||'invité')+'</div></div>';
-          }
-        });
-        if(div.innerHTML==='') div.innerHTML = '<p style="text-align:center;color:#b07a90;font-style:italic;font-size:13px;grid-column:1/-1;padding:20px;">Aucune photo pour l\'instant. Soyez le premier !</p>';
-      });
-    } catch(e) { console.warn(e); }
-  }
-}
-
-window.previewGuestPhotos = function(input) {
-  const preview = document.getElementById('guest-preview');
-  preview.innerHTML = '';
-  Array.from(input.files).forEach(f => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      preview.innerHTML += `<img src="${e.target.result}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid #f5d5e0;">`;
-    };
-    reader.readAsDataURL(f);
-  });
-};
-
-window.submitGuestPhotos = function(albumId) { doGuestUpload(albumId); };
-window._old_submitGuestPhotos = async function(albumId) {
-  const name = (document.getElementById('guest-name')?.value||'').trim() || 'Invité';
-  const files = document.getElementById('guest-files')?.files;
-  const btn = document.getElementById('guest-upload-btn');
-  const status = document.getElementById('guest-status');
-  
-  if(!files || files.length===0) {
-    status.style.display='block';
-    status.style.color='#c43a3a';
-    status.textContent='Veuillez sélectionner au moins une photo.';
-    return;
-  }
-  
-  btn.disabled=true;
-  btn.textContent='Envoi en cours...';
-  status.style.display='block';
-  status.style.color='#b07a90';
-  status.textContent='Upload en cours... 0/' + files.length;
-  
-  let ok=0;
-  const uploaded=[];
-  for(let i=0;i<files.length;i++) {
-    status.textContent='Envoi photo '+(i+1)+'/'+files.length+'...';
-    try {
-      const url = await uploadGuestPhotoToFirebase(files[i], albumId, name);
-      if(url){ok++;uploaded.push({url,uploadedBy:name});}
-      else { status.textContent='Echec photo '+(i+1)+': url null'; }
-    } catch(err) {
-      status.textContent='Exception: '+err.message;
-    }
-  }
-  
-  // Reset button immediately
-  btn.disabled=false;
-  btn.textContent='Envoyer mes photos 💌';
-
-  // Show uploaded photos immediately without waiting for Firebase
-  if(ok>0){
-    const grid=document.getElementById('shared-photos');
-    if(grid){
-      uploaded.forEach(p=>{
-        grid.innerHTML+=`<div style="position:relative;aspect-ratio:1;overflow:hidden;">
-          <img src="${p.url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
-          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:#fff;font-size:9px;padding:3px 5px;">${p.uploadedBy}</div>
-        </div>`;
-      });
-      const empty=grid.querySelector('p');
-      if(empty)empty.remove();
-    }
-    btn.textContent='Envoyer d\'autres photos 💌';
-    status.style.color='#5a8a6a';
-    status.textContent='✓ '+ok+' photo(s) partagée(s) avec succès !';
-    document.getElementById('guest-files').value='';
-    document.getElementById('guest-preview').innerHTML='';
-  } else {
-    btn.textContent='Envoyer mes photos 💌';
-    status.style.color='#c43a3a';
-    status.textContent='Erreur lors de l\'envoi. Vérifiez votre connexion.';
-  }
-};
-
-
-function waitForFirebase(callback, attempts) {
-  attempts = attempts || 0;
-  if(window.firebaseDB && window.firebaseLib) {
-    callback();
-  } else if(attempts < 20) {
-    setTimeout(function(){ waitForFirebase(callback, attempts+1); }, 300);
-  } else {
-    console.warn('Firebase not available after 6 seconds');
-  }
-}
-
-function doGuestUpload(albumId) {
-  const name = (document.getElementById('guest-name') ? document.getElementById('guest-name').value : '').trim() || 'Invité';
-  const filesEl = document.getElementById('guest-files');
-  const files = filesEl ? filesEl.files : null;
-  const btn = document.getElementById('guest-upload-btn');
-  const status = document.getElementById('guest-status');
-  if(!files || files.length === 0) {
-    if(status){status.style.display='block';status.style.color='#c43a3a';status.textContent='Veuillez sélectionner une photo.';}
-    return;
-  }
-  if(btn){btn.disabled=true;btn.textContent='Envoi en cours...';}
-  if(status){status.style.display='block';status.style.color='#b07a90';status.textContent='Envoi en cours...';}
-  
-  let ok=0;
-  const uploaded=[];
-  let i=0;
-  
-  function processNext() {
-    if(i >= files.length) {
-      if(btn){btn.disabled=false;}
-      if(ok > 0) {
-        if(btn) btn.textContent='Envoyer autres photos 💌';
-        if(status){status.style.color='#5a8a6a';status.textContent='✓ '+ok+' photo(s) partagée(s) !';}
-        const grid = document.getElementById('shared-photos');
-        if(grid){
-          uploaded.forEach(function(p){
-            grid.innerHTML += '<div style="position:relative;aspect-ratio:1;overflow:hidden;"><img src="'+p.url+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:#fff;font-size:9px;padding:3px 5px;">'+p.uploadedBy+'</div></div>';
-          });
-          const empty = grid.querySelector('p');
-          if(empty) empty.remove();
-        }
-        if(window.firebaseDB && window.firebaseLib) {
-          var addDocFn = window.firebaseLib.addDoc;
-          var collFn = window.firebaseLib.collection;
-          waitForFirebase(function(){
-            if(status) status.textContent += ' | Saving...';
-            var addDocFn2 = window.firebaseLib.addDoc;
-            var collFn2 = window.firebaseLib.collection;
-            var promises = uploaded.map(function(p){
-              return addDocFn2(collFn2(window.firebaseDB,'albums',albumId,'photos'),{
-                url: p.url,
-                uploadedBy: p.uploadedBy,
-                createdAt: new Date().toISOString()
-              }).then(function(){ if(status) status.textContent += ' ✓'; })
-                .catch(function(e){ if(status) status.textContent += ' ERR:'+e.message; });
-            });
-            Promise.all(promises).catch(function(e){ if(status) status.textContent += ' ERR2:'+e.message; });
-          });
-        }
-      } else {
-        if(btn) btn.textContent='Envoyer mes photos 💌';
-        if(status){status.style.color='#c43a3a';status.textContent='Erreur envoi. Vérifiez connexion.';}
-      }
-      return;
-    }
-    var file = files[i];
-    i++;
-    if(status) status.textContent='Envoi photo '+i+'/'+files.length+'...';
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var base64 = e.target.result.split(',')[1];
-      var fd = new FormData();
-      fd.append('key', '3f05b1a037eee587fcf6ca459b39f8ff');
-      fd.append('image', base64);
-      fetch('https://api.imgbb.com/1/upload', {method:'POST', body:fd})
-        .then(function(res){ return res.json(); })
-        .then(function(data){
-          if(data.success && data.data && data.data.url) {
-            ok++;
-            uploaded.push({url: data.data.url, uploadedBy: name});
-          } else {
-            if(status){status.textContent='ImgBB err: '+(data.error?data.error.message:JSON.stringify(data).substring(0,60));}
-          }
-          processNext();
-        })
-        .catch(function(e){
-          if(status){status.textContent='Net err: '+e.message;}
-          processNext();
-        });
-    };
-    reader.readAsDataURL(file);
-  }
-  processNext();
-}
-
-// ── APP START ─────────────────────────────────────────────────────────────────
 function startApp(u){
-  USER=u;
+  USER = u;
   // Load driveUrl from Firebase if not in localStorage
   if(!ld('drive_url_'+u.email,'') && window.firebaseDB && window.firebaseLib){
     const {doc, getDoc} = window.firebaseLib;
@@ -738,25 +470,33 @@ function startApp(u){
       }
     }).catch(e=>console.warn(e));
   }
+  // Load all data
+  TASKS = ld(`tasks_${u.email}`, []);
+  if(TASKS.length < 50) TASKS = DEF_TASKS.map(t=>({...t, done:false}));
+  BUDGET = ld(`budget_${u.email}`, null);
+  if(!BUDGET || !BUDGET.length || (BUDGET[0] && BUDGET[0].real !== undefined)){
+    // Reset to defaults if empty or old structure
+    BUDGET = DEF_BUDGET.map(b=>({...b, reel:0, paye:0}));
+  }
+  GUESTS = ld(`guests_${u.email}`, DEF_GUESTS);
+  TABLES = ld(`tables_${u.email}`, DEF_TABLES);
+  VENDORS_FAV = ld(`vfav_${u.email}`, []);
+  VENDORS_CHO = ld(`vcho_${u.email}`, []);
+  NOTES = ld(`notes_${u.email}`, '');
+  MENU = ld(`menu_${u.email}`, DEF_MENU);
+  // Auto-fix: if entrée section has old 2-item format, replace with new 1-item format
+  const entree = MENU.find(s=>s.section==='Entrée');
+  if(entree && entree.items.length===2 && entree.items[0].text==='Entrée froide ou chaude'){
+    entree.items = [{id:21, text:"Froide ou chaude (foie gras, tartare de poisson, salade raffinée...)", done:false}];
+    sv(`menu_${u.email}`, MENU);
+  }
+  ALBUM = ld(`album_${u.email}`, []);
   el('auth-screen').style.display='none';
   el('app').style.display='block';
-  // Force reload if old data has fewer than 50 tasks (old version)
-  const savedTasks=ld(`tasks_${u.email}`,null);
-  TASKS=(savedTasks&&savedTasks.length>=50)?savedTasks:DEF_TASKS;
-  if(!savedTasks||savedTasks.length<50) sv(`tasks_${u.email}`,DEF_TASKS);
-  BUDGET=ld(`budget_${u.email}`,DEF_BUDGET);
-  GUESTS=ld(`guests_${u.email}`,DEF_GUESTS);
-  TABLES=ld(`tables_${u.email}`,DEF_TABLES);
-  VENDORS_FAV=ld(`vfav_${u.email}`,[]);
-  VENDORS_CHO=ld(`vcho_${u.email}`,[]);
-  ALBUM=ld(`album_${u.email}`,[]);
-  NOTES=ld(`notes_${u.email}`,'');
-  MENU=ld(`menu_${u.email}`,DEF_MENU);
   updateHeader();
-  buildTabs();
-  showTab(0);
   startCountdown();
-  document.addEventListener('click',e=>{if(!el('power-wrap').contains(e.target))el('power-menu').style.display='none';});
+  buildTabs();
+  renderTab(0);
 }
 
 function updateHeader(){
@@ -786,7 +526,7 @@ function buildTabs(){
 function showTab(i){
   currentTab=i;
   document.querySelectorAll('.page').forEach((p,j)=>p.classList.toggle('active',j===i));
-  document.querySelectorAll('.tab-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+  document.querySelectorAll('#tabs-bar .tab-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
   renderTab(i);
 }
 function renderTab(i){
@@ -796,12 +536,30 @@ function renderTab(i){
   else if(i===3)renderTablePlan();
   else if(i===4)renderVendors();
   else if(i===5)renderMenu();
-  else if(i===6)renderAlbum();
-  else if(i===7)renderNotes();
+  else if(i===6)renderDecorations();
+  else if(i===7)renderAlbum();
+  else if(i===8)renderNotes();
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
-function toggleMenu(){const m=el('power-menu');m.style.display=m.style.display==='none'?'block':'none';}
+function toggleMenu(){
+  const m=el('power-menu');
+  const opening=m.style.display==='none';
+  m.style.display=opening?'block':'none';
+  if(opening){
+    setTimeout(function(){
+      document.addEventListener('click', closeMenuOutside, {once:true});
+    },0);
+  }
+}
+function closeMenuOutside(e){
+  const menu=el('power-menu');
+  const wrap=el('power-wrap');
+  if(menu && wrap && !wrap.contains(e.target)){
+    menu.style.display='none';
+  }
+}
+
 function openSettings(){
   el('set-p1').value=USER.p1; el('set-p2').value=USER.p2; el('set-date').value=USER.wDate||'';
   el('set-pass').value=''; el('set-pass2').value=''; el('set-pass2-wrap').style.display='none';
@@ -838,9 +596,15 @@ function renderChecklist(){
     <div><div class="lbl">Progression</div><div style="font-family:'Playfair Display',serif;font-size:28px;color:${tx}">${done}<span style="font-size:14px;color:${tl}"> / ${tot}</span></div></div>
     <svg viewBox="0 0 36 36" width="60" height="60"><circle cx="18" cy="18" r="15.9" fill="none" stroke="${br}" stroke-width="3"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="${pk}" stroke-width="3" stroke-dasharray="${pct} 100" stroke-linecap="round" transform="rotate(-90 18 18)"/><text x="18" y="22" text-anchor="middle" font-size="7" fill="${tx}" font-family="serif" font-weight="bold">${pct}%</text></svg>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:16px;">
-    <input class="inp" id="chk-text" placeholder="Ajouter une tâche..." style="flex:1;" onkeydown="if(event.key==='Enter')addTask()">
+  <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+    <input class="inp" id="chk-text" placeholder="Ajouter une tâche..." style="flex:2;min-width:140px;" onkeydown="if(event.key==='Enter')addTask()">
+    <select class="inp" id="chk-cat" style="flex:1;min-width:120px;">
+      ${[...new Set(TASKS.map(t=>t.month)),'Personnalisé'].map(m=>`<option value="${h(m)}">${h(m)}</option>`).join('')}
+    </select>
     <button class="btn" onclick="addTask()" style="padding:9px 14px;font-size:18px;">+</button>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+    <button onclick="resetTasks()" class="btn-sec" style="font-size:11px;padding:5px 12px;color:${tl};border-color:${br};">↺ Restaurer les tâches par défaut</button>
   </div>
   ${monthsWithTasks.map(month=>{
     const safeId=btoa(unescape(encodeURIComponent(month))).replace(/=/g,'');
@@ -863,9 +627,30 @@ function renderChecklist(){
     </div>`;
   }).join('')}`;
 }
-function addTask(){const t=el('chk-text').value.trim();if(!t)return;TASKS.push({id:Date.now(),text:t,done:false,month:'Personnalisé'});el('chk-text').value='';saveTasks();renderChecklist();}
+function addTask(){
+  const t=el('chk-text').value.trim();
+  if(!t)return;
+  const cat=el('chk-cat')?.value||'Personnalisé';
+  TASKS.push({id:Date.now(),text:t,done:false,month:cat});
+  el('chk-text').value='';
+  saveTasks();renderChecklist();
+}
 function toggleTask(id){TASKS=TASKS.map(t=>t.id===id?{...t,done:!t.done}:t);saveTasks();renderChecklist();}
 function removeTask(id){TASKS=TASKS.filter(t=>t.id!==id);saveTasks();renderChecklist();}
+function resetTasks(){
+  if(confirm('Restaurer toutes les tâches par défaut ? Vos tâches personnalisées seront conservées.')){
+    const custom = TASKS.filter(t=>t.month==='Personnalisé');
+    const existingTexts = new Set(TASKS.map(t=>t.text));
+    // Add all missing default tasks (keeping done state of existing ones)
+    const restoredDef = DEF_TASKS.map(def => {
+      const existing = TASKS.find(t=>t.text===def.text);
+      return existing ? existing : {...def, done:false};
+    });
+    TASKS = [...restoredDef, ...custom];
+    saveTasks();
+    renderChecklist();
+  }
+}
 
 // ── BUDGET ────────────────────────────────────────────────────────────────────
 function saveBudget(){sv(`budget_${USER.email}`,BUDGET);}
@@ -885,13 +670,16 @@ function renderBudget(){
     <input class="inp" id="bgt-est" placeholder="Budget estimé €" type="number" style="flex:1;background:#fff;">
     <button class="btn" onclick="addBudget()" style="padding:9px 14px;font-size:18px;">+</button>
   </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+    <button onclick="resetBudget()" class="btn-sec" style="font-size:11px;padding:5px 12px;color:${tl};border-color:${br};">↺ Restaurer les catégories par défaut</button>
+  </div>
   ${BUDGET.map(item=>{
     const pct=item.est>0?Math.min((item.reel||0)/item.est*100,100):0;
     const over=(item.reel||0)>(item.est||0);
     const r=(item.reel||0)-(item.paye||0);
     return `<div class="card" style="padding:13px;margin-bottom:9px;">
       <div style="margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;">
-        <span onclick="renameBudget(${item.id})" style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:${tm};cursor:text;border-bottom:1px dashed ${br};padding-bottom:1px;" title="Toucher pour renommer">${h(item.cat)}</span>
+        <span data-budget-cat="${item.id}" onclick="renameBudget(${item.id})" style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:${tm};cursor:text;border-bottom:1px dashed ${br};padding-bottom:1px;" title="Toucher pour renommer">${h(item.cat)}</span>
         <div style="display:flex;gap:6px;align-items:center;">
           <span style="font-size:10px;color:${over?rd:gn};font-weight:700;background:${over?'#fff0f0':'#f0f8f2'};border-radius:20px;padding:2px 8px;">${over?'Dépassé':Math.round(pct)+'%'}</span>
           <button onclick="removeBudget(${item.id})" style="background:none;border:none;cursor:pointer;color:${br};font-size:15px;">×</button>
@@ -908,9 +696,39 @@ function renderBudget(){
   }).join('')}`;
 }
 function addBudget(){const cat=el('bgt-cat').value.trim();if(!cat)return;BUDGET.push({id:Date.now(),cat,est:Number(el('bgt-est').value)||0,reel:0,paye:0});el('bgt-cat').value='';el('bgt-est').value='';saveBudget();renderBudget();}
+function resetBudget(){
+  if(confirm('Restaurer toutes les catégories par défaut ? Les noms modifiés seront également restaurés.')){
+    // Restore names of existing categories that match by id or position
+    const restored = DEF_BUDGET.map(def => {
+      const existing = BUDGET.find(b => b.id === def.id);
+      if(existing) return {...existing, cat: def.cat};
+      return {...def, id: Date.now()+Math.random(), reel:0, paye:0};
+    });
+    // Keep user-added categories (not in DEF_BUDGET)
+    const defIds = new Set(DEF_BUDGET.map(b => b.id));
+    const userAdded = BUDGET.filter(b => !defIds.has(b.id));
+    BUDGET = [...restored, ...userAdded];
+    saveBudget();renderBudget();
+  }
+}
 function updBudget(id,f,v){BUDGET=BUDGET.map(i=>i.id===id?{...i,[f]:v===''?0:Number(v)}:i);saveBudget();renderBudget();}
 function removeBudget(id){BUDGET=BUDGET.filter(i=>i.id!==id);saveBudget();renderBudget();}
-function renameBudget(id){const item=BUDGET.find(i=>i.id===id);const v=prompt('Renommer la catégorie :',item.cat);if(v!==null&&v.trim()){BUDGET=BUDGET.map(i=>i.id===id?{...i,cat:v.trim()}:i);saveBudget();renderBudget();}}
+function renameBudget(id){
+  const span=document.querySelector('[data-budget-cat="'+id+'"]');
+  if(!span)return;
+  const item=BUDGET.find(i=>i.id===id);
+  const inp=document.createElement('input');
+  inp.value=item.cat;
+  inp.style.cssText='font-size:14px;font-weight:700;color:#3e1828;border:none;border-bottom:2px solid #d4607a;outline:none;background:transparent;font-family:Playfair Display,serif;width:100%;';
+  span.replaceWith(inp);
+  inp.focus();inp.select();
+  function save(){
+    if(inp.value.trim()){BUDGET=BUDGET.map(i=>i.id===id?{...i,cat:inp.value.trim()}:i);}
+    saveBudget();renderBudget();
+  }
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')inp.blur();if(e.key==='Escape'){renderBudget();}});
+}
 
 // ── GUESTS ────────────────────────────────────────────────────────────────────
 function saveGuests(){sv(`guests_${USER.email}`,GUESTS);}
@@ -919,6 +737,8 @@ function renderGuests(){
   const conf=GUESTS.filter(g=>g.presence==='confirmée').length;
   const pend=GUESTS.filter(g=>g.presence==='en attente').length;
   const decl=GUESTS.filter(g=>g.presence==='déclinée').length;
+  const totalGuests = GUESTS.length;
+  const confirmedGuests = GUESTS.filter(g=>g.presence==='confirmée').length;
   el('page-2').innerHTML=`
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
     <div style="background:#f0f8f0;border:1.5px solid rgba(90,138,106,.3);border-radius:12px;padding:11px;text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:${gn}">${conf}</div><div style="font-size:9px;color:${gn};letter-spacing:1.5px;text-transform:uppercase">Confirmés</div></div>
@@ -962,38 +782,36 @@ function guestRow(g){
   const cc=g.cote==='p1'?'#fce8ef':'#e8f0fc';const ct=g.cote==='p1'?'#a0485e':'#485ea0';
   return `<tr>
     <td style="padding:8px 10px;background:#fff;border-radius:10px 0 0 10px;border:1.5px solid ${br};border-right:none;">
-      <span onclick="renameGuest(${g.id})" style="font-size:13px;font-weight:700;cursor:text;border-bottom:1px dashed ${br};">${g.nom}</span>
+      <span data-guest-nom="${g.id}" onclick="renameGuest(${g.id})" style="font-size:13px;font-weight:700;cursor:text;border-bottom:1px dashed ${br};">${g.nom}</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
       <span onclick="changeCote(${g.id})" style="background:${cc};color:${ct};border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;">${h(cn)}</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'role',this.value)" style="border:none;background:none;color:${rc[g.role]||tl};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:'Nunito',sans-serif;">
+      <select onchange="updGuest(${g.id},'role',this.value)" style="border:none;background:none;color:${rc[g.role]||tl};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:Lora,serif;">
         ${ROLES.map(r=>`<option ${g.role===r?'selected':''}>${h(r)}</option>`).join('')}
       </select>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'regime',this.value)" style="border:none;background:none;color:${g.regime&&g.regime!=='Aucun'?am:tl};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:'Nunito',sans-serif;max-width:120px;">
-        ${REGIMES.map(r=>`<option ${g.regime===r?'selected':''}>${h(r)}</option>`).join('')}
-      </select>
+      <div onclick="editGuestRegimes(${g.id})" style="font-size:11px;color:${g.regime&&g.regime!=='Aucun'?am:tl};cursor:pointer;font-weight:700;max-width:110px;word-break:break-word;padding:4px;min-height:28px;display:flex;align-items:center;border-radius:6px;background:${sf};">${g.regime&&g.regime!=='Aucun'?h(g.regime):'+ Ajouter'}</div>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;text-align:center;">
       <span onclick="updGuest(${g.id},'vinHonneur',!${g.vinHonneur})" style="font-size:11px;font-weight:700;cursor:pointer;color:${g.vinHonneur?pk:br};border:1.5px solid ${g.vinHonneur?pk:br};border-radius:20px;padding:2px 9px;user-select:none;">${g.vinHonneur?'Uniquement':'-'}</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'age',this.value)" style="border:none;background:none;color:${g.age==='Enfant'?am:tl};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:'Nunito',sans-serif;">
+      <select onchange="updGuest(${g.id},'age',this.value)" style="border:none;background:none;color:${g.age==='Enfant'?am:tl};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:Lora,serif;">
         <option ${(!g.age||g.age==='Adulte')?'selected':''} value="Adulte">Adulte</option>
         <option ${g.age==='Enfant'?'selected':''} value="Enfant">Enfant</option>
       </select>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'invitation',this.value)" style="border:none;background:none;color:${g.invitation==='envoyée'?gn:rd};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:'Nunito',sans-serif;">
+      <select onchange="updGuest(${g.id},'invitation',this.value)" style="border:none;background:none;color:${g.invitation==='envoyée'?gn:rd};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:Lora,serif;">
         <option ${g.invitation==='envoyée'?'selected':''} value="envoyée">✓ Envoyée</option>
         <option ${g.invitation==='non envoyée'?'selected':''} value="non envoyée">✗ Non envoyée</option>
       </select>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'presence',this.value)" style="border:none;background:none;color:${sc[g.presence]||'#888'};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:'Nunito',sans-serif;">
+      <select onchange="updGuest(${g.id},'presence',this.value)" style="border:none;background:none;color:${sc[g.presence]||'#888'};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:Lora,serif;">
         <option ${g.presence==='confirmée'?'selected':''} value="confirmée">✓ Confirmée</option>
         <option ${g.presence==='en attente'?'selected':''} value="en attente">En attente</option>
         <option ${g.presence==='déclinée'?'selected':''} value="déclinée">✗ Déclinée</option>
@@ -1008,12 +826,27 @@ let showingAdd=false;
 function toggleAddGuest(){showingAdd=!showingAdd;const f=el('guest-add-form');if(f)f.style.display=showingAdd?'block':'none';}
 function addGuest(){
   const nom=el('gf-nom').value.trim();if(!nom)return;
-  GUESTS.push({id:Date.now(),nom,email:el('gf-email').value.trim(),cote:el('gf-cote').value,invitation:'non envoyée',presence:'en attente',role:el('gf-role').value,regime:el('gf-regime').value,vinHonneur:el('gf-vh').checked,age:el('gf-age')?.value||'Adulte',seatTableId:null,seatIdx:null});
+  GUESTS.push({id:Date.now(),nom,email:el('gf-email').value.trim(),cote:el('gf-cote').value,invitation:'non envoyée',presence:'en attente',role:el('gf-role').value,regime:'Aucun',vinHonneur:el('gf-vh').checked,age:el('gf-age')?.value||'Adulte',seatTableId:null,seatIdx:null});
   showingAdd=false;saveGuests();renderGuests();
 }
 function updGuest(id,f,v){GUESTS=GUESTS.map(g=>g.id===id?{...g,[f]:v}:g);saveGuests();renderGuests();}
 function removeGuest(id){GUESTS=GUESTS.filter(g=>g.id!==id);saveGuests();renderGuests();}
-function renameGuest(id){const g=GUESTS.find(g=>g.id===id);const v=prompt('Modifier le nom :',g.nom);if(v!==null&&v.trim()){updGuest(id,'nom',v.trim());}}
+function renameGuest(id){
+  const span=document.querySelector('[data-guest-nom="'+id+'"]');
+  if(!span)return;
+  const g=GUESTS.find(x=>x.id===id);
+  const inp=document.createElement('input');
+  inp.value=g.nom;
+  inp.style.cssText='font-size:12px;font-weight:700;color:#3e1828;border:none;border-bottom:2px solid #d4607a;outline:none;background:transparent;font-family:Lora,serif;width:80px;';
+  span.replaceWith(inp);
+  inp.focus();inp.select();
+  function save(){
+    if(inp.value.trim())updGuest(id,'nom',inp.value.trim());
+    else renderGuests();
+  }
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')inp.blur();if(e.key==='Escape'){renderGuests();}});
+}
 function changeCote(id){const g=GUESTS.find(g=>g.id===id);updGuest(id,'cote',g.cote==='p1'?'p2':'p1');}
 function exportGuests(){
   let csv='\uFEFF'+'Nom complet,Email,Côté,Rôle,Régime particulier,Uniquement au vin d\'honneur,Invitation,Présence\n';
@@ -1086,9 +919,9 @@ function renderTablePlan(){
   el('page-3').innerHTML=`
   <div class="card" style="padding:12px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
     <div style="display:flex;gap:6px;">
-      <button id="tp-shape-round" onclick="setTpShape(\'round\')" style="background:#d4607a;color:#fff;border:1.5px solid #d4607a;border-radius:9px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:\'Nunito\',sans-serif;">⬤ Ronde</button>
-      <button id="tp-shape-rect" onclick="setTpShape(\'rect\')" style="background:#fff;color:#b07a90;border:1.5px solid #f5d5e0;border-radius:9px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:\'Nunito\',sans-serif;">▬ Rect.</button>
-      <button id="tp-shape-square" onclick="setTpShape(\'square\')" style="background:#fff;color:#b07a90;border:1.5px solid #f5d5e0;border-radius:9px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:\'Nunito\',sans-serif;">■ Carrée</button>
+      <button id="tp-shape-round" onclick="setTpShape(\'round\')" style="background:#d4607a;color:#fff;border:1.5px solid #d4607a;border-radius:9px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:Lora,serif;">⬤ Ronde</button>
+      <button id="tp-shape-rect" onclick="setTpShape(\'rect\')" style="background:#fff;color:#b07a90;border:1.5px solid #f5d5e0;border-radius:9px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:Lora,serif;">▬ Rect.</button>
+      <button id="tp-shape-square" onclick="setTpShape(\'square\')" style="background:#fff;color:#b07a90;border:1.5px solid #f5d5e0;border-radius:9px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:Lora,serif;">■ Carrée</button>
     </div>
     <button class="btn" onclick="addTable()">+ Table</button>
     <div style="display:flex;gap:6px;margin-left:auto;">
@@ -1177,7 +1010,7 @@ function addTableEl(table){
   const startRename=()=>{
     const inp=document.createElement('input');
     inp.value=table.nom;
-    inp.style.cssText=`position:absolute;top:-24px;left:0;width:${Math.max(W,110)}px;background:#fff;border:1.5px solid ${pk};border-radius:6px;padding:3px 7px;font-size:11px;text-align:center;outline:none;color:${tx};font-family:'Nunito',sans-serif;z-index:20;`;
+    inp.style.cssText=`position:absolute;top:-24px;left:0;width:${Math.max(W,110)}px;background:#fff;border:1.5px solid ${pk};border-radius:6px;padding:3px 7px;font-size:11px;text-align:center;outline:none;color:${tx};font-family:Lora,serif;z-index:20;`;
     div.appendChild(inp);
     lbl.style.display='none';
     inp.focus();inp.select();
@@ -1395,7 +1228,7 @@ function renderVndResults(query){
           ${v.distance?`<span style="background:#f0f8f0;color:${gn};border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;">📍 ${v.distance} km</span>`:''}
           ${v.prix_indicatif?`<span style="background:#fff8f0;color:${am};border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;">💰 ${v.prix_indicatif}</span>`:''}
         </div>
-        <button onclick="addToFav(${i})" style="width:100%;background:${VENDORS_FAV.find(f=>f.nom===v.nom)?'#f0f8f0':'linear-gradient(135deg,'+pk+',#b84060)'};color:${VENDORS_FAV.find(f=>f.nom===v.nom)?gn:'#fff'};border:none;border-radius:9px;padding:9px;cursor:pointer;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;">
+        <button onclick="addToFav(${i})" style="width:100%;background:${VENDORS_FAV.find(f=>f.nom===v.nom)?'#f0f8f0':'linear-gradient(135deg,'+pk+',#b84060)'};color:${VENDORS_FAV.find(f=>f.nom===v.nom)?gn:'#fff'};border:none;border-radius:9px;padding:9px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;">
           ${VENDORS_FAV.find(f=>f.nom===v.nom)?'✓ Déjà dans les favoris':'+ Ajouter aux favoris'}
         </button>
       </div>
@@ -1427,8 +1260,8 @@ function vndMiniCard(v,zone){
       <input type="text" value="${v.prix_perso||''}" placeholder="Indiquer le prix..." onchange="updVndPrice(${v.id},'${zone}',this.value)" style="flex:1;border:1px solid ${br};border-radius:7px;padding:5px 9px;font-size:12px;outline:none;background:#fffafc;">
     </div>
     ${zone==='fav'?
-      `<button onclick="movToChosen(${v.id})" style="width:100%;background:#f0f8f0;color:${gn};border:1px solid ${gn}30;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;">→ Déplacer vers Choisis</button>`:
-      `<button onclick="movToFav(${v.id})" style="width:100%;background:${sf};color:${tl};border:1px solid ${br};border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;">← Remettre en Favoris</button>`}
+      `<button onclick="movToChosen(${v.id})" style="width:100%;background:#f0f8f0;color:${gn};border:1px solid ${gn}30;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:Lora,serif;">→ Déplacer vers Choisis</button>`:
+      `<button onclick="movToFav(${v.id})" style="width:100%;background:${sf};color:${tl};border:1px solid ${br};border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:Lora,serif;">← Remettre en Favoris</button>`}
   </div>`;
 }
 function updVndPrice(id,zone,val){
@@ -1460,102 +1293,377 @@ function renderChosen(){
 function saveMenu(){sv(`menu_${USER.email}`,MENU);}
 let menuCalcResult=null;
 function renderMenu(){
-  const conf=GUESTS.filter(g=>g.presence==='confirmée');
-  const noAlc=conf.filter(g=>g.regime==='Sans alcool').length;
-  const spec=conf.filter(g=>g.regime&&g.regime!=='Aucun'&&g.regime!=='Sans alcool').length;
-  const enfants=conf.filter(g=>g.age==='Enfant').length;
-  const mq=ld(`menuqty_${USER.email}`,{honneur:'',repas:''});
+  const conf = GUESTS.filter(g=>g.presence==='confirmée'||g.presence==='en attente');
+  const noAlc = conf.filter(g=>g.regime&&g.regime.includes('Sans alcool')).length;
+  const spec = conf.filter(g=>g.regime&&g.regime!=='Aucun'&&!g.regime.includes('Sans alcool')).length;
+  const enfants = conf.filter(g=>g.age==='Enfant').length;
+  const vinHonneurOnly = GUESTS.filter(g=>g.vinHonneur).length;
+  const tousReception = GUESTS.length - vinHonneurOnly;
+  const totalAll = GUESTS.length;
+
+  const mq = ld(`menuqty_${USER.email}`, {honneur: String(vinHonneurOnly), repas: String(tousReception)});
+  // Auto-update if not manually set
+  if(!mq._manual_h) mq.honneur = String(vinHonneurOnly);
+  if(!mq._manual_r) mq.repas = String(tousReception);
+
+  const h_count = parseInt(mq.honneur)||0;
+  const r_count = parseInt(mq.repas)||0;
+  const total = h_count + r_count;
+
   el('page-5').innerHTML=`
-  <div class="card" style="padding:16px;margin-bottom:14px;background:linear-gradient(135deg,${sf},#fff);">
-    <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:12px;">Paramètres de la réception</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:start;">
+  <div class="card" style="padding:14px;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+      ${[
+        {l:'Invités confirmés',v:conf.length,c:gn},
+        {l:'Sans alcool',v:noAlc,c:am},
+        {l:'Régimes spéciaux',v:spec,c:pk},
+        {l:'Enfants',v:enfants,c:'#4a7ab0'}
+      ].map(x=>`<div style="background:${x.c}18;border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:${x.c};">${x.v}</div>
+        <div style="font-size:11px;color:${tl};">${x.l}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="card" style="padding:14px;margin-bottom:14px;">
+    <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:12px;">Répartition des invités</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
       <div style="display:flex;flex-direction:column;">
         <label class="lbl" style="min-height:28px;display:flex;align-items:flex-end;">Vin d'honneur uniquement</label>
-        <input class="inp" type="number" min="0" id="mnu-h" value="${mq.honneur}" placeholder="Ex: 20" onchange="saveMenuQty()">
-        <div style="font-size:11px;color:${tl};margin-top:3px;">Repartent après le cocktail</div>
+        <input class="inp" type="number" min="0" id="mnu-h" value="${mq.honneur}" placeholder="0" onchange="saveMenuQty(true,false)" style="background:#fff;">
       </div>
       <div style="display:flex;flex-direction:column;">
         <label class="lbl" style="min-height:28px;display:flex;align-items:flex-end;">Présents pour toute la réception</label>
-        <input class="inp" type="number" min="0" id="mnu-r" value="${mq.repas}" placeholder="Ex: 80" onchange="saveMenuQty()">
-        <div style="font-size:11px;color:${tl};margin-top:3px;">Présents tout le repas</div>
+        <input class="inp" type="number" min="0" id="mnu-r" value="${mq.repas}" placeholder="0" onchange="saveMenuQty(false,true)" style="background:#fff;">
       </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-      ${[{l:'Invités confirmés',v:conf.length,c:gn},{l:'Sans alcool',v:noAlc,c:am},{l:'Régimes spéciaux',v:spec,c:pk},{l:'Enfants',v:enfants,c:'#4a7ab0'}].map(x=>`<div style="background:#fff;border:1.5px solid ${br};border-radius:10px;padding:8px 12px;text-align:center;flex:1;min-width:80px;"><div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:${x.c}">${x.v}</div><div style="font-size:9px;color:${tl};letter-spacing:1px;text-transform:uppercase;">${x.l}</div></div>`).join('')}
+    <div style="text-align:center;margin-top:10px;font-size:12px;color:${tl};">Total : <strong style="color:${tx};">${total}</strong> invités</div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button onclick="saveMenuQty(true,true)" class="btn" style="flex:1;font-size:14px;padding:12px;">🧮 Calculer les quantités</button>
+      <button onclick="resetMenuQty()" class="btn-sec" style="font-size:12px;padding:12px;white-space:nowrap;">↺ Réinitialiser</button>
     </div>
-    <button class="btn" onclick="doMenuCalc()" style="width:100%;font-size:14px;padding:12px;">Calculer les estimations</button>
   </div>
-  <div id="mnu-calc-result" style="display:${menuCalcResult?'block':'none'};">${menuCalcResult||''}</div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <div style="font-family:'Playfair Display',serif;font-size:17px;color:${tx};">Menu</div>
-    <button class="btn" onclick="addMenuSection()" style="padding:7px 14px;font-size:12px;">+ Section</button>
-  </div>
-  <div id="mnu-sections">${MENU.map((s,si)=>menuSectionHtml(s,si)).join('')}</div>
-  <p style="font-size:11px;color:${tl};font-style:italic;text-align:center;margin-top:8px;">Touchez un titre ou un plat pour le modifier</p>`;
-}
-function saveMenuQty(){sv(`menuqty_${USER.email}`,{honneur:el('mnu-h')?.value||'',repas:el('mnu-r')?.value||''});}
-function doMenuCalc(){
-  const hC=Math.max(0,Number(el('mnu-h')?.value)||0),rC=Math.max(0,Number(el('mnu-r')?.value)||0),tot=hC+rC;
-  const conf=GUESTS.filter(g=>g.presence==='confirmée');
-  const noAlc=conf.filter(g=>g.regime==='Sans alcool').length;
-  const ratio=conf.length>0?(conf.length-noAlc)/conf.length:0.85;
-  const hA=Math.round(hC*ratio),rA=Math.round(rC*ratio);
-  const items=[
-    {l:'Champagne (cocktail)',v:Math.ceil(hA/6)+' bout.',sub:`≈ ${hA} buveurs × 1 flûte`,c:'#c9a84c'},
-    {l:'Vin blanc',v:Math.ceil(hA/6+rA*3/6)+' bout.',sub:'Cocktail + repas',c:'#e0c860'},
-    {l:'Vin rosé',v:Math.ceil(rA*4.5/6)+' bout.',sub:'Repas',c:'#f0a8b8'},
-    {l:'Vin rouge',v:Math.ceil(rA*9/6)+' bout.',sub:'Repas',c:'#a04860'},
-    {l:'Eau plate 1,5L',v:Math.ceil(tot*1.5/1.5)+' bout.',sub:'Tout le repas',c:'#5a8aaa'},
-    {l:'Eau gazeuse 1,5L',v:Math.ceil(tot*0.5/1.5)+' bout.',sub:'Tout le repas',c:'#7aaaca'},
-    {l:'Softs & jus',v:Math.ceil(tot*0.3+(hC-hA+rC-rA)*2)+' unités',sub:'Incl. sans alcool',c:'#6aaa6a'},
-  ];
-  const spec=conf.filter(g=>g.regime&&g.regime!=='Aucun'&&g.regime!=='Sans alcool');
-  menuCalcResult=`
-  <div style="font-family:'Playfair Display',serif;font-size:17px;color:${tx};margin-bottom:8px;">Estimation des boissons</div>
-  <div style="font-size:12px;color:${tl};margin-bottom:12px;font-style:italic;">Base : ${hC} vin d'honneur + ${rC} repas = ${tot} invités</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:18px;">
-    ${items.map(x=>`<div style="background:#fff;border:2px solid ${x.c}30;border-radius:13px;padding:12px;border-left:4px solid ${x.c};"><div style="font-size:10px;color:${tl};margin-bottom:3px;font-weight:600;">${x.l}</div><div style="font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:${x.c};margin-bottom:2px;">${x.v}</div><div style="font-size:10px;color:${tl};font-style:italic;">${x.sub}</div></div>`).join('')}
-  </div>
-  ${spec.length?`<div class="card" style="padding:14px;margin-bottom:18px;border-left:4px solid ${am};"><div style="font-family:'Playfair Display',serif;font-size:15px;color:${tx};margin-bottom:10px;">Régimes alimentaires particuliers</div>${spec.map(g=>`<div style="display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:5px;"><div style="width:7px;height:7px;border-radius:50%;background:${am};flex-shrink:0;"></div><span style="font-weight:700;">${g.nom}</span><span style="color:${am};font-weight:700;font-size:11px;background:#fff8f0;border-radius:20px;padding:2px 8px;">${g.regime}</span></div>`).join('')}</div>`:''}`;
-  const d=el('mnu-calc-result');if(d){d.innerHTML=menuCalcResult;d.style.display='block';}
-}
-function menuSectionHtml(s,si){
-  return `<div class="card" style="margin-bottom:12px;overflow:hidden;">
-    <div style="background:linear-gradient(135deg,${sf},#fff);padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${br};">
-      <span onclick="renameMenuSection(${s.id})" style="font-family:'Playfair Display',serif;font-size:14px;color:${tx};font-weight:700;cursor:text;border-bottom:1px dashed ${br};padding-bottom:1px;">${si+1}. ${h(s.section)}</span>
-      <div style="display:flex;gap:6px;">
-        <button onclick="addMenuItem(${s.id})" style="background:none;border:1px solid ${br};border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11px;color:${tm};font-weight:700;font-family:'Nunito',sans-serif;">+ Plat</button>
-        <button onclick="removeMenuSection(${s.id})" style="background:none;border:none;cursor:pointer;color:${br};font-size:16px;">×</button>
-      </div>
-    </div>
-    <div style="padding:10px 14px;">
-      ${s.items.map(item=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <div style="width:5px;height:5px;border-radius:50%;background:${pm};flex-shrink:0;"></div>
-        <span onclick="renameMenuItem(${s.id},${item.id})" style="flex:1;font-size:13px;color:${tx};cursor:text;">${h(item.text)}</span>
-        <button onclick="removeMenuItem(${s.id},${item.id})" style="background:none;border:none;cursor:pointer;color:${br};font-size:13px;flex-shrink:0;">×</button>
+
+  <div class="card" style="padding:14px;margin-bottom:14px;">
+    <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:14px;">Estimation des boissons</div>
+    ${[
+      {nom:'🥂 Champagne', calc: Math.ceil(total/3), unit:'bouteilles', note:'1 bouteille / 3 invités (principalement vin d\'honneur)'},
+      {nom:'🍹 Cocktails', calc: total*2, unit:'verres', note:'2 verres / invité (principalement vin d\'honneur)'},
+      {nom:'🍺 Bières', calc: total*2, unit:'bouteilles', note:'2 bouteilles / invité (principalement vin d\'honneur)'},
+      {nom:'🥃 Spiritueux', calc: Math.ceil(total/13), unit:'bouteilles', note:'1 bouteille / 13 invités'},
+      {nom:'🍾 Vin blanc', calc: Math.ceil(r_count/4), unit:'bouteilles', note:'1 bouteille / 4 invités (principalement pour le repas)'},
+      {nom:'🍷 Vin rouge', calc: Math.ceil(r_count/3), unit:'bouteilles', note:'1 bouteille / 3 invités (principalement pour le repas)'},
+      {nom:'🌸 Vin rosé', calc: Math.ceil(r_count/4), unit:'bouteilles', note:'1 bouteille / 4 invités (principalement pour le repas)'},
+      {nom:'💧 Eau plate', calc: (total*0.5).toFixed(1), unit:'litres', note:'50cl / invité'},
+      {nom:'💧 Eau gazeuse', calc: (total*0.5).toFixed(1), unit:'litres', note:'50cl / invité'},
+      {nom:'🥤 Softs (sodas, jus)', calc: (total/3).toFixed(1), unit:'litres', note:'1L / 3 invités'},
+    ].map(b=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid ${br};">
+        <div>
+          <div style="font-size:13px;color:${tx};font-weight:700;">${b.nom}</div>
+          <div style="font-size:10px;color:${tl};margin-top:1px;">${b.note}</div>
+        </div>
+        <div style="font-size:15px;font-weight:800;color:${pk};text-align:right;">${b.calc} <span style="font-size:10px;color:${tl};font-weight:400;">${b.unit}</span></div>
       </div>`).join('')}
+    <div style="margin-top:14px;padding:10px 12px;background:${sf};border-radius:10px;font-size:11px;color:${tl};font-style:italic;line-height:1.6;">
+      Ces chiffres peuvent varier selon le profil de vos invités, la durée de l'événement, la météo, ainsi que vos choix de service.
     </div>
-  </div>`;
+  </div>
+
+  <div class="card" style="padding:14px;">
+    <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:10px;">Régimes particuliers</div>
+    ${conf.filter(g=>g.regime&&g.regime!=='Aucun').length===0
+      ? `<p style="color:${tl};font-style:italic;font-size:13px;">Aucun régime particulier renseigné.</p>`
+      : conf.filter(g=>g.regime&&g.regime!=='Aucun').map(g=>`
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid ${br};font-size:13px;">
+          <span style="color:${tx};">${h(g.nom)}</span>
+          <span style="color:${am};font-weight:700;">${h(g.regime)}</span>
+        </div>`).join('')}
+  </div>
+
+  <div class="card" style="padding:14px;margin-top:14px;">
+    <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:12px;">🍽️ Menu</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <input class="inp" id="menu-new-cat" placeholder="Nouvelle catégorie..." style="flex:1;font-size:13px;">
+      <button onclick="addMenuCategory()" class="btn" style="padding:8px 14px;">+</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button onclick="resetMenu()" class="btn-sec" style="font-size:11px;padding:5px 12px;color:${tl};border-color:${br};">↺ Réinitialiser le menu par défaut</button>
+    </div>
+    ${MENU.map((section,si)=>`
+      <div style="margin-bottom:16px;border:1.5px solid ${br};border-radius:12px;padding:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span data-menu-cat="${si}" onclick="renameMenuCategory(${si})" style="font-weight:700;font-size:13px;color:${pk};text-transform:uppercase;letter-spacing:1px;cursor:pointer;flex:1;" title="Appuyer pour renommer">${h(section.section)}</span>
+          <button onclick="removeMenuCategory(${si})" style="background:none;border:none;color:${br};font-size:18px;cursor:pointer;padding:0 4px;">×</button>
+        </div>
+        ${section.items.map((item,ii)=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid ${br};">
+            <input type="checkbox" ${item.done?'checked':''} onchange="toggleMenuItem(${si},${ii},this.checked)" style="accent-color:${pk};width:16px;height:16px;flex-shrink:0;cursor:pointer;">
+            <span data-menu="${si}-${ii}" onclick="renameMenuItem(${si},${ii})" style="flex:1;font-size:13px;color:${item.done?tl:tx};text-decoration:${item.done?'line-through':'none'};cursor:pointer;" title="Appuyer pour renommer">${h(item.text)}</span>
+            <button onclick="removeMenuItem(${si},${ii})" style="background:none;border:none;color:${br};font-size:16px;cursor:pointer;">×</button>
+          </div>`).join('')}
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <input class="inp" id="menu-add-${si}" placeholder="Ajouter un plat..." style="flex:1;font-size:12px;padding:6px 10px;">
+          <button onclick="addMenuItem(${si})" class="btn" style="padding:6px 12px;font-size:12px;">+</button>
+        </div>
+      </div>`).join('')}
+  </div>
+  `;
 }
-function addMenuSection(){MENU.push({id:Date.now(),section:'Nouvelle section',items:[{id:Date.now()+1,text:'Nouveau plat'}]});saveMenu();renderMenu();}
-function addMenuItem(sid){MENU=MENU.map(s=>s.id===sid?{...s,items:[...s.items,{id:Date.now(),text:'Nouveau plat'}]}:s);saveMenu();renderMenu();}
-function removeMenuSection(sid){MENU=MENU.filter(s=>s.id!==sid);saveMenu();renderMenu();}
-function removeMenuItem(sid,iid){MENU=MENU.map(s=>s.id===sid?{...s,items:s.items.filter(i=>i.id!==iid)}:s);saveMenu();renderMenu();}
-function renameMenuSection(sid){const s=MENU.find(s=>s.id===sid);const v=prompt('Renommer la section :',s.section);if(v!==null&&v.trim()){MENU=MENU.map(s=>s.id===sid?{...s,section:v.trim()}:s);saveMenu();renderMenu();}}
-function renameMenuItem(sid,iid){const s=MENU.find(s=>s.id===sid);const item=s.items.find(i=>i.id===iid);const v=prompt('Modifier le plat :',item.text);if(v!==null&&v.trim()){MENU=MENU.map(s=>s.id===sid?{...s,items:s.items.map(i=>i.id===iid?{...i,text:v.trim()}:i)}:s);saveMenu();renderMenu();}}
+
+function toggleMenuItem(si,ii,checked){
+  MENU[si].items[ii].done=checked;
+  saveMenu();renderMenu();
+}
+function removeMenuItem(si,ii){
+  MENU[si].items.splice(ii,1);
+  saveMenu();renderMenu();
+}
+function addMenuItem(si){
+  const inp=document.getElementById('menu-add-'+si);
+  if(!inp||!inp.value.trim())return;
+  MENU[si].items.push({id:Date.now(),text:inp.value.trim(),done:false});
+  saveMenu();renderMenu();
+}
+function saveMenu(){sv('menu_'+USER.email,MENU);}
+function resetMenu(){
+  if(confirm('Réinitialiser le menu par défaut ? Vos modifications seront perdues.')){
+    MENU = DEF_MENU.map(s=>({...s, items:s.items.map(i=>({...i}))}));
+    saveMenu(); renderMenu();
+  }
+}
+function addMenuCategory(){
+  const inp=document.getElementById('menu-new-cat');
+  if(!inp||!inp.value.trim())return;
+  MENU.push({id:Date.now(),section:inp.value.trim(),items:[]});
+  inp.value='';saveMenu();renderMenu();
+}
+function removeMenuCategory(si){
+  if(MENU[si].items.length>0 && !confirm('Supprimer cette catégorie et tous ses plats ?'))return;
+  MENU.splice(si,1);saveMenu();renderMenu();
+}
+function renameMenuCategory(si){
+  const span=document.querySelector('[data-menu-cat="'+si+'"]');
+  if(!span)return;
+  const old=MENU[si].section;
+  const inp=document.createElement('input');
+  inp.value=old;
+  inp.style.cssText='flex:1;font-size:13px;font-weight:700;color:#d4607a;border:none;border-bottom:2px solid #d4607a;outline:none;background:transparent;text-transform:uppercase;letter-spacing:1px;width:100%;';
+  span.replaceWith(inp);inp.focus();inp.select();
+  function save(){if(inp.value.trim())MENU[si].section=inp.value.trim();saveMenu();renderMenu();}
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')inp.blur();if(e.key==='Escape'){MENU[si].section=old;renderMenu();}});
+}
+function renameMenuItem(si,ii){
+  const span=document.querySelector('[data-menu="'+si+'-'+ii+'"]');
+  if(!span)return;
+  const old=MENU[si].items[ii].text;
+  const inp=document.createElement('input');
+  inp.value=old;
+  inp.style.cssText='flex:1;font-size:13px;border:1.5px solid #d4607a;border-radius:6px;padding:2px 6px;outline:none;font-family:Lora,serif;';
+  span.replaceWith(inp);
+  inp.focus();inp.select();
+  function save(){
+    if(inp.value.trim())MENU[si].items[ii].text=inp.value.trim();
+    saveMenu();renderMenu();
+  }
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')inp.blur();if(e.key==='Escape'){MENU[si].items[ii].text=old;renderMenu();}});
+}
+
+function resetMenuQty(){
+  sv('menuqty_'+USER.email, {});
+  renderMenu();
+}
+function saveMenuQty(manualH, manualR){
+  const mq = ld(`menuqty_${USER.email}`, {});
+  const hVal = document.getElementById('mnu-h')?.value;
+  const rVal = document.getElementById('mnu-r')?.value;
+  if(hVal !== undefined) mq.honneur = hVal;
+  if(rVal !== undefined) mq.repas = rVal;
+  if(manualH) mq._manual_h = true;
+  if(manualR) mq._manual_r = true;
+  sv(`menuqty_${USER.email}`, mq);
+  renderMenu();
+}
+
+
+
+// ── DECO ITEMS ────────────────────────────────────────────────────────────────
+const DECO_ITEMS = {
+  "Décoration de la cérémonie": ["Arche ou fond de cérémonie","Allée décorée (pétales, lanternes, fleurs, tapis...)","Chaises + décorations (noeuds, fleurs...)","Table de cérémonie","Coussin d'alliances","Livrets / programmes de cérémonie","Panneaux (bienvenue, directions...)"],
+  "Décoration du lieu de réception": ["Fleurs (bouquets, compositions, arches...)","Guirlandes (lumineuses ou déco)","Lanternes / lampions / suspensions","Bougies / photophores","Voilages / tentures","Ballons ou décorations suspendues","Eclairage d'ambiance"],
+  "Décoration des tables": ["Nappes","Chemins de table","Centres de table (fleurs, bougies, vases...)","Marque-places","Plan de table","Menus","Numéros de table","Décoration des chaises (recouvre chaises, rubans...)"],
+  "Espaces et animations": ["Photobooth + accessoires (lunettes, pancartes...)","Coin détente","Décoration du bar / buffet","Décoration de la piste de danse"],
+  "Décoration spéciale": ["Décor du gâteau (cake topper)","Table du gâteau / candy bar","Décoration voiture des mariés","Urne pour les enveloppes","Livre d'or","Table cadeaux"],
+  "Accessoires du mariage": ["Bouquet de la mariée + boutonnières","Panier pour pétales (enfants d'honneur)","Confettis / bulles / lavande pour la sortie","Parapluies (selon la météo)","Cadeaux invités"]
+};
+
+function getDecoData(){
+  const custom = ld('deco_custom_'+USER.email, {});
+  const result = {};
+  for(const [cat, items] of Object.entries(DECO_ITEMS)){
+    result[cat] = custom[cat] !== undefined ? custom[cat] : [...items];
+  }
+  for(const [cat, items] of Object.entries(custom)){
+    if(!(cat in DECO_ITEMS)) result[cat] = items;
+  }
+  return result;
+}
+
+function saveDecoData(data){ sv('deco_custom_'+USER.email, data); }
+function resetDecorations(){
+  if(confirm('Réinitialiser les décorations par défaut ? Vos modifications seront perdues.')){
+    sv('deco_custom_'+USER.email, {});
+    sv('deco_'+USER.email, {});
+    renderDecorations();
+  }
+}
+function addDecoCategory(){
+  const inp=document.getElementById('deco-new-cat');
+  if(!inp||!inp.value.trim())return;
+  const data=getDecoData();
+  data[inp.value.trim()]=[];
+  saveDecoData(data);inp.value='';renderDecorations();
+}
+function removeDecoCategory(cat){
+  const data=getDecoData();
+  const count=(data[cat]||[]).length;
+  if(count>0&&!confirm('Supprimer cette catégorie et ses '+count+' éléments ?'))return;
+  delete data[cat];saveDecoData(data);renderDecorations();
+}
+function renameDecoCategory(cat,catIdx){
+  const el=document.querySelector('[data-deco-cat="'+cat+'"]');
+  if(!el)return;
+  const data=getDecoData();
+  const items=data[cat]||[];
+  const inp=document.createElement('input');
+  inp.value=cat;
+  inp.style.cssText='font-family:Playfair Display,serif;font-size:15px;font-weight:700;color:#3e1828;border:none;border-bottom:2px solid #d4607a;outline:none;background:transparent;width:100%;';
+  el.replaceWith(inp);inp.focus();inp.select();
+  function save(){
+    const newName=inp.value.trim();
+    if(newName&&newName!==cat){
+      delete data[cat];data[newName]=items;saveDecoData(data);
+    }
+    renderDecorations();
+  }
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')inp.blur();if(e.key==='Escape'){renderDecorations();}});
+}
+
+function renderDecorations(){
+  const saved = ld('deco_'+USER.email, {});
+  const decoData = getDecoData();
+  let html = '';
+  let catIdx = 0;
+  for(const [cat, items] of Object.entries(decoData)){
+    catIdx++;
+    const total = items.length;
+    const done = items.filter((_,i) => saved[cat+i]).length;
+    html += `<div class="card" style="margin-bottom:12px;overflow:hidden;">
+      <div style="display:flex;align-items:center;background:linear-gradient(135deg,${sf},#fff);padding:13px 16px;">
+        <div onclick="toggleDecoSection(${catIdx})" style="flex:1;cursor:pointer;">
+          <div data-deco-cat="${cat}" onclick="renameDecoCategory('${cat.replace(/'/g,"'")}',${catIdx})" style="font-family:'Playfair Display',serif;font-size:15px;color:${tx};font-weight:700;cursor:pointer;" title="Appuyer pour renommer">${h(cat)}</div>
+          <div style="font-size:11px;color:${tl};margin-top:2px;">${done}/${total} éléments</div>
+        </div>
+        <button onclick="removeDecoCategory('${cat.replace(/'/g,"'")}')" style="background:none;border:none;color:${br};font-size:18px;cursor:pointer;padding:0 8px;">×</button>
+        <span id="deco-arrow-${catIdx}" onclick="toggleDecoSection(${catIdx})" style="color:${tl};font-size:14px;transform:rotate(180deg);display:inline-block;cursor:pointer;">▼</span>
+      </div>
+      <div id="deco-section-${catIdx}" style="display:block;padding:8px 16px 12px;">
+        ${items.map((item,i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid ${br};">
+          <input type="checkbox" ${saved[cat+i]?'checked':''} onchange="toggleDecoItem('${cat}',${i},this.checked)" style="accent-color:${pk};width:17px;height:17px;flex-shrink:0;cursor:pointer;">
+          <span onclick="renameDecoItem('${cat}',${i})" style="flex:1;font-size:13px;color:${saved[cat+i]?tl:tx};text-decoration:${saved[cat+i]?'line-through':'none'};cursor:pointer;">${h(item)}</span>
+          <button onclick="removeDecoItem('${cat}',${i})" style="background:none;border:none;color:${br};font-size:18px;cursor:pointer;padding:0 4px;">×</button>
+        </div>`).join('')}
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <input class="inp" id="deco-add-${catIdx}" placeholder="Ajouter un élément..." style="flex:1;font-size:12px;padding:7px 10px;">
+          <button onclick="addDecoItem('${cat}',${catIdx})" class="btn" style="padding:7px 12px;font-size:12px;">+</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  el('page-6').innerHTML = `
+    <div style="font-family:'Playfair Display',serif;font-size:20px;color:${tx};margin-bottom:12px;text-align:center;">🌸 Décorations & Accessoires</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <input class="inp" id="deco-new-cat" placeholder="Nouvelle catégorie..." style="flex:1;font-size:13px;">
+      <button onclick="addDecoCategory()" class="btn" style="padding:8px 14px;">+</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button onclick="resetDecorations()" class="btn-sec" style="font-size:11px;padding:5px 12px;color:${tl};border-color:${br};">↺ Réinitialiser les décorations par défaut</button>
+    </div>
+    ${html}
+  `;
+}
+
+function toggleDecoSection(idx){
+  const sec = document.getElementById('deco-section-'+idx);
+  const arr = document.getElementById('deco-arrow-'+idx);
+  if(!sec) return;
+  const open = sec.style.display !== 'none';
+  sec.style.display = open ? 'none' : 'block';
+  if(arr) arr.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+function toggleDecoItem(cat, i, checked){
+  const saved = ld('deco_'+USER.email, {});
+  saved[cat+i] = checked;
+  sv('deco_'+USER.email, saved);
+  renderDecorations();
+}
+
+function addDecoItem(cat, catIdx){
+  const inp = document.getElementById('deco-add-'+catIdx);
+  if(!inp || !inp.value.trim()) return;
+  const data = getDecoData();
+  if(!data[cat]) data[cat] = [];
+  data[cat].push(inp.value.trim());
+  saveDecoData(data);
+  renderDecorations();
+}
+
+function removeDecoItem(cat, i){
+  const data = getDecoData();
+  if(!data[cat]) return;
+  data[cat].splice(i, 1);
+  saveDecoData(data);
+  renderDecorations();
+}
+
+function renameDecoItem(cat, i){
+  const span=document.querySelector('[data-deco="'+CSS.escape(cat)+'-'+i+'"]');
+  if(!span){
+    const data=getDecoData();
+    if(!data[cat])return;
+    return;
+  }
+  const data=getDecoData();
+  const old=data[cat][i];
+  const inp=document.createElement('input');
+  inp.value=old;
+  inp.style.cssText='flex:1;font-size:13px;border:1.5px solid #d4607a;border-radius:6px;padding:2px 6px;outline:none;font-family:Lora,serif;';
+  span.replaceWith(inp);
+  inp.focus();inp.select();
+  function save(){
+    if(inp.value.trim())data[cat][i]=inp.value.trim();
+    saveDecoData(data);renderDecorations();
+  }
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')inp.blur();if(e.key==='Escape'){data[cat][i]=old;renderDecorations();}});
+}
 
 // ── ALBUM ─────────────────────────────────────────────────────────────────────
 function renderAlbum(){
   const driveUrl = ld('drive_url_'+USER.email, '');
   const qrUrl = driveUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(driveUrl)}&color=d4607a&bgcolor=fff9fb&margin=6`
-    : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('https://drive.google.com')}&color=d4607a&bgcolor=fff9fb&margin=6`;
+    : '';
 
-  el('page-6').innerHTML=`
+  el('page-7').innerHTML = `
   <div class="card" style="padding:16px;margin-bottom:16px;background:linear-gradient(135deg,${sf},#fff);">
     <div style="font-family:'Playfair Display',serif;font-size:18px;color:${tx};margin-bottom:12px;">📸 Album partagé</div>
-    <p style="font-size:13px;color:${tl};margin-bottom:14px;">Partagez votre album <strong>Google Photos</strong> avec vos invités. Ils pourront y ajouter leurs photos facilement depuis leur téléphone.</p>
-
+    <p style="font-size:13px;color:${tl};margin-bottom:14px;">Partagez votre album <strong>Google Photos</strong> avec vos invités.</p>
     <div style="margin-bottom:16px;">
       <label class="lbl">Lien de votre album Google Photos</label>
       <div style="display:flex;gap:8px;">
@@ -1563,13 +1671,12 @@ function renderAlbum(){
         <button class="btn" onclick="saveDriveUrl()" style="white-space:nowrap;">Enregistrer</button>
       </div>
     </div>
-
     ${driveUrl ? `
     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:16px;">
-      <img src="${qrUrl}" style="border-radius:12px;box-shadow:0 2px 12px rgba(180,100,130,0.2);" alt="QR Code Album">
+      <img src="${qrUrl}" style="border-radius:12px;box-shadow:0 2px 12px rgba(180,100,130,0.2);" alt="QR Code">
       <button class="btn" onclick="shareCurrentDriveUrl()" style="width:100%;">📤 Partager le lien</button>
       <button class="btn-sec" onclick="copyCurrentDriveUrl()" style="width:100%;">📋 Copier le lien</button>
-      <a id="drive-open-link" href="#" target="_blank" class="btn" style="width:100%;text-align:center;text-decoration:none;display:block;">📂 Ouvrir mon album Google Photos</a>
+      <a id="drive-open-link" href="${driveUrl}" target="_blank" class="btn" style="width:100%;text-align:center;text-decoration:none;display:block;">📂 Ouvrir mon album Google Photos</a>
     </div>
     ` : `
     <div style="background:${sf};border:2px dashed ${br};border-radius:12px;padding:20px;text-align:center;color:${tl};font-size:13px;font-style:italic;">
@@ -1577,146 +1684,95 @@ function renderAlbum(){
     </div>
     `}
   </div>
-
   <div class="card" style="padding:16px;">
     <div style="font-family:'Playfair Display',serif;font-size:16px;color:${tx};margin-bottom:12px;">Comment créer votre album partagé ?</div>
     <div style="font-size:13px;color:${tl};line-height:2;">
-      <div>1️⃣ Ouvrez l\'application <strong>Google Photos</strong> sur votre téléphone</div>
-      <div>2️⃣ Appuyez sur <strong>"Bibliothèque"</strong> en bas → <strong>"Albums"</strong></div>
-      <div>3️⃣ Appuyez sur <strong>"+"</strong> pour créer un nouvel album → nommez-le (ex: "Mariage Marine & Julian")</div>
-      <div>4️⃣ Appuyez sur les <strong>3 points ⋮</strong> de l\'album → <strong>"Options de partage"</strong></div>
-      <div>5️⃣ Activez <strong>"Partage collaboratif"</strong> — vos invités pourront ajouter leurs photos</div>
-      <div>6️⃣ Appuyez sur <strong>"Envoyer le lien"</strong> → <strong>"Copier le lien"</strong></div>
-      <div>7️⃣ Collez ce lien dans le champ ci-dessus et appuyez sur <strong>Enregistrer</strong></div>
+      <div>1️⃣ Ouvrez <strong>Google Photos</strong> sur votre téléphone</div>
+      <div>2️⃣ Appuyez sur <strong>"Bibliothèque"</strong> → <strong>"Albums"</strong> → <strong>"+"</strong></div>
+      <div>3️⃣ Nommez l'album (ex: "Mariage Marine & Julian")</div>
+      <div>4️⃣ Appuyez sur <strong>⋮</strong> → <strong>"Options de partage"</strong></div>
+      <div>5️⃣ Activez <strong>"Partage collaboratif"</strong></div>
+      <div>6️⃣ Copiez le lien et collez-le ci-dessus</div>
     </div>
     <div style="margin-top:12px;background:#fff8f0;border-radius:10px;padding:10px 12px;font-size:12px;color:#a07820;">
-      💡 Vos invités scannent le QR code, ouvrent l\'album et appuient sur <strong>"Rejoindre"</strong> pour ajouter leurs photos. Un compte Google est nécessaire pour rejoindre l\'album et ajouter des photos.
+      💡 Un compte Google est nécessaire pour que vos invités puissent ajouter des photos.
     </div>
   </div>
   `;
-  // Set input value after render to avoid template literal issues
   const inp = document.getElementById('drive-url-input');
   if(inp) inp.value = driveUrl;
-  const openLink = document.getElementById('drive-open-link');
-  if(openLink) openLink.href = driveUrl || '#';
 }
 
 function saveDriveUrl(){
   const url = document.getElementById('drive-url-input')?.value.trim();
-  if(!url){alert('Veuillez entrer un lien Google Drive.');return;}
+  if(!url){alert('Veuillez entrer un lien.');return;}
   sv('drive_url_'+USER.email, url);
-  // Save to Firebase for cross-device persistence
   if(window.firebaseDB && window.firebaseLib){
     const {doc, setDoc} = window.firebaseLib;
     const albumId = btoa(USER.email).replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
-    setDoc(doc(window.firebaseDB,'mariages',albumId),{driveUrl: url},{merge:true})
-      .then(()=>console.log('Drive URL saved to Firebase'))
-      .catch(e=>console.warn('Firebase save error:',e));
+    setDoc(doc(window.firebaseDB,'mariages',albumId),{driveUrl:url},{merge:true}).catch(e=>console.warn(e));
   }
   renderAlbum();
 }
 
-function getCurrentDriveUrl(){
-  return ld('drive_url_'+USER.email, '');
-}
+function getCurrentDriveUrl(){ return ld('drive_url_'+USER.email, ''); }
+
 function shareCurrentDriveUrl(){
   const url = getCurrentDriveUrl();
   if(!url){alert('Aucun lien enregistré.');return;}
-  shareAlbumLink(url);
+  if(navigator.share){navigator.share({title:'Album photo de notre mariage',text:'Ajoutez vos photos !',url});}
+  else{copyCurrentDriveUrl();}
 }
+
 function copyCurrentDriveUrl(){
   const url = getCurrentDriveUrl();
   if(!url){alert('Aucun lien enregistré.');return;}
-  copyAlbumLink(url);
-}
-function shareAlbumLink(url){
-  if(navigator.share){navigator.share({title:'Album photo de notre mariage',text:'Ajoutez vos photos ici !',url:url});}
-  else{copyAlbumLink(url);}
-}
-
-function copyAlbumLink(url){
-  try {
-    const ta = document.createElement('textarea');
-    ta.value = url;
-    ta.style.position='fixed';
-    ta.style.opacity='0';
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    alert('Lien copié !');
-  } catch(e) {
-    prompt('Copiez ce lien :', url);
-  }
-}
-
-
-function loadAlbumPhotos(albumId){
-  if(!window.firebaseDB){
-    renderAlbumGrid(ALBUM.map(p=>({url:p.url,uploadedBy:'organisateur'})));
-    return;
-  }
   try{
-    const {collection, onSnapshot} = window.firebaseLib;
-    onSnapshot(collection(window.firebaseDB,'albums',albumId,'photos'),(snap)=>{
-      const photos=[];
-      snap.forEach(d=>photos.push({id:d.id,...d.data()}));
-      renderAlbumGrid(photos);
-    });
-  }catch(e){console.warn('loadAlbumPhotos error:',e);renderAlbumGrid([]);}
+    const ta=document.createElement('textarea');ta.value=url;ta.style.cssText='position:fixed;opacity:0;';
+    document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    alert('Lien copié !');
+  }catch(e){prompt('Copiez ce lien :',url);}
 }
-
-function renderAlbumGrid(photos){
-  const grid=document.getElementById('album-grid');
-  const cnt=document.getElementById('photo-count');
-  if(!grid) return;
-  if(cnt) cnt.textContent=photos.length;
-  if(photos.length===0){
-    grid.innerHTML=`<div style="text-align:center;color:${tl};font-size:13px;font-style:italic;grid-column:1/-1;padding:20px;">Aucune photo pour l'instant</div>`;
-    return;
-  }
-  grid.innerHTML=photos.map((p,i)=>`
-    <div onclick="openLightbox(${i})" style="position:relative;aspect-ratio:1;overflow:hidden;cursor:pointer;border-radius:6px;">
-      <img src="${p.url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
-      ${p.uploadedBy&&p.uploadedBy!=='organisateur'?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.45);color:#fff;font-size:9px;padding:2px 5px;font-family:'Nunito',sans-serif;">${h(p.uploadedBy)}</div>`:''}
-    </div>`).join('');
-  window._albumPhotos=photos;
-}
-
-function openLightbox(i){
-  const p=window._albumPhotos?.[i];if(!p)return;
-  const lb=document.createElement('div');
-  lb.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  lb.innerHTML=`<img src="${p.url}" style="max-width:95vw;max-height:90vh;object-fit:contain;border-radius:8px;">
-    <button onclick="this.parentElement.remove()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;">×</button>`;
-  document.body.appendChild(lb);
-}
-
 
 // ── NOTES ─────────────────────────────────────────────────────────────────────
 function renderNotes(){
-  const lines=Math.max(30,NOTES.split('\n').length+5);
-  let linesHtml='';for(let i=0;i<lines;i++)linesHtml+=`<div style="position:absolute;left:48px;right:12px;top:${50+i*28}px;height:1px;border-top:1px dashed ${br};opacity:.7;"></div>`;
-  el('page-7').innerHTML=`
-  <div style="position:relative;border:2px solid ${bg2};border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(201,168,76,.1);background:#fffdf8;">
-    <div style="position:absolute;inset:0;pointer-events:none;z-index:0;">${linesHtml}<div style="position:absolute;left:42px;top:0;bottom:0;width:1px;background:${pm};opacity:.25;"></div></div>
-    ${[{top:'0',left:'0',r:'0deg'},{top:'0',right:'0',r:'90deg'},{bottom:'0',right:'0',r:'180deg'},{bottom:'0',left:'0',r:'270deg'}].map(s=>`<div style="position:absolute;${Object.entries(s).filter(([k])=>k!=='r').map(([k,v])=>k+':'+v).join(';')};width:32px;height:32px;pointer-events:none;z-index:3;"><svg viewBox="0 0 32 32" style="transform:rotate(${s.r})"><path d="M2 2L14 2L14 6L6 6L6 14L2 14Z" fill="${gl}" opacity="0.7"/></svg></div>`).join('')}
-    <div style="position:absolute;top:13px;left:0;right:0;text-align:center;z-index:2;pointer-events:none;"><span style="font-family:'Playfair Display',serif;font-family:'Playfair Display',serif;font-size:17px;color:${tm};font-style:italic;font-weight:600;letter-spacing:1px;">MES NOTES</span></div>
-    <textarea oninput="NOTES=this.value;sv('notes_${USER.email}',NOTES);" placeholder="Écrivez librement vos idées, remarques, informations importantes..." style="position:relative;z-index:1;width:100%;min-height:${lines*28+60}px;background:transparent;border:none;outline:none;resize:none;padding:46px 16px 20px 52px;font-size:14px;line-height:28px;color:${tx};font-family:'Nunito',sans-serif;">${h(NOTES)}</textarea>
+  el('page-8').innerHTML = `
+  <div class="card" style="padding:16px;">
+    <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:20px;color:${tm};margin-bottom:12px;text-align:center;">MES NOTES</div>
+    <textarea id="notes-area" style="width:100%;min-height:400px;border:none;outline:none;font-family:Lora,serif;font-size:14px;color:${tx};background:transparent;resize:vertical;line-height:1.8;" placeholder="Écrivez vos notes ici...">${h(NOTES)}</textarea>
   </div>
-  <div style="text-align:right;margin-top:5px;font-size:11px;color:${tl};">Sauvegardé automatiquement</div>`;
+  `;
+  document.getElementById('notes-area')?.addEventListener('input', function(){
+    NOTES = this.value;
+    sv('notes_'+USER.email, NOTES);
+  });
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-window.onload=()=>{
-  if(checkGuestAlbumMode()) return;
-  const remE=ld('rem_e',''),remP=ld('rem_p','');
-  if(remE){const el1=document.getElementById('a-email-l');if(el1)el1.value=remE;const el2=document.getElementById('a-email-r');if(el2)el2.value=remE;}
-  if(remP){const el3=document.getElementById('a-pass-l');if(el3)el3.value=remP;}
-  const sess=ld('sess',null);
-  if(sess){const u=ld(`u_${sess}`,null);if(u)startApp(u);}
-};
+window.addEventListener('load', function(){
+  // Check active session
+  const sess = ld('sess', null);
+  if(sess){
+    const u = ld('u_'+sess, null);
+    if(u){ startApp(u); return; }
+  }
+  // Auto-login if Se souvenir de moi was checked
+  const remE = ld('rem_e', '');
+  const remP = ld('rem_p', '');
+  if(remE && remP){
+    const u = ld('u_'+remE, null);
+    if(u && u.pass === remP){
+      sv('sess', remE);
+      startApp(u);
+      return;
+    }
+  }
+  // Pre-fill form
+  if(remE){ const el1=document.getElementById('a-email-l'); if(el1) el1.value=remE; }
+  if(remP){ const el2=document.getElementById('a-pass-l'); if(el2) el2.value=remP; }
+  if(remE&&remP){ const cb=document.getElementById('remember-me'); if(cb) cb.checked=true; }
+});
+
 </script>
 </body>
 </html>
