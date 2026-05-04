@@ -1765,6 +1765,55 @@ const DRIP_COLS=[
   {id:'violet',nom:'💜 Violet',col:'#6030A0'},
 ];
 
+
+// ── CAKE DATA FUNCTIONS ───────────────────────────────────────────────────────
+function getCakeData(){
+  const d=ld('cake_'+USER.email,{});
+  return {
+    etages:     d.etages||2,
+    forme:      d.forme||'rond',
+    hauteur:    d.hauteur||'standard',
+    texture:    d.texture||'lisse',
+    effet:      d.effet||'aucun',
+    decoration: d.decoration||'aucune',
+    couleurRuban:d.couleurRuban||'#D4607A',
+    drip:       d.drip||'aucun',
+    topper:     d.topper||'aucun',
+    topperText: d.topperText||'',
+    invites:    d.invites||80,
+    orderName:  d.orderName||'',
+    orderDate:  d.orderDate||'',
+    orderLieu:  d.orderLieu||'',
+    decos:      d.decos||[],
+    layers:     d.layers||[
+      {parfum:'Vanille',glacage:'#F3E5AB',garniture:'Ganache chocolat',regime:'Aucun'},
+      {parfum:'Framboise',glacage:'#C94C4C',garniture:'Crème mousseline',regime:'Aucun'},
+      {parfum:'Chocolat',glacage:'#5A3A2E',garniture:'Praliné noisette',regime:'Aucun'},
+      {parfum:'Pistache',glacage:'#A8C686',garniture:'Crème diplomate',regime:'Aucun'},
+      {parfum:'Citron',glacage:'#F6E27F',garniture:'Lemon curd',regime:'Aucun'},
+    ],
+  };
+}
+function saveCakeData(d){sv('cake_'+USER.email,d);}
+
+function updateCakeProp(key,val){
+  const d=getCakeData();d[key]=val;saveCakeData(d);renderCake3D();
+}
+function updateCakeLayer(i,key,val){
+  const d=getCakeData();
+  if(!d.layers[i])d.layers[i]={parfum:'Vanille',glacage:'#F3E5AB',garniture:'Ganache chocolat',regime:'Aucun'};
+  d.layers[i][key]=val;saveCakeData(d);renderCake3D();
+}
+function updateCakeEtages(n){
+  const d=getCakeData();
+  d.etages=parseInt(n)||2;
+  // Ensure layers array is padded
+  while(d.layers.length<d.etages){
+    d.layers.push({parfum:'Vanille',glacage:'#F3E5AB',garniture:'Ganache chocolat',regime:'Aucun'});
+  }
+  saveCakeData(d);renderCake3D();
+}
+
 // ── MULTI-PRESET SAVE ─────────────────────────────────────────────────────────
 function getCakeSlots(){return ld('cakeslots_'+USER.email,[null,null,null]);}
 function saveCakeSlot(i){
