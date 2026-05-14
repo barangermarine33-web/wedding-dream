@@ -413,6 +413,8 @@ async function doLogin(){
   const pass=document.getElementById('a-pass-l').value;
   const err=document.getElementById('err-login');
   const btn=document.querySelector('#form-login .btn');
+  // Reset du style (peut avoir été passé en vert par doForgotPassword)
+  err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
   err.style.display='none';
   if(!email||!pass){err.textContent='Veuillez remplir tous les champs.';err.style.display='block';return;}
 
