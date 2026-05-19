@@ -413,10 +413,18 @@ async function doLogin(){
   const pass=document.getElementById('a-pass-l').value;
   const err=document.getElementById('err-login');
   const btn=document.querySelector('#form-login .btn');
+  // Helper interne : affiche un message d'erreur et fait défiler vers lui
+  // (cette fonction garantit que err.style.display='block' ne sera jamais oublié)
+  function _showErr(msg){
+    err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
+    err.textContent=msg;
+    err.style.display='block';
+    try{ err.scrollIntoView({behavior:'smooth',block:'center'}); }catch(_){}
+  }
   // Reset du style (peut avoir été passé en vert par doForgotPassword)
   err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
   err.style.display='none';
-  if(!email||!pass){err.textContent='Veuillez remplir tous les champs.';err.style.display='block';return;}
+  if(!email||!pass){_showErr('Veuillez remplir tous les champs.');return;}
 
   let u=ld('u_'+email,null);
 
@@ -459,7 +467,7 @@ async function doLogin(){
       startApp(u);
       return;
     } catch(authErr){
-      console.warn('Firebase Auth error:', authErr.code);
+      console.warn('[doLogin] Firebase Auth error:', authErr.code, '|', authErr.message);
       if(btn){btn.textContent='Se connecter';btn.disabled=false;}
 
       // 3) Fallback : essayer l'ancien système Firestore (comptes legacy sans Firebase Auth)
@@ -490,17 +498,29 @@ async function doLogin(){
       }
 
       // Erreur d'authentification (mot de passe incorrect ou compte inexistant)
+      // Liste élargie de codes — y compris auth/requests-from-referer-null-are-blocked
+      // qui survient quand l'app est ouverte localement (content:// ou file://) au lieu
+      // d'une URL https:// hébergée. Dans ce cas, la clé API Firebase rejette la requête.
       let msg='Email ou mot de passe incorrect.';
-      if(authErr.code==='auth/user-not-found') msg='Aucun compte trouvé avec cet email.';
-      else if(authErr.code==='auth/wrong-password' || authErr.code==='auth/invalid-credential') msg='Mot de passe incorrect.';
-      else if(authErr.code==='auth/too-many-requests') msg='Trop de tentatives. Réessayez plus tard ou utilisez "Mot de passe oublié".';
-      else if(authErr.code==='auth/network-request-failed') msg='Pas de connexion internet.';
-      err.textContent=msg;err.style.display='block';
+      const code=authErr.code||'';
+      const rawMsg=(authErr.message||'').toLowerCase();
+      if(code==='auth/user-not-found') msg='Aucun compte trouvé avec cet email.';
+      else if(code==='auth/wrong-password' || code==='auth/invalid-credential') msg='Mot de passe incorrect. Réessaie ou utilise "Mot de passe oublié ?".';
+      else if(code==='auth/invalid-email') msg='Adresse email invalide. Vérifie l\'orthographe.';
+      else if(code==='auth/too-many-requests') msg='Trop de tentatives. Réessaie dans 10-15 min ou utilise "Mot de passe oublié".';
+      else if(code==='auth/network-request-failed' || !navigator.onLine) msg='Pas de connexion internet. Reconnecte-toi et réessaie.';
+      else if(code==='auth/user-disabled') msg='Ce compte a été désactivé.';
+      else if(code==='auth/operation-not-allowed') msg='Connexion Email/Password désactivée dans Firebase.';
+      else if(rawMsg.indexOf('referer')>=0 || rawMsg.indexOf('referrer')>=0 || code==='auth/api-key-not-valid'){
+        msg='Ouverture impossible depuis un fichier local. L\'app doit être ouverte depuis une URL https:// (lien partagé, Play Store, ou raccourci écran d\'accueil).';
+      }
+      else if(code) msg='Erreur de connexion : '+code;
+      _showErr(msg);
       return;
     }
   }
 
-  err.textContent='Email ou mot de passe incorrect.';err.style.display='block';
+  _showErr('Email ou mot de passe incorrect.');
 }
 
 async function doRegister(){
@@ -561,34 +581,85 @@ async function doForgotPassword(){
   const email=document.getElementById('a-email-l').value.trim();
   const err=document.getElementById('err-login');
   err.style.display='none';
-  if(!email){err.textContent='Saisis d\'abord ton email dans le champ ci-dessus.';err.style.display='block';return;}
+  // Validation côté client : format email
+  const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!email){
+    err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
+    err.textContent='Saisis d\'abord ton email dans le champ ci-dessus.';err.style.display='block';return;
+  }
+  if(!emailRe.test(email)){
+    err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
+    err.textContent='Adresse email invalide. Vérifie l\'orthographe.';err.style.display='block';return;
+  }
 
   if(!window.firebaseAuth || !window.firebaseAuthLib){
-    err.textContent='Service indisponible. Vérifie ta connexion internet.';err.style.display='block';return;
+    err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
+    err.textContent='Service indisponible. Vérifie ta connexion internet et recharge la page.';err.style.display='block';return;
+  }
+  if(!navigator.onLine){
+    err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
+    err.textContent='Pas de connexion internet. Reconnecte-toi et réessaie.';err.style.display='block';return;
   }
 
   const link=document.getElementById('forgot-link');
-  if(link){link.textContent='Envoi en cours...';link.style.pointerEvents='none';}
+  if(link){link.textContent='Envoi en cours...';link.style.pointerEvents='none';link.style.opacity='0.6';}
   try{
     const {sendPasswordResetEmail}=window.firebaseAuthLib;
-    await sendPasswordResetEmail(window.firebaseAuth, email);
+    // ──────────────────────────────────────────────────────────────────────
+    // actionCodeSettings : essentiel pour que l'email parte vraiment
+    // - url : page de retour après reset (doit être dans Authorized Domains
+    //         dans la console Firebase → Auth → Settings)
+    // - handleCodeInApp : false → le lien ouvre le flow Firebase standard,
+    //                     pas besoin de Dynamic Links côté mobile
+    // ──────────────────────────────────────────────────────────────────────
+    let continueUrl;
+    try{
+      // Origine actuelle de l'app (sert de page de retour après reset)
+      continueUrl=window.location.origin+window.location.pathname;
+    } catch(_){
+      continueUrl='https://wedding-dream-eb422.firebaseapp.com';
+    }
+    const actionCodeSettings={
+      url: continueUrl,
+      handleCodeInApp: false
+    };
+    await sendPasswordResetEmail(window.firebaseAuth, email, actionCodeSettings);
     err.style.background='#f0fff0';err.style.borderColor='#c8e6c9';err.style.color='#2e7d32';
-    err.textContent='✓ Un email de réinitialisation t\'a été envoyé à '+email+'. Vérifie aussi tes spams.';
+    err.innerHTML='✓ Email de réinitialisation envoyé à <b>'+email+'</b>.<br>'+
+      '<span style="font-size:11px;">⏱️ Délai : 1 à 5 min. Vérifie aussi tes <b>spams/courriers indésirables</b>.<br>'+
+      'Expéditeur : <code style="background:#e8f5e8;padding:1px 4px;border-radius:3px;">noreply@wedding-dream-eb422.firebaseapp.com</code></span>';
     err.style.display='block';
   } catch(e){
-    console.error('Reset password error code:', e.code, '| message:', e.message);
+    console.error('[doForgotPassword] code:', e.code, '| message:', e.message);
     err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
-    let msg='Erreur : '+(e.code||e.message||'inconnue');
-    if(e.code==='auth/user-not-found') msg='Aucun compte trouvé avec cet email.';
-    else if(e.code==='auth/invalid-email') msg='Adresse email invalide.';
-    else if(e.code==='auth/network-request-failed') msg='Pas de connexion internet.';
-    else if(e.code==='auth/operation-not-allowed') msg='Email/Password n\'est pas activé dans la console Firebase.';
-    else if(e.code==='auth/unauthorized-domain') msg='Ce domaine n\'est pas autorisé. Ajoute-le dans Firebase → Auth → Settings → Authorized domains.';
-    else if(e.code==='auth/missing-android-pkg-name' || e.code==='auth/missing-ios-bundle-id' || e.code==='auth/missing-continue-uri') msg='Configuration incomplète. Va dans Firebase Auth → Templates → Password reset, et vérifie l\'URL de redirection.';
-    else if(e.code==='auth/too-many-requests') msg='Trop de tentatives. Réessaie dans quelques minutes.';
-    err.textContent=msg;err.style.display='block';
+    const code=e.code||'';
+    const rawMsg=(e.message||'').toLowerCase();
+    let msg='Erreur : '+(code||e.message||'inconnue');
+    if(code==='auth/user-not-found') msg='Aucun compte trouvé avec cet email. Vérifie l\'orthographe ou inscris-toi.';
+    else if(code==='auth/invalid-email') msg='Adresse email invalide.';
+    else if(code==='auth/network-request-failed') msg='Échec réseau. Vérifie ta connexion internet et réessaie.';
+    else if(code==='auth/operation-not-allowed') msg='Email/Password n\'est pas activé dans la console Firebase → Auth → Sign-in method.';
+    else if(code==='auth/unauthorized-domain') msg='Domaine non autorisé. Ajoute-le dans Firebase → Auth → Settings → Authorized domains (incluant le domaine de production).';
+    else if(code==='auth/missing-android-pkg-name' || code==='auth/missing-ios-bundle-id' || code==='auth/missing-continue-uri') msg='Configuration incomplète. Va dans Firebase Auth → Templates → Password reset, vérifie l\'URL de redirection et les domaines autorisés.';
+    else if(code==='auth/invalid-continue-uri') msg='URL de continuation invalide. Le domaine de l\'app doit être dans Firebase → Auth → Settings → Authorized domains.';
+    else if(code==='auth/unauthorized-continue-uri') msg='Domaine de continuation non autorisé. Ajoute '+(window.location.hostname||'ton domaine')+' dans Firebase → Auth → Settings → Authorized domains.';
+    else if(code==='auth/too-many-requests') msg='Trop de tentatives. Réessaie dans 10-15 minutes.';
+    else if(code==='auth/quota-exceeded') msg='Quota d\'envoi d\'emails Firebase dépassé pour aujourd\'hui. Réessaie demain ou contacte le support.';
+    // ─── CAS SPÉCIFIQUE : referer null ───
+    // Survient quand l'app est ouverte localement (content://, file://, blob://)
+    // au lieu d'une URL https://. La clé API Firebase a une restriction "HTTP referrers"
+    // qui bloque les requêtes sans referer.
+    else if(rawMsg.indexOf('referer')>=0 || rawMsg.indexOf('referrer')>=0 ||
+            (code||'').indexOf('referer')>=0){
+      msg='⚠️ Impossible d\'envoyer l\'email depuis un fichier téléchargé. '+
+          'L\'app doit être ouverte depuis une URL https:// (héberge le fichier sur Firebase Hosting / Netlify / GitHub Pages, '+
+          'ou ouvre le raccourci installé sur ton écran d\'accueil).';
+    }
+    else if(code==='auth/api-key-not-valid') msg='Clé API Firebase non valide pour ce contexte. Ouvre l\'app depuis une URL https://, pas en local.';
+    err.innerHTML=msg.replace(/\n/g,'<br>');
+    err.style.display='block';
   }
-  if(link){link.textContent='Mot de passe oublié ?';link.style.pointerEvents='auto';}
+  if(link){link.textContent='Mot de passe oublié ?';link.style.pointerEvents='auto';link.style.opacity='1';}
 }
 
 function doLogout(){
@@ -2805,46 +2876,163 @@ function buildCake3D(data){
     }
 
     if(texId==='spatule'){
-      // Coups de spatule horizontaux RÉGULIERS - inspiré photo Mlles Gâteaux
-      // Style "lissé à la spatule rotative" : cernes très fins, très nombreux, réguliers
-      // Pas d'alternance marquée, juste un relief uniforme avec de subtiles variations
-      const stripHeight = 0.011;  // stries beaucoup plus FINES (~1.1cm)
-      const nStrips = Math.max(12, Math.round(tH / stripHeight));
-      const actualStripH = tH / nStrips;
-      for(let w = 0; w < nStrips; w++){
-        const wy = curY + w * actualStripH;
-        const tFrac = w / nStrips;
-        const radAtY = rB + (rT - rB) * tFrac;
-        // Très léger relief constant (pas d'alternance) : chaque strie ressort de la même façon
-        const outerR = radAtY * 1.003;
-        // Variation de teinte TRÈS subtile pour effet "tourné à la spatule"
-        // (juste un peu plus clair que la couleur de base, uniforme)
-        const v = 0.97 + Math.sin(w * 0.7) * 0.025;
-        const sCol = new T.Color(rgb.r * v, rgb.g * v, rgb.b * v);
-        const sMat = new T.MeshStandardMaterial({
-          color: sCol, roughness: 0.78, metalness: 0.0
-        });
-        const segCount = segs || 40;
-        const wGeo = isRound ? new T.CylinderGeometry(outerR, outerR, actualStripH, segCount, 1) :
-                     isHex ? new T.CylinderGeometry(outerR, outerR, actualStripH, 6, 1) :
-                             new T.BoxGeometry(rB * 1.94, actualStripH, rB * 1.94, 1, 1, 1);
-        const wm = new T.Mesh(wGeo, sMat);
-        wm.position.y = wy + actualStripH / 2;
-        wm.castShadow = true;
-        _3g.add(wm);
-        // Petite ligne d'ombre TRÈS fine entre les stries (l'aspect "creux" entre cernes)
-        if(w > 0 && isRound){
-          const shadowRing = new T.Mesh(
-            new T.TorusGeometry(radAtY * 1.001, 0.0015, 3, segCount),
-            new T.MeshStandardMaterial({
-              color: new T.Color(rgb.r * 0.80, rgb.g * 0.80, rgb.b * 0.80),
-              roughness: 0.90
-            })
-          );
-          shadowRing.rotation.x = Math.PI / 2;
-          shadowRing.position.y = wy;
-          _3g.add(shadowRing);
+      // ════════════════════════════════════════════════════════════════════
+      // PALETTE KNIFE / TEXTURED BUTTERCREAM
+      // Inspiré de la photo de référence : patchs irréguliers de glaçage
+      // étalés à la spatule dans des directions aléatoires, avec des
+      // arêtes vives où la spatule a été levée → effet "stucco / plâtre".
+      // ════════════════════════════════════════════════════════════════════
+      // Couleur de base du glaçage (avec très subtile variation par patch)
+      const segCount = segs || 40;
+
+      // Nombre de patchs proportionnel à la surface visible (max 130 pour rester fluide sur mobile)
+      const circumference = 2 * Math.PI * ((rB + rT) / 2);
+      const surfaceArea = circumference * tH;
+      const patchDensity = 95; // patchs par unité de surface (équilibre rendu/perf)
+      const nPatches = Math.max(50, Math.min(130, Math.round(surfaceArea * patchDensity)));
+
+      // ─── Helper : construit un patch (slab irrégulier) ──────────────────
+      // Renvoie un Mesh à coller tangentiellement à la surface du cylindre.
+      function _buildSpatulaPatch(sizeW, sizeH, thick, colorTint){
+        // Shape irrégulier — 5 à 7 sommets autour d'un centre, avec
+        // courbures aléatoires pour un contour "déchiré" naturel.
+        const nCorners = 5 + Math.floor(Math.random()*3); // 5..7
+        const shape = new T.Shape();
+        const halfW = sizeW/2, halfH = sizeH/2;
+        const pts = [];
+        for(let k=0; k<nCorners; k++){
+          const a = (k/nCorners)*Math.PI*2 + (Math.random()-0.5)*0.4;
+          // Rayon variable selon l'angle pour forme allongée (ratio w/h)
+          const baseR = (Math.abs(Math.cos(a))*halfW + Math.abs(Math.sin(a))*halfH);
+          const r = baseR * (0.78 + Math.random()*0.35);
+          pts.push([Math.cos(a)*r, Math.sin(a)*r]);
         }
+        // Tracé du contour avec petites courbes de Bézier entre sommets
+        shape.moveTo(pts[0][0], pts[0][1]);
+        for(let k=0; k<nCorners; k++){
+          const p1 = pts[k];
+          const p2 = pts[(k+1)%nCorners];
+          const mx = (p1[0]+p2[0])/2 + (Math.random()-0.5)*sizeW*0.06;
+          const my = (p1[1]+p2[1])/2 + (Math.random()-0.5)*sizeH*0.06;
+          shape.quadraticCurveTo(mx, my, p2[0], p2[1]);
+        }
+        // Extrude : épaisseur faible mais bevel marqué pour le ridge vif
+        const extrudeSettings = {
+          depth: thick,
+          bevelEnabled: true,
+          bevelSegments: 2,
+          bevelSize: thick*0.55,
+          bevelThickness: thick*0.40,
+          curveSegments: 6
+        };
+        const geo = new T.ExtrudeGeometry(shape, extrudeSettings);
+        // Variation organique : sur une face, on rabaisse légèrement un côté
+        // pour simuler le "lift" de la spatule (asymétrie du ridge).
+        const pos = geo.attributes.position;
+        const liftDir = Math.random()*Math.PI*2;
+        const lx = Math.cos(liftDir), ly = Math.sin(liftDir);
+        for(let i=0; i<pos.count; i++){
+          const x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
+          if(z > thick*0.5){
+            // Sur la face avant : ridge plus haut côté "lift", plus bas opposé
+            const dot = (x*lx + y*ly) / Math.max(0.001, Math.hypot(halfW, halfH));
+            pos.setZ(i, z + dot*thick*0.45);
+          } else if(z < -0.001){
+            // Face arrière : légère ondulation pour ne pas être plate
+            pos.setZ(i, z - Math.random()*thick*0.05);
+          }
+        }
+        geo.computeVertexNormals();
+        const mat = new T.MeshStandardMaterial({
+          color: colorTint,
+          roughness: 0.86 + Math.random()*0.08,
+          metalness: 0.0,
+          flatShading: false
+        });
+        return new T.Mesh(geo, mat);
+      }
+
+      // ─── Génération des patchs : positionnés autour du cylindre ─────────
+      const patchOuterPush = 0.004; // distance de la surface (l'épaisseur compte aussi)
+      for(let p = 0; p < nPatches; p++){
+        // Position aléatoire le long du tier (avec une légère grille pour éviter trop d'agrégats)
+        const angRand = Math.random() * Math.PI * 2;
+        const hFrac = Math.random();
+        const yPos = curY + hFrac * tH;
+        const radAtY = rB + (rT - rB) * hFrac;
+
+        // Taille du patch — varie entre petite tache et grande coulée
+        const sizeBase = 0.045 + Math.random()*0.075; // 4.5cm à 12cm visuels
+        // Allongé OU compact, au hasard
+        const aspect = 0.7 + Math.random()*1.4;
+        const sizeW = sizeBase * aspect;
+        const sizeH = sizeBase / Math.sqrt(aspect);
+        // Épaisseur du patch (relief)
+        const thick = 0.014 + Math.random()*0.020; // 1.4 à 3.4 mm visuels
+
+        // Teinte légèrement variable (très subtile)
+        const vBright = 0.93 + Math.random()*0.10; // ombres et clairs
+        // Glaçage blanc cassé / coloré : on teint la couleur de base
+        const tintR = Math.min(1, rgb.r * vBright);
+        const tintG = Math.min(1, rgb.g * vBright);
+        const tintB = Math.min(1, rgb.b * vBright);
+        const tint = new T.Color(tintR, tintG, tintB);
+
+        const patch = _buildSpatulaPatch(sizeW, sizeH, thick, tint);
+
+        // Pour un cylindre rond : placer tangent à la surface en (angRand, yPos)
+        if(isRound){
+          const cosA = Math.cos(angRand), sinA = Math.sin(angRand);
+          // Position : sur la surface du cylindre, légèrement poussée vers l'extérieur
+          patch.position.set(
+            Math.sin(angRand) * (radAtY + patchOuterPush),
+            yPos,
+            Math.cos(angRand) * (radAtY + patchOuterPush)
+          );
+          // Orienter le patch tangent au cylindre : son axe +Z doit pointer vers l'extérieur radial
+          // Rotation Y pour pointer dans la bonne direction
+          patch.rotation.y = angRand;
+          // Rotation Z aléatoire (autour de la normale) : direction du coup de spatule
+          patch.rotation.z = Math.random() * Math.PI * 2;
+          // Légère inclinaison X/Y pour casser l'uniformité
+          patch.rotation.x = (Math.random()-0.5) * 0.20;
+        } else if(isHex){
+          // Hexagone : choisir la face la plus proche et y coller le patch
+          const faceIdx = Math.floor(angRand / (Math.PI/3));
+          const faceAng = faceIdx * (Math.PI/3) + Math.PI/6;
+          const cosF = Math.cos(faceAng), sinF = Math.sin(faceAng);
+          patch.position.set(
+            Math.sin(faceAng) * (radAtY*0.866 + patchOuterPush),
+            yPos,
+            Math.cos(faceAng) * (radAtY*0.866 + patchOuterPush)
+          );
+          patch.rotation.y = faceAng;
+          patch.rotation.z = Math.random() * Math.PI * 2;
+          patch.rotation.x = (Math.random()-0.5) * 0.20;
+        } else {
+          // Carré : choisir une des 4 faces
+          const side = Math.floor(Math.random()*4);
+          const faceAng = side * Math.PI / 2;
+          const offsetR = rB * 0.96 + patchOuterPush;
+          patch.position.set(
+            Math.sin(faceAng) * offsetR + (side%2===0?(Math.random()-0.5)*rB*1.5:0),
+            yPos,
+            Math.cos(faceAng) * offsetR + (side%2===1?(Math.random()-0.5)*rB*1.5:0)
+          );
+          patch.rotation.y = faceAng;
+          patch.rotation.z = Math.random() * Math.PI * 2;
+          patch.rotation.x = (Math.random()-0.5) * 0.20;
+        }
+        patch.castShadow = true;
+        patch.receiveShadow = true;
+        _3g.add(patch);
+      }
+
+      // ─── Rendre le cylindre de base légèrement mat & plus rugueux ───────
+      // (pour qu'il "lise" avec les patchs et n'ait pas l'air d'un fond brillant)
+      if(tier && tier.material){
+        tier.material.roughness = 0.88;
+        tier.material.metalness = 0.0;
       }
     }
 
@@ -2928,19 +3116,44 @@ function buildCake3D(data){
       }
     }
     if(texId==='spatule'){
-      // Vagues concentriques sur le dessus (cercles ondulés)
-      const nWaves=5;
-      for(let w=0;w<nWaves;w++){
-        const rad=rT*(0.80-w*0.15);
-        if(rad<0.05)break;
-        const torGeo=new T.TorusGeometry(rad,0.007,4,Math.max(20,segs));
-        const v=0.88+Math.sin(w*1.7)*0.10;
-        const sMat=new T.MeshStandardMaterial({
+      // Top : quelques patchs irréguliers à plat (effet glaçage étalé sur le dessus)
+      const nTopPatches = 8 + Math.floor(Math.random()*6); // 8..13
+      for(let w=0; w<nTopPatches; w++){
+        const aT = Math.random()*Math.PI*2;
+        const rT2 = Math.random()*rT*0.85;
+        const sizeBase = 0.05 + Math.random()*0.07;
+        const aspect = 0.7 + Math.random()*1.2;
+        const sw = sizeBase * aspect, sh = sizeBase / Math.sqrt(aspect);
+        const thick = 0.010 + Math.random()*0.012;
+        // Forme irrégulière (réutilise la même technique que pour les patchs latéraux)
+        const nCorners = 5 + Math.floor(Math.random()*3);
+        const shape = new T.Shape();
+        const pts=[];
+        for(let k=0;k<nCorners;k++){
+          const a=(k/nCorners)*Math.PI*2 + (Math.random()-0.5)*0.4;
+          const baseR=(Math.abs(Math.cos(a))*sw/2+Math.abs(Math.sin(a))*sh/2);
+          const r=baseR*(0.78+Math.random()*0.35);
+          pts.push([Math.cos(a)*r, Math.sin(a)*r]);
+        }
+        shape.moveTo(pts[0][0],pts[0][1]);
+        for(let k=0;k<nCorners;k++){
+          const p1=pts[k], p2=pts[(k+1)%nCorners];
+          const mx=(p1[0]+p2[0])/2+(Math.random()-0.5)*sw*0.06;
+          const my=(p1[1]+p2[1])/2+(Math.random()-0.5)*sh*0.06;
+          shape.quadraticCurveTo(mx,my,p2[0],p2[1]);
+        }
+        const tg=new T.ExtrudeGeometry(shape,{
+          depth:thick,bevelEnabled:true,bevelSegments:2,
+          bevelSize:thick*0.55,bevelThickness:thick*0.4,curveSegments:6
+        });
+        const v=0.93+Math.random()*0.10;
+        const tm=new T.Mesh(tg,new T.MeshStandardMaterial({
           color:new T.Color(capCol.r*v,capCol.g*v,capCol.b*v),
-          roughness:0.65,metalness:0.0});
-        const tm=new T.Mesh(torGeo,sMat);
-        tm.rotation.x=Math.PI/2;
-        tm.position.y=curY+tH+capH+0.003;
+          roughness:0.86+Math.random()*0.08,metalness:0.0}));
+        tm.rotation.x=-Math.PI/2; // à plat
+        tm.rotation.z=Math.random()*Math.PI*2;
+        tm.position.set(Math.cos(aT)*rT2, curY+tH+capH+0.001, Math.sin(aT)*rT2);
+        tm.castShadow=true;
         _3g.add(tm);
       }
     }
@@ -3797,27 +4010,6 @@ function buildCake3D(data){
     // face === 'side' (par défaut) → collé sur le côté du cylindre (à la verticale)
     const face = d.face || 'side';
 
-    // Position du point de placement sur le gâteau
-    let pX, pY, pZ;
-    // Offset pour éviter l'incrustation
-    // Avec baseScale=2.5, une déco fait ~0.10-0.15 unités → offset moitié de l'épaisseur
-    const userScaleForOffset = d.scale||1.0;
-    const surfaceOffset = 0.04 + userScaleForOffset * 0.025;
-
-    if(face === 'top'){
-      const topR = rTop;
-      const rOnTop = Math.max(0, Math.min(1, d.height||0.0)) * topR * 0.85;
-      pX = Math.sin(ang) * rOnTop;
-      pZ = Math.cos(ang) * rOnTop;
-      pY = sY + tH + surfaceOffset;
-    } else {
-      const decoY = sY + tH*(0.08 + heightFrac*0.84);
-      const finalR = rAtH + surfaceOffset;
-      pX = Math.sin(ang) * finalR;
-      pZ = Math.cos(ang) * finalR;
-      pY = decoY;
-    }
-
     // Build deco — TOUTES les décorations passent par _makeDeco3D
     let dg = _makeDeco3D(T, d.id, d);
 
@@ -3840,6 +4032,75 @@ function buildCake3D(data){
       dg.rotation.set(tilt, ang, spin);
     }
     dg.scale.setScalar(finalScale);
+
+    // ─── PLACEMENT À LA SURFACE (sans incrustation) ─────────────────────
+    // 1) On place temporairement la déco au centre, on calcule sa bounding box
+    //    APRÈS rotation+scale, pour connaître l'étendue réelle dans l'espace.
+    // 2) On détermine la direction de "surface vers extérieur" (normale).
+    // 3) On pousse la déco le long de cette normale d'un montant = -minProj
+    //    où minProj = projection minimale de la bounding box sur la normale.
+    //    Ainsi le DOS de la déco vient toucher la surface du gâteau.
+    dg.position.set(0,0,0);
+    dg.updateMatrixWorld(true);
+    // Exclure la sphère de hit (invisible) du calcul de bbox
+    const _bb = new T.Box3();
+    let _hasMesh = false;
+    dg.traverse(o=>{
+      if(o.isMesh && !o.userData.isHitArea){
+        o.updateMatrixWorld(true);
+        const geoBB = new T.Box3().setFromObject(o);
+        if(_hasMesh){ _bb.union(geoBB); } else { _bb.copy(geoBB); _hasMesh=true; }
+      }
+    });
+    // Direction sortante (normale à la surface)
+    const outVx = face==='top' ? 0 : Math.sin(ang);
+    const outVy = face==='top' ? 1 : 0;
+    const outVz = face==='top' ? 0 : Math.cos(ang);
+    // Projection min/max des 8 coins de la bbox sur la normale
+    let minProj = Infinity;
+    if(_hasMesh){
+      const cs = [
+        [_bb.min.x,_bb.min.y,_bb.min.z],[_bb.max.x,_bb.min.y,_bb.min.z],
+        [_bb.min.x,_bb.max.y,_bb.min.z],[_bb.max.x,_bb.max.y,_bb.min.z],
+        [_bb.min.x,_bb.min.y,_bb.max.z],[_bb.max.x,_bb.min.y,_bb.max.z],
+        [_bb.min.x,_bb.max.y,_bb.max.z],[_bb.max.x,_bb.max.y,_bb.max.z],
+      ];
+      for(let k=0;k<8;k++){
+        const proj = cs[k][0]*outVx + cs[k][1]*outVy + cs[k][2]*outVz;
+        if(proj<minProj) minProj=proj;
+      }
+    } else {
+      minProj = 0;
+    }
+    // Combien la déco s'étend vers la surface (côté "intérieur")
+    // minProj est le coin de la bbox le plus enfoncé dans le gâteau (négatif).
+    // Si on pousse de -minProj, le coin arrière touche pile la surface, mais la
+    // déco apparaît "flottante" car son centre de masse est loin de la surface.
+    // On enfonce volontairement à 30% du minProj : le pétale/élément arrière est
+    // légèrement dans le gâteau, ce qui donne l'impression que la déco "tient"
+    // dessus naturellement, sans être ni en lévitation ni enterrée.
+    // Le surfaceOffset minimal de 0.012 évite le z-fighting pour les très petites décos.
+    const surfaceOffset = Math.max(0.012, (-minProj) * 0.70 + 0.005);
+
+    // Position du point de surface "cible"
+    let pX, pY, pZ;
+    if(face === 'top'){
+      const topR = rTop;
+      const rOnTop = Math.max(0, Math.min(1, d.height||0.0)) * topR * 0.85;
+      const surfX = Math.sin(ang) * rOnTop;
+      const surfZ = Math.cos(ang) * rOnTop;
+      const surfY = sY + tH;
+      pX = surfX + outVx * surfaceOffset;
+      pY = surfY + outVy * surfaceOffset;
+      pZ = surfZ + outVz * surfaceOffset;
+    } else {
+      const decoY = sY + tH*(0.08 + heightFrac*0.84);
+      const surfX = Math.sin(ang) * rAtH;
+      const surfZ = Math.cos(ang) * rAtH;
+      pX = surfX + outVx * surfaceOffset;
+      pY = decoY + outVy * surfaceOffset;
+      pZ = surfZ + outVz * surfaceOffset;
+    }
 
     dg.position.set(pX, pY, pZ);
 
@@ -3882,6 +4143,8 @@ function startRenderLoop(){
       _3r.setSize(W,H,false);_3c.aspect=W/H;_3c.updateProjectionMatrix();
     }
     _3r.render(_3s,_3c);
+    // Mettre à jour la position du panneau inline (suit la déco sélectionnée)
+    try{ _updateDecoInlinePanelPos(); }catch(_){}
   }
   animate();
 }
@@ -4276,20 +4539,27 @@ function _decoRoseRouge(T, data){
     p.rotation.x = -1.50;
     g.add(p);
   }
+  // Couche 5 : pétales très enveloppants qui se rabattent vers le centre
   for(let i=0; i<4; i++){
     const a = (i/4) * Math.PI*2 + 1.7;
-    const p = _buildPetal(T, deepCol, 0.042, 0.038, 0.78, 'narrow');
-    p.position.set(Math.cos(a)*0.002, 0.034, Math.sin(a)*0.002);
+    const p = _buildPetal(T, deepCol, 0.042, 0.038, 0.95, 'narrow');
+    p.position.set(Math.cos(a)*0.002, 0.030, Math.sin(a)*0.002);
     p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.65;
+    p.rotation.x = -2.05;  // très penché vers l'intérieur pour fermer le bouton
     g.add(p);
   }
-  const heart = new T.Mesh(
-    new T.CylinderGeometry(0.012, 0.018, 0.030, 8),
-    new T.MeshStandardMaterial({color: deepCol, roughness: 0.45})
-  );
-  heart.position.y = 0.038;
-  g.add(heart);
+  // Couche 6 (bouton intérieur) : 3 micro-pétales très serrés qui couvrent le sommet,
+  // remplace l'ancien cylindre pour donner un aspect "bouton fermé" sans aucune
+  // primitive géométrique visible.
+  const deepColDarker = _darken(deepCol, 0.05);
+  for(let i=0; i<3; i++){
+    const a = (i/3) * Math.PI*2 + 0.3;
+    const p = _buildPetal(T, deepColDarker, 0.028, 0.024, 1.10, 'narrow');
+    p.position.set(Math.cos(a)*0.0006, 0.040, Math.sin(a)*0.0006);
+    p.rotation.y = a + Math.PI;
+    p.rotation.x = -2.30;  // rabattu quasi à plat, forme la pointe du bouton
+    g.add(p);
+  }
   return g;
 }
 
@@ -4473,7 +4743,7 @@ function _decoEucalyptus(T, data){
     const v = 0.85 + Math.random()*0.30;
     const col = new T.Color(leafCol.r*v, leafCol.g*v, leafCol.b*v);
     const m = new T.Mesh(geo, new T.MeshStandardMaterial({
-      color: col, roughness: 0.55, metalness: 0.20, side: T.DoubleSide
+      color: col, roughness: 0.62, metalness: 0.04, side: T.DoubleSide
     }));
     m.scale.setScalar(scale);
     return m;
@@ -6685,6 +6955,167 @@ function _highlightDeco(idx){
   _3selectedDeco=idx;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// INLINE OPTIONS PANEL — affiché sur le canvas 3D au-dessus de la déco
+// sélectionnée, contient taille / orientation / couleur / inclinaison.
+// Le menu du bas n'affiche plus que le nom + bouton ✎ pour éditer.
+// ─────────────────────────────────────────────────────────────────────────
+function _ensureDecoInlinePanel(){
+  let panel = document.getElementById('deco-inline-panel');
+  if(panel) return panel;
+  const canvas = document.getElementById('cake-canvas');
+  if(!canvas || !canvas.parentNode) return null;
+  panel = document.createElement('div');
+  panel.id = 'deco-inline-panel';
+  panel.style.cssText = 'position:absolute;z-index:50;display:none;'+
+    'background:rgba(255,255,255,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);'+
+    'border:1.5px solid #c9a84c;border-radius:12px;padding:8px 10px;'+
+    'box-shadow:0 6px 22px rgba(120,80,40,0.28);'+
+    'width:175px;font-family:Lora,serif;color:#3e1828;'+
+    'pointer-events:auto;touch-action:auto;'+
+    'transition:opacity .12s ease;';
+  // Empêcher les events touch/mouse de passer au canvas 3D (sinon rotation gâteau)
+  ['pointerdown','pointermove','pointerup','touchstart','touchmove','touchend','mousedown','mousemove','mouseup','wheel'].forEach(ev=>{
+    panel.addEventListener(ev, e=>e.stopPropagation(), {passive:false});
+  });
+  canvas.parentNode.appendChild(panel);
+  return panel;
+}
+
+function showDecoInlinePanel(idx){
+  const data = getCakeData();
+  if(!data.decos || !data.decos[idx]) return;
+  const d = data.decos[idx];
+  const panel = _ensureDecoInlinePanel();
+  if(!panel) return;
+  const allItems = DECO_CATALOG.flatMap(c=>c.items);
+  const item = allItems.find(x=>x.id===d.id)||{label:d.id};
+  const emo = DECO_EMOJI[d.id]||'🌸';
+  const colCfg = DECO_COLOR_KEYS[d.id];
+
+  // Construction du HTML : entête, couleur (optionnel), 2 sliders compacts
+  // (taille + rotation propre uniquement — la position se fait à la main sur le gâteau)
+  let html =
+    '<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #f0d8e0;">'+
+      '<span style="font-size:16px;">'+emo+'</span>'+
+      '<span style="flex:1;font-size:11px;font-weight:700;color:#7a3a52;line-height:1.15;">'+item.label+'</span>'+
+      '<button onclick="hideDecoInlinePanel()" aria-label="Fermer" style="background:#fef2f6;border:1px solid #f5d5e0;color:#7a3a52;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>'+
+    '</div>';
+
+  if(colCfg){
+    const curCol = d[colCfg.key] || colCfg.def;
+    html +=
+      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;background:#fef9ff;border:1px solid #ecd6e6;border-radius:7px;padding:4px 6px;">'+
+        '<span style="font-size:10px;color:#7a3a52;font-weight:600;flex:1;">🎨 Couleur</span>'+
+        '<input type="color" value="'+curCol+'" oninput="updateDecoProp('+idx+',\''+colCfg.key+'\',this.value);_refreshDecoInlinePanelLabels('+idx+');" style="width:28px;height:22px;border:1.5px solid #e8c0d0;border-radius:5px;cursor:pointer;padding:0;">'+
+      '</div>';
+  }
+
+  // Helper pour générer un slider compact
+  function _slider(icon,title,key,min,max,step,val,fmtFn,color){
+    const formatted = fmtFn(val);
+    return '<div data-key="'+key+'" style="display:grid;grid-template-columns:16px 1fr 36px;align-items:center;gap:5px;margin-bottom:4px;font-size:10px;color:#7a3a52;">'+
+      '<span title="'+title+'" style="text-align:center;font-size:11px;">'+icon+'</span>'+
+      '<input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+val+'" '+
+        'oninput="updateDecoProp('+idx+',\''+key+'\',this.value);_refreshDecoInlinePanelLabels('+idx+');" '+
+        'style="accent-color:'+color+';width:100%;">'+
+      '<span data-lbl="'+key+'" style="text-align:right;font-weight:600;">'+formatted+'</span>'+
+    '</div>';
+  }
+  // Uniquement Taille (zoom) et Rotation propre (spin). Position autour du gâteau,
+  // hauteur, inclinaison et étage se manipulent à la main directement sur le gâteau.
+  html += _slider('⊕','Taille','scale',0.4,2.5,0.05, d.scale||1.0, v=>Math.round(v*100)+'%','#a060c0');
+  html += _slider('⟳','Rotation','spin',-180,180,5, d.spin||0, v=>Math.round(v)+'°','#c060a0');
+
+  // Boutons d'action
+  html +=
+    '<div style="display:flex;gap:5px;margin-top:7px;padding-top:6px;border-top:1px solid #f0d8e0;">'+
+      '<button onclick="removeDecoCake('+idx+');hideDecoInlinePanel();" style="flex:1;background:#fff0f0;color:#c43a3a;border:1px solid #ffccd0;border-radius:7px;padding:5px;font-size:10px;cursor:pointer;font-family:Lora,serif;font-weight:600;">🗑️</button>'+
+      '<button onclick="hideDecoInlinePanel()" style="flex:1;background:linear-gradient(135deg,#c9a84c,#a8872e);color:#fff;border:none;border-radius:7px;padding:5px;font-size:10px;cursor:pointer;font-family:Lora,serif;font-weight:700;">✓ OK</button>'+
+    '</div>';
+
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+  panel.style.opacity = '1';
+  panel.dataset.decoIdx = String(idx);
+  // Position initiale : on lance une mise à jour immédiate
+  _updateDecoInlinePanelPos();
+}
+
+function hideDecoInlinePanel(){
+  const panel = document.getElementById('deco-inline-panel');
+  if(panel){panel.style.display='none';panel.dataset.decoIdx='';}
+  // Désélectionne aussi la déco
+  if(_3g&&_3g.decoMeshes){
+    _3g.decoMeshes.forEach(dg=>{
+      const baseScale = dg.userData.baseScale || 1.0;
+      dg.scale.setScalar(baseScale);
+    });
+  }
+  _3selectedDeco = null;
+}
+
+// Met à jour seulement les <span data-lbl="..."> et la valeur des inputs
+// (appelé pendant la manipulation des sliders pour éviter de tout reconstruire)
+function _refreshDecoInlinePanelLabels(idx){
+  const data = getCakeData();
+  if(!data.decos || !data.decos[idx]) return;
+  const d = data.decos[idx];
+  const panel = document.getElementById('deco-inline-panel');
+  if(!panel) return;
+  const fmts = {
+    scale: v=>Math.round(v*100)+'%',
+    spin: v=>Math.round(v)+'°'
+  };
+  Object.keys(fmts).forEach(k=>{
+    const lbl = panel.querySelector('span[data-lbl="'+k+'"]');
+    if(lbl && d[k]!==undefined) lbl.textContent = fmts[k](d[k]);
+  });
+}
+
+// Projette la position monde de la déco sélectionnée vers le canvas et
+// positionne le panneau à côté. Appelé chaque frame dans la boucle d'animation.
+function _updateDecoInlinePanelPos(){
+  const panel = document.getElementById('deco-inline-panel');
+  if(!panel || panel.style.display==='none') return;
+  if(!_3g || !_3g.decoMeshes || !_3c) return;
+  const idx = parseInt(panel.dataset.decoIdx||'-1',10);
+  if(isNaN(idx) || idx<0 || !_3g.decoMeshes[idx]) {hideDecoInlinePanel();return;}
+  const dg = _3g.decoMeshes[idx];
+  const T = window.THREE;
+  const v = new T.Vector3();
+  dg.getWorldPosition(v);
+  v.project(_3c);
+  const canvas = document.getElementById('cake-canvas');
+  const container = canvas && canvas.parentNode;
+  if(!canvas || !container) return;
+  const cRect = canvas.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  // Coords du point dans le repère du container (= parent positionné)
+  const cx = (v.x+1)*0.5*cRect.width + (cRect.left - containerRect.left);
+  const cy = (-v.y+1)*0.5*cRect.height + (cRect.top - containerRect.top);
+
+  // Dimensions du panneau
+  const pW = panel.offsetWidth || 230;
+  const pH = panel.offsetHeight || 200;
+  const margin = 8;
+  // Position préférée : à droite de la déco
+  let left = cx + 30;
+  let top = cy - pH/2;
+  // Si débordement à droite, on bascule à gauche
+  if(left + pW + margin > cRect.width){
+    left = cx - 30 - pW;
+  }
+  // Contraintes finales : on garde le panneau dans la zone visible du canvas
+  left = Math.max(margin, Math.min(cRect.width - pW - margin, left));
+  top  = Math.max(margin, Math.min(cRect.height - pH - margin, top));
+  panel.style.left = left+'px';
+  panel.style.top  = top+'px';
+  // Si la déco est derrière la caméra (v.z>1), on masque
+  panel.style.opacity = (v.z>1) ? '0' : '1';
+  panel.style.pointerEvents = (v.z>1) ? 'none' : 'auto';
+}
+
 function _applyDecoPosition(idx,result,commit){
   if(!result)return;
   const d=getCakeData();
@@ -6817,6 +7248,7 @@ function _raycastCakeSurface(ndcX,ndcY){
 function initDecoInteraction(canvas){
   let touchStartX=0,touchStartY=0,touchStartTime=0,didMove=false;
   let touchStartedOnDeco=false;
+  let tappedDecoIdx=null;  // idx de la déco "tapée" (avant qu'on sache si tap ou drag)
 
   // ── TOUCH : drag direct depuis une déco ────────────────────────────────────
   canvas.addEventListener('touchstart',e=>{
@@ -6825,25 +7257,23 @@ function initDecoInteraction(canvas){
     touchStartX=t.clientX;touchStartY=t.clientY;
     touchStartTime=Date.now();didMove=false;
     touchStartedOnDeco=false;
+    tappedDecoIdx=null;
 
-    // Si une déco est déjà sélectionnée, bloquer l'orbit
+    // Si une déco est déjà sélectionnée (drag-placement mode), bloquer l'orbit
     if(_3dragDecoIdx!==null){
       e.preventDefault();e.stopPropagation();
       return;
     }
-    // Sinon : voir si le doigt touche une déco — si oui, on commence à drag tout de suite
+    // Sinon : voir si le doigt touche une déco — on la mémorise pour décider
+    // au touchend si c'est un TAP (→ ouvre panel) ou un DRAG (→ repositionne).
     const{x,y}=_getCanvasNDC(canvas,t.clientX,t.clientY);
     const idx=_raycastDecos(x,y);
     if(idx!==null){
       e.preventDefault();e.stopPropagation();
-      _3dragDecoIdx=idx;
-      _3isDragging=false;
+      tappedDecoIdx=idx;
+      touchStartedOnDeco=true;
       _3auto=false;
       _highlightDeco(idx);
-      canvas.style.outline='3px solid #c9a84c';
-      const hint=document.getElementById('deco-drag-hint');
-      if(hint){hint.style.display='block';hint.textContent='✦ Glisse sur le gâteau pour placer';}
-      touchStartedOnDeco=true;
     }
   },{passive:false});
 
@@ -6851,7 +7281,19 @@ function initDecoInteraction(canvas){
     if(e.touches.length!==1)return;
     const t=e.touches[0];
     const dx=t.clientX-touchStartX,dy=t.clientY-touchStartY;
-    if(Math.hypot(dx,dy)>6)didMove=true;
+    const dist=Math.hypot(dx,dy);
+    if(dist>6)didMove=true;
+    // Si on a tapé sur une déco ET qu'on bouge > 8px → on passe en mode drag-placement
+    if(tappedDecoIdx!==null && dist>8 && _3dragDecoIdx===null){
+      _3dragDecoIdx=tappedDecoIdx;
+      _3isDragging=true;
+      canvas.style.outline='3px solid #c9a84c';
+      const hint=document.getElementById('deco-drag-hint');
+      if(hint){hint.style.display='block';hint.textContent='✦ Glisse sur le gâteau pour placer';}
+      // Cacher le panel inline pendant le drag
+      hideDecoInlinePanel();
+      _highlightDeco(_3dragDecoIdx);
+    }
     if(_3dragDecoIdx!==null){
       e.preventDefault();e.stopPropagation();
       _3isDragging=true;
@@ -6864,46 +7306,73 @@ function initDecoInteraction(canvas){
     const t=e.changedTouches[0];
     const{x,y}=_getCanvasNDC(canvas,t.clientX,t.clientY);
     if(_3dragDecoIdx!==null){
-      // Si on a glissé : commit la position
+      // En mode drag-placement actif : on commit la position
       if(_3isDragging){
         _applyDecoPosition(_3dragDecoIdx,_raycastCakeSurface(x,y),true);
+        const placedIdx=_3dragDecoIdx;
         _endDrag(true);
-      } else if(touchStartedOnDeco){
-        // Tap sans drag sur une déco déjà sélectionnée → désélectionner
-        _endDrag(false);
+        // Après placement par drag, on rouvre le panel pour ajustement fin
+        _highlightDeco(placedIdx);
+        showDecoInlinePanel(placedIdx);
       } else {
-        // Sinon laisser sélectionnée pour permettre un tap-puis-tap-ailleurs
-        // Tap court sur le gâteau (ailleurs) → place la déco là
-        if(!didMove&&(Date.now()-touchStartTime)<400){
-          _applyDecoPosition(_3dragDecoIdx,_raycastCakeSurface(x,y),true);
-        }
-        _endDrag(true);
+        _endDrag(false);
       }
       e.preventDefault();
+      return;
     }
+    // TAP simple sur une déco (sans drag) → ouvre le panel inline
+    if(tappedDecoIdx!==null && !didMove){
+      e.preventDefault();
+      showDecoInlinePanel(tappedDecoIdx);
+      tappedDecoIdx=null;
+      return;
+    }
+    // Tap sur le canvas (hors déco) avec panel ouvert → fermer le panel
+    if(!didMove && document.getElementById('deco-inline-panel') && document.getElementById('deco-inline-panel').style.display!=='none'){
+      hideDecoInlinePanel();
+    }
+    tappedDecoIdx=null;
   },{passive:false});
 
   // ── MOUSE ─────────────────────────────────────────────────────────────────
+  let mouseDownDecoIdx=null;
+  let mouseDownX=0, mouseDownY=0, mouseDidMove=false;
   canvas.addEventListener('mousedown',e=>{
+    mouseDidMove=false;mouseDownX=e.clientX;mouseDownY=e.clientY;mouseDownDecoIdx=null;
     if(_3dragDecoIdx!==null){
+      // Drag-placement actif → click place la déco
       e.preventDefault();
       const{x,y}=_getCanvasNDC(canvas,e.clientX,e.clientY);
       _applyDecoPosition(_3dragDecoIdx,_raycastCakeSurface(x,y),true);
-      _endDrag(true);return;
+      const placedIdx=_3dragDecoIdx;
+      _endDrag(true);
+      _highlightDeco(placedIdx);
+      showDecoInlinePanel(placedIdx);
+      return;
     }
     const{x,y}=_getCanvasNDC(canvas,e.clientX,e.clientY);
     const idx=_raycastDecos(x,y);
     if(idx!==null){
       e.preventDefault();
-      _3dragDecoIdx=idx;_3isDragging=false;_3auto=false;
+      mouseDownDecoIdx=idx;
+      _3auto=false;
       _highlightDeco(idx);
-      canvas.style.cursor='crosshair';canvas.style.outline='3px solid #c9a84c';
-      const hint=document.getElementById('deco-drag-hint');
-      if(hint){hint.style.display='block';hint.textContent='✦ Glisse sur le gâteau pour placer';}
     }
   },{passive:false});
 
   canvas.addEventListener('mousemove',e=>{
+    const dx=e.clientX-mouseDownX,dy=e.clientY-mouseDownY;
+    if(Math.hypot(dx,dy)>6) mouseDidMove=true;
+    // Si on a click-down sur une déco ET qu'on bouge → drag-placement
+    if(mouseDownDecoIdx!==null && mouseDidMove && _3dragDecoIdx===null){
+      _3dragDecoIdx=mouseDownDecoIdx;
+      _3isDragging=true;
+      canvas.style.cursor='crosshair';
+      canvas.style.outline='3px solid #c9a84c';
+      const hint=document.getElementById('deco-drag-hint');
+      if(hint){hint.style.display='block';hint.textContent='✦ Glisse sur le gâteau pour placer';}
+      hideDecoInlinePanel();
+    }
     if(_3dragDecoIdx===null)return;
     _3isDragging=true;
     const{x,y}=_getCanvasNDC(canvas,e.clientX,e.clientY);
@@ -6911,11 +7380,21 @@ function initDecoInteraction(canvas){
   });
 
   canvas.addEventListener('mouseup',e=>{
-    if(_3dragDecoIdx!==null&&_3isDragging){
+    if(_3dragDecoIdx!==null && _3isDragging){
       const{x,y}=_getCanvasNDC(canvas,e.clientX,e.clientY);
       _applyDecoPosition(_3dragDecoIdx,_raycastCakeSurface(x,y),true);
+      const placedIdx=_3dragDecoIdx;
       _endDrag(true);
+      _highlightDeco(placedIdx);
+      showDecoInlinePanel(placedIdx);
+    } else if(mouseDownDecoIdx!==null && !mouseDidMove){
+      // Click simple sans drag → ouvre le panel
+      showDecoInlinePanel(mouseDownDecoIdx);
+    } else if(!mouseDidMove){
+      // Click sur zone vide → ferme le panel
+      hideDecoInlinePanel();
     }
+    mouseDownDecoIdx=null;
   });
 }
 
@@ -7001,61 +7480,38 @@ function renderCake3D(){
     });
     decoPickerHTML+='</div></div>';
   });
-  // Map: id de déco -> {key: champ dans data, defaultColor, label}
-  // Définit les décos qui ont une couleur personnalisable
-  const DECO_COLOR_KEYS = {
-    'rose-rouge':   {key:'coul_rose_rouge',   def:'#B82828', label:'Couleur rose'},
-    'rose-rose':    {key:'coul_rose_rose',    def:'#E8A0BC', label:'Couleur rose'},
-    'rose-blanche': {key:'coul_rose_blanche', def:'#FAF6EE', label:'Couleur rose'},
-    'pivoine':      {key:'coul_pivoine',      def:'#F490B0', label:'Couleur pivoine'},
-    'hortensia':    {key:'coul_hortensia',    def:'#8A88C0', label:'Couleur hortensia'},
-    'orchidee':     {key:'coul_orchidee',     def:'#FAF4E8', label:'Couleur orchidée'},
-    'renoncule':    {key:'coul_renoncule',    def:'#E04578', label:'Couleur renoncule'},
-    'camelia':      {key:'coul_camelia',      def:'#C82850', label:'Couleur camélia'},
-    'dahlia':       {key:'coul_dahlia',       def:'#E890A8', label:'Couleur dahlia'},
-    'macarons':     {key:'coul_macarons',     def:'#E8458C', label:'Couleur macaron'},
-    'ruban':        {key:'coul_ruban',        def:'#E890B8', label:'Couleur ruban'},
-    'dentelle':     {key:'coul_dentelle',     def:'#FAFAF4', label:'Couleur dentelle'}
-  };
+  // (DECO_COLOR_KEYS est désormais défini en scope global, voir plus haut)
+  // ─── LISTE COMPACTE DES DÉCOS POSÉES ───────────────────────────────────────
+  // Les commandes (taille, orientation, couleur) s'ouvrent dans le panneau
+  // flottant directement sur le gâteau 3D quand on clique sur la déco.
+  // Ici on n'affiche plus que : icône + nom + bouton "éditer" + bouton "supprimer".
   let decoListHTML='';
   if(decos.length>0){
-    decoListHTML='<div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">';
+    decoListHTML='<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;">'+
+      '<div style="font-size:11px;color:#a07090;font-style:italic;margin-bottom:2px;">'+
+      '💡 Touche une décoration sur le gâteau pour ouvrir ses options'+
+      '</div>';
     decos.forEach((d,idx)=>{
-      const allItems=DECO_CATALOG.flatMap(c=>c.items);const item=allItems.find(x=>x.id===d.id)||{label:d.id};const emoI=DECO_EMOJI[d.id]||'🌸';
-      const sRow='display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px;font-size:11px;color:#7a3a52;margin-bottom:5px;';
-      const lblW='min-width:50px;text-align:right;font-weight:600;';
-      // Color picker HTML si déco personnalisable
-      const colCfg = DECO_COLOR_KEYS[d.id];
-      let colorPickerHTML='';
-      if(colCfg){
-        const curCol = d[colCfg.key] || colCfg.def;
-        colorPickerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px 8px;background:#fff;border-radius:8px;border:1px solid #e8d0e8;">'+
-          '<span style="font-size:11px;color:#7a3a52;font-weight:600;flex:1;">🎨 '+colCfg.label+'</span>'+
-          '<input type="color" value="'+curCol+'" oninput="updateDecoProp('+idx+',\''+colCfg.key+'\',this.value)" onchange="updateDecoProp('+idx+',\''+colCfg.key+'\',this.value)" style="width:36px;height:28px;border:1.5px solid #e8c0d0;border-radius:6px;cursor:pointer;padding:0;">'+
-          '<span style="font-size:10px;color:#a07090;font-family:monospace;">'+curCol+'</span>'+
-          '</div>';
-      }
-      decoListHTML+='<div style="background:#fef9ff;border:1.5px solid #e8d0e8;border-radius:12px;padding:10px 12px;">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'+
-        '<span style="font-size:24px;flex-shrink:0;">'+emoI+'</span>'+
-        '<span style="font-size:12px;font-weight:700;color:#7a3a52;flex:1;margin-left:8px;">'+item.label+'</span>'+
-        '<button onclick="removeDecoCake('+idx+')" style="background:#fff0f0;border:1px solid #ffccd0;color:#c43a3a;border-radius:20px;padding:2px 10px;font-size:12px;cursor:pointer;">✕</button></div>'+
-        colorPickerHTML+
-        '<div style="'+sRow+'">'+
-        '<span title="Position autour">↻</span><input type="range" min="0" max="359" value="'+(d.angle||0)+'" oninput="updateDecoProp('+idx+',\'angle\',this.value)" style="accent-color:#c9a84c;"><span style="'+lblW+'">'+(d.angle||0)+'°</span></div>'+
-        (data.etages>1?'<div style="'+sRow+'">'+
-        '<span title="Étage">🎂</span><input type="range" min="0" max="'+(data.etages-1)+'" step="1" value="'+(d.tier||0)+'" oninput="updateDecoProp('+idx+',\'tier\',this.value)" style="accent-color:#d4607a;"><span style="'+lblW+'">E'+(+(d.tier||0)+1)+'</span></div>':'')+
-        '<div style="'+sRow+'">'+
-        '<span title="Hauteur">↕</span><input type="range" min="0" max="1" step="0.05" value="'+(d.height||0.5)+'" oninput="updateDecoProp('+idx+',\'height\',this.value)" style="accent-color:#d4607a;"><span style="'+lblW+'">'+Math.round((d.height||0.5)*100)+'%</span></div>'+
-        '<div style="'+sRow+'">'+
-        '<span title="Taille">⊕</span><input type="range" min="0.4" max="2.5" step="0.05" value="'+(d.scale||1)+'" oninput="updateDecoProp('+idx+',\'scale\',this.value)" style="accent-color:#a060c0;"><span style="'+lblW+'">'+Math.round((d.scale||1)*100)+'%</span></div>'+
-        '<div style="'+sRow+'">'+
-        '<span title="Inclinaison">⇕</span><input type="range" min="-90" max="90" step="5" value="'+(d.tilt||0)+'" oninput="updateDecoProp('+idx+',\'tilt\',this.value)" style="accent-color:#60a0c0;"><span style="'+lblW+'">'+(d.tilt||0)+'°</span></div>'+
-        '<div style="'+sRow+'">'+
-        '<span title="Rotation">⟳</span><input type="range" min="-180" max="180" step="5" value="'+(d.spin||0)+'" oninput="updateDecoProp('+idx+',\'spin\',this.value)" style="accent-color:#c060a0;"><span style="'+lblW+'">'+(d.spin||0)+'°</span></div>'+
+      const allItems=DECO_CATALOG.flatMap(c=>c.items);
+      const item=allItems.find(x=>x.id===d.id)||{label:d.id};
+      const emoI=DECO_EMOJI[d.id]||'🌸';
+      const tierLabel = data.etages>1 ? (' · E'+((d.tier||0)+1)) : '';
+      decoListHTML+=
+        '<div style="background:#fef9ff;border:1.5px solid #e8d0e8;border-radius:10px;padding:6px 8px;display:flex;align-items:center;gap:8px;">'+
+          '<span style="font-size:20px;flex-shrink:0;">'+emoI+'</span>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-size:12px;font-weight:700;color:#7a3a52;line-height:1.2;">'+item.label+'</div>'+
+            '<div style="font-size:10px;color:#a07090;line-height:1.2;">'+
+              Math.round((d.scale||1)*100)+'% · '+(d.angle||0)+'°'+tierLabel+
+            '</div>'+
+          '</div>'+
+          '<button onclick="_highlightDeco('+idx+');showDecoInlinePanel('+idx+');document.getElementById(\'cake-canvas\').scrollIntoView({behavior:\'smooth\',block:\'center\'});" '+
+            'style="background:#fdf6e3;border:1.5px solid #c9a84c;color:#8a6010;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Lora,serif;">✎ Modifier</button>'+
+          '<button onclick="removeDecoCake('+idx+')" '+
+            'style="background:#fff0f0;border:1px solid #ffccd0;color:#c43a3a;border-radius:8px;padding:5px 9px;font-size:13px;cursor:pointer;">✕</button>'+
         '</div>';
     });
-    decoListHTML+='<button onclick="clearDecosCake()" style="background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:10px;padding:7px;font-size:12px;cursor:pointer;width:100%;">🗑️ Tout effacer</button></div>';
+    decoListHTML+='<button onclick="clearDecosCake()" style="background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:10px;padding:7px;font-size:12px;cursor:pointer;width:100%;margin-top:4px;">🗑️ Tout effacer</button></div>';
   }
 
   // ── LAYERS HTML (étages) ──────────────────────────────────────────────────────
@@ -7386,8 +7842,13 @@ function addDecoCake(id){
   d.decos.push({id,angle:Math.round(Math.random()*360),tier:0,height:0.5,face:'side'});
   saveCakeData(d);
   renderCake3D();
-  // Auto-start drag on the newly added deco
-  setTimeout(()=>startDragDeco(d.decos.length-1),100);
+  // Après ajout : on ouvre le panel inline pour ajustement immédiat
+  // (et on permet aussi de glisser pour déplacer)
+  const newIdx=d.decos.length-1;
+  setTimeout(()=>{
+    _highlightDeco(newIdx);
+    showDecoInlinePanel(newIdx);
+  },120);
 }
 function removeDecoCake(idx){
   const d=getCakeData();if(d.decos)d.decos.splice(idx,1);
@@ -7396,10 +7857,31 @@ function removeDecoCake(idx){
 function clearDecosCake(){
   const d=getCakeData();d.decos=[];saveCakeData(d);renderCake3D();
 }
+// ─── DECO COLOR KEYS — global pour utilisation par le panel inline ───────────
+const DECO_COLOR_KEYS = {
+  'rose-rouge':   {key:'coul_rose_rouge',   def:'#B82828', label:'Couleur rose'},
+  'rose-rose':    {key:'coul_rose_rose',    def:'#E8A0BC', label:'Couleur rose'},
+  'rose-blanche': {key:'coul_rose_blanche', def:'#FAF6EE', label:'Couleur rose'},
+  'pivoine':      {key:'coul_pivoine',      def:'#F490B0', label:'Couleur pivoine'},
+  'hortensia':    {key:'coul_hortensia',    def:'#8A88C0', label:'Couleur hortensia'},
+  'orchidee':     {key:'coul_orchidee',     def:'#FAF4E8', label:'Couleur orchidée'},
+  'renoncule':    {key:'coul_renoncule',    def:'#E04578', label:'Couleur renoncule'},
+  'camelia':      {key:'coul_camelia',      def:'#C82850', label:'Couleur camélia'},
+  'dahlia':       {key:'coul_dahlia',       def:'#E890A8', label:'Couleur dahlia'},
+  'macarons':     {key:'coul_macarons',     def:'#E8458C', label:'Couleur macaron'},
+  'ruban':        {key:'coul_ruban',        def:'#E890B8', label:'Couleur ruban'},
+  'dentelle':     {key:'coul_dentelle',     def:'#FAFAF4', label:'Couleur dentelle'}
+};
+
 function updateDecoProp(idx,key,val){
   const d=getCakeData();
   if(d.decos&&d.decos[idx]){
-    d.decos[idx][key]=Number(val);
+    // Les clés couleur (coul_*) sont des strings hex, pas des nombres
+    if(key&&key.indexOf('coul_')===0){
+      d.decos[idx][key]=String(val);
+    } else {
+      d.decos[idx][key]=Number(val);
+    }
     saveCakeData(d);
     buildCake3D(d);
     // Update inline label next to the slider (sibling span)
