@@ -224,6 +224,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
+    fetchSignInMethodsForEmail,
     signOut,
     onAuthStateChanged,
     setPersistence,
@@ -256,6 +257,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
+    fetchSignInMethodsForEmail,
     signOut,
     onAuthStateChanged
   };
@@ -604,14 +606,43 @@ async function doForgotPassword(){
   const link=document.getElementById('forgot-link');
   if(link){link.textContent='Envoi en cours...';link.style.pointerEvents='none';link.style.opacity='0.6';}
   try{
-    const {sendPasswordResetEmail}=window.firebaseAuthLib;
-    // ──────────────────────────────────────────────────────────────────────
-    // actionCodeSettings : essentiel pour que l'email parte vraiment
-    // - url : page de retour après reset (doit être dans Authorized Domains
-    //         dans la console Firebase → Auth → Settings)
-    // - handleCodeInApp : false → le lien ouvre le flow Firebase standard,
-    //                     pas besoin de Dynamic Links côté mobile
-    // ──────────────────────────────────────────────────────────────────────
+    const {sendPasswordResetEmail, fetchSignInMethodsForEmail}=window.firebaseAuthLib;
+
+    // ─── ÉTAPE 1 : Vérifier que le compte existe vraiment dans Firebase Auth ───
+    // sendPasswordResetEmail peut retourner un "succès" silencieux même pour
+    // un email qui n'a pas de compte (sécurité Firebase pour pas révéler
+    // qui est inscrit). Du coup l'utilisateur ne reçoit rien et croit que
+    // ça marche. On vérifie d'abord avec fetchSignInMethodsForEmail.
+    if(fetchSignInMethodsForEmail){
+      try{
+        const methods = await fetchSignInMethodsForEmail(window.firebaseAuth, email);
+        console.log('[doForgotPassword] sign-in methods for', email, ':', methods);
+        if(!methods || methods.length===0){
+          err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
+          err.innerHTML='⚠️ Aucun compte trouvé avec <b>'+email+'</b>.<br>'+
+            '<span style="font-size:11px;">Vérifie l\'orthographe ou crée un compte avec "Créer un compte".</span>';
+          err.style.display='block';
+          if(link){link.textContent='Mot de passe oublié ?';link.style.pointerEvents='auto';link.style.opacity='1';}
+          return;
+        }
+        // Si le compte existe mais n'a pas de méthode 'password' (compte créé via
+        // Google par exemple), prévenir.
+        if(methods.indexOf('password')<0 && methods.length>0){
+          err.style.background='#fff8e1';err.style.borderColor='#ffd700';err.style.color='#8a6010';
+          err.innerHTML='⚠️ Ce compte n\'utilise pas de mot de passe (méthode : '+methods.join(', ')+').<br>'+
+            '<span style="font-size:11px;">Connecte-toi avec cette méthode au lieu d\'utiliser le mot de passe.</span>';
+          err.style.display='block';
+          if(link){link.textContent='Mot de passe oublié ?';link.style.pointerEvents='auto';link.style.opacity='1';}
+          return;
+        }
+      }catch(checkErr){
+        // Si la vérification échoue, on continue quand même avec l'envoi
+        // (peut-être que fetchSignInMethodsForEmail est désactivé côté projet).
+        console.warn('[doForgotPassword] fetchSignInMethodsForEmail failed (continuing anyway):', checkErr.code, checkErr.message);
+      }
+    }
+
+    // ─── ÉTAPE 2 : Envoi de l'email de reset ───
     let continueUrl;
     try{
       // Origine actuelle de l'app (sert de page de retour après reset)
@@ -623,11 +654,17 @@ async function doForgotPassword(){
       url: continueUrl,
       handleCodeInApp: false
     };
+    console.log('[doForgotPassword] Sending reset to', email, 'with continueUrl:', continueUrl);
     await sendPasswordResetEmail(window.firebaseAuth, email, actionCodeSettings);
+    console.log('[doForgotPassword] sendPasswordResetEmail OK (Firebase accepted)');
     err.style.background='#f0fff0';err.style.borderColor='#c8e6c9';err.style.color='#2e7d32';
     err.innerHTML='✓ Email de réinitialisation envoyé à <b>'+email+'</b>.<br>'+
-      '<span style="font-size:11px;">⏱️ Délai : 1 à 5 min. Vérifie aussi tes <b>spams/courriers indésirables</b>.<br>'+
-      'Expéditeur : <code style="background:#e8f5e8;padding:1px 4px;border-radius:3px;">noreply@wedding-dream-eb422.firebaseapp.com</code></span>';
+      '<span style="font-size:11px;">⏱️ Délai : 1 à 5 min. Vérifie aussi tes <b>spams</b>.<br>'+
+      '📧 Expéditeur : <code style="background:#e8f5e8;padding:1px 4px;border-radius:3px;font-size:10px;">noreply@wedding-dream-eb422.firebaseapp.com</code><br><br>'+
+      '<b>Si rien n\'arrive après 10 min :</b><br>'+
+      '1. Vérifie dans Firebase Console → Authentication → Templates → "Password reset" qu\'il est activé<br>'+
+      '2. Vérifie que ton domaine ('+(window.location.hostname||'app')+') est dans Authentication → Settings → Authorized domains<br>'+
+      '3. Vérifie le quota d\'envoi : Firebase free tier = 5 emails/jour max</span>';
     err.style.display='block';
   } catch(e){
     console.error('[doForgotPassword] code:', e.code, '| message:', e.message);
@@ -1325,6 +1362,7 @@ function addTableEl(table){
     else if(isSq){const side=Math.floor(i/(n/4));const idx=i%(Math.ceil(n/4));const sp=SQ/Math.ceil(n/4);if(side===0){sx=(cx-SQ/2)+idx*sp+sp/2-13;sy=cy-SQ/2-16;}else if(side===1){sx=cx+SQ/2+2;sy=(cy-SQ/2)+idx*sp+sp/2-13;}else if(side===2){sx=(cx-SQ/2)+idx*sp+sp/2-13;sy=cy+SQ/2+2;}else{sx=cx-SQ/2-16;sy=(cy-SQ/2)+idx*sp+sp/2-13;}}
     else{const half=Math.ceil(n/2);const isTop=i<half;const idx=isTop?i:i-half;const sp=TW/half;sx=(cx-TW/2)+idx*sp+sp/2-13;sy=isTop?cy-TH/2-16:cy+TH/2+2;}
     const seat=document.createElement('div');
+    seat.className='tp-seat';
     const hidden=(table.hiddenSeats||[]).includes(i);
     const g=GUESTS.find(g=>g.seatTableId===table.id&&g.seatIdx===i);
     seat.style.cssText=`position:absolute;left:${sx}px;top:${sy}px;width:26px;height:26px;border-radius:50%;border:${hidden?`2px dashed ${br}`:'2.5px solid #fff'};background:${hidden?'rgba(255,255,255,.35)':g?(g.cote==='p1'?'#e8a0b0':'#a0b0e8'):'#f5e0e8'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.13);z-index:3;color:${hidden?br:'#fff'};user-select:none;`;
@@ -1335,8 +1373,14 @@ function addTableEl(table){
   }
 
   // Drag — account for scale/pan transform
+  // CORRECTIF : on exclut aussi les sièges (.tp-seat) du déclenchement de drag,
+  // sinon setPointerCapture absorbe le clic et openSeatModal ne se déclenche
+  // jamais (= impossible d'ajouter un invité à une chaise).
   div.addEventListener('pointerdown',e=>{
-    if(tpPanMode||e.target===lbl||e.target===del||e.target.tagName==='INPUT')return;
+    if(tpPanMode)return;
+    if(e.target===lbl||e.target===del||e.target.tagName==='INPUT')return;
+    // Exclure les sièges : ils ont leur propre onclick
+    if(e.target.classList && e.target.classList.contains('tp-seat'))return;
     div.setPointerCapture(e.pointerId);
     const rect=canvas.getBoundingClientRect();
     const t=TABLES.find(t=>t.id===table.id);
@@ -1618,7 +1662,7 @@ function renderMenu(){
     ${[
       {nom:'🥂 Champagne', calc: Math.ceil(total/3), unit:'bouteilles', note:'1 bouteille / 3 invités (principalement vin d\'honneur)'},
       {nom:'🍹 Cocktails', calc: total*2, unit:'verres', note:'2 verres / invité (principalement vin d\'honneur)'},
-      {nom:'🍺 Bières', calc: total*2, unit:'bouteilles', note:'2 bouteilles / invité (principalement vin d\'honneur)'},
+      {nom:'🍺 Bières', calc: total, unit:'bouteilles', note:'1 bouteille / invité (principalement vin d\'honneur)'},
       {nom:'🥃 Spiritueux', calc: Math.ceil(total/13), unit:'bouteilles', note:'1 bouteille / 13 invités'},
       {nom:'🍾 Vin blanc', calc: Math.ceil(r_count/4), unit:'bouteilles', note:'1 bouteille / 4 invités (principalement pour le repas)'},
       {nom:'🍷 Vin rouge', calc: Math.ceil(r_count/3), unit:'bouteilles', note:'1 bouteille / 3 invités (principalement pour le repas)'},
@@ -4395,172 +4439,117 @@ function _buildPetal(T, color, len, wid, curl, shapeType, thickness){
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ROSES — 3 stades d'épanouissement distincts
+// ROSES — Helper unifié inspiré des roses des photos de mariage réelles.
+// stage : 0 = bouton presque fermé (rose rouge serrée)
+//         1 = mi-ouverte (rose rose, spirale visible)
+//         2 = épanouie ouverte (rose blanche, pétales rabattus en cascade)
+// Construction : spirale phylotaxique de pétales depuis l'extérieur vers le cœur,
+// avec resserrement progressif et inclinaison croissante.
 // ═══════════════════════════════════════════════════════════════════════
-
-// ROSE BLANCHE — épanouie ouverte, pétales étalés
-function _decoRoseBlanche(T, data){
+function _buildRoseFlower(T, baseCol, deepCol, stage){
   const g = new T.Group();
+
+  // Paramètres dépendant du stade
+  // outerOpen : ouverture des pétales extérieurs (rad). 2=épanouie, 1=mi, 0.3=bouton
+  // layers : nombre de couches de pétales
+  // petalsByLayer : 7-9 par couche en moyenne (rappelle une vraie rose)
+  const openByStage  = [-0.30, -0.65, -1.05]; // rotation.x couche extérieure
+  const closeByStage = [-2.30, -2.10, -1.85]; // rotation.x couche cœur
+  const sizeByStage  = [0.082, 0.090, 0.098]; // longueur pétale extérieur
+  const outerOpen  = openByStage[stage];
+  const innerClose = closeByStage[stage];
+  const outerLen   = sizeByStage[stage];
+
+  // 5 couches de l'extérieur vers le cœur
+  // Chaque couche : tilt progressivement plus fermé, taille progressivement plus petite,
+  // rayon progressivement plus petit, hauteur Y progressivement plus haute.
+  const layers = [
+    {n: 8, tiltMix: 0.00, rad: 0.030, y: -0.022, sizeFactor: 1.00, shape: stage===2?'wide':'narrow', colMix: 0.0},
+    {n: 7, tiltMix: 0.25, rad: 0.020, y: -0.008, sizeFactor: 0.86, shape: stage===2?'wide':'narrow', colMix: 0.0},
+    {n: 6, tiltMix: 0.50, rad: 0.013, y:  0.006, sizeFactor: 0.72, shape: 'narrow',                 colMix: 0.0},
+    {n: 5, tiltMix: 0.75, rad: 0.007, y:  0.018, sizeFactor: 0.58, shape: 'narrow',                 colMix: 0.50},
+    {n: 4, tiltMix: 0.92, rad: 0.003, y:  0.028, sizeFactor: 0.46, shape: 'narrow',                 colMix: 0.80}
+  ];
+
+  layers.forEach((L, li) => {
+    // Décalage spiralé pour ne pas aligner les couches
+    const phaseShift = li * 0.62;
+    // Inclinaison interpolée entre outerOpen (extérieur) et innerClose (cœur)
+    const tilt = outerOpen + (innerClose - outerOpen) * L.tiltMix;
+    // Couleur : intérieur légèrement plus sombre que l'extérieur
+    let col;
+    if(L.colMix > 0){
+      const rMix = baseCol.r*(1-L.colMix) + deepCol.r*L.colMix;
+      const gMix = baseCol.g*(1-L.colMix) + deepCol.g*L.colMix;
+      const bMix = baseCol.b*(1-L.colMix) + deepCol.b*L.colMix;
+      col = new T.Color(rMix, gMix, bMix);
+    } else {
+      col = baseCol;
+    }
+
+    for(let i=0; i<L.n; i++){
+      const a = (i/L.n)*Math.PI*2 + phaseShift;
+      const len = outerLen * L.sizeFactor * (0.96 + Math.random()*0.08);
+      const wid = len * (0.78 + Math.random()*0.10);
+      // Curl : pétale plus courbé sur les couches internes (plus enveloppant)
+      const curl = 0.30 + L.tiltMix*0.55 + Math.random()*0.10;
+      const p = _buildPetal(T, col, len, wid, curl, L.shape);
+      p.position.set(
+        Math.cos(a) * L.rad,
+        L.y + (Math.random()-0.5)*0.003,
+        Math.sin(a) * L.rad
+      );
+      // Orientation : pétale tourné vers l'extérieur (sa face avant vers a)
+      p.rotation.y = a + Math.PI;
+      // Inclinaison vers le centre (négatif = rabattu)
+      p.rotation.x = tilt + (Math.random()-0.5)*0.10;
+      // Petite torsion aléatoire pour réalisme
+      p.rotation.z = (Math.random()-0.5)*0.20;
+      g.add(p);
+    }
+  });
+
+  // Cœur final : 2-3 micro-pétales très serrés rabattus à plat (ferme le sommet
+  // pour qu'on ne voie pas de vide en regardant la rose de dessus).
+  const heartCount = stage===0 ? 3 : (stage===1 ? 2 : 2);
+  for(let i=0; i<heartCount; i++){
+    const a = (i/heartCount)*Math.PI*2;
+    const p = _buildPetal(T, deepCol, 0.024, 0.020, 1.15, 'narrow');
+    p.position.set(
+      Math.cos(a)*0.0008,
+      0.035 + (stage===0?0.004:0),
+      Math.sin(a)*0.0008
+    );
+    p.rotation.y = a + Math.PI;
+    p.rotation.x = innerClose - 0.20;
+    g.add(p);
+  }
+
+  return g;
+}
+
+// ROSE BLANCHE — épanouie ouverte, pétales étalés en cascade (photo 7 référence)
+function _decoRoseBlanche(T, data){
   const baseHex = (data && data.coul_rose_blanche) || '#FAF6EE';
   const baseCol = new T.Color(baseHex);
-  
-  for(let i=0; i<9; i++){
-    const a = (i/9) * Math.PI*2 + Math.random()*0.08;
-    const p = _buildPetal(T, baseCol, 0.085, 0.085, 0.22, 'wide');
-    p.position.set(Math.cos(a)*0.032, -0.028, Math.sin(a)*0.032);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -0.30;
-    p.rotation.z = (Math.random()-0.5)*0.15;
-    g.add(p);
-  }
-  for(let i=0; i<7; i++){
-    const a = (i/7) * Math.PI*2 + 0.35;
-    const p = _buildPetal(T, baseCol, 0.075, 0.075, 0.28, 'wide');
-    p.position.set(Math.cos(a)*0.022, -0.012, Math.sin(a)*0.022);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -0.55;
-    p.rotation.z = (Math.random()-0.5)*0.15;
-    g.add(p);
-  }
-  for(let i=0; i<6; i++){
-    const a = (i/6) * Math.PI*2 + 0.7;
-    const p = _buildPetal(T, baseCol, 0.062, 0.060, 0.38, 'wide');
-    p.position.set(Math.cos(a)*0.015, 0.000, Math.sin(a)*0.015);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -0.85;
-    g.add(p);
-  }
-  for(let i=0; i<5; i++){
-    const a = (i/5) * Math.PI*2 + 1.0;
-    const p = _buildPetal(T, baseCol, 0.048, 0.045, 0.50, 'narrow');
-    p.position.set(Math.cos(a)*0.008, 0.012, Math.sin(a)*0.008);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.15;
-    g.add(p);
-  }
-  for(let i=0; i<3; i++){
-    const a = (i/3) * Math.PI*2;
-    const p = _buildPetal(T, _darken(baseCol, 0.04), 0.030, 0.028, 0.55, 'narrow');
-    p.position.set(Math.cos(a)*0.003, 0.020, Math.sin(a)*0.003);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.40;
-    g.add(p);
-  }
-  return g;
+  const deepCol = _darken(baseCol, 0.06);
+  return _buildRoseFlower(T, baseCol, deepCol, 2);
 }
 
-// ROSE ROSE — mi-ouverte avec spirale visible, bicolore
+// ROSE ROSE — mi-ouverte, spirale visible (photo 2 référence — couleur rose mauve)
 function _decoRoseRose(T, data){
-  const g = new T.Group();
   const baseHex = (data && data.coul_rose_rose) || '#E8A0BC';
   const baseCol = new T.Color(baseHex);
-  const edgeCol = _darken(baseCol, 0.08);
-  const innerCol = _lighten(baseCol, 0.08);
-  
-  for(let i=0; i<7; i++){
-    const a = (i/7) * Math.PI*2;
-    const p = _buildPetal(T, edgeCol, 0.080, 0.068, 0.40, 'narrow');
-    p.position.set(Math.cos(a)*0.022, -0.018, Math.sin(a)*0.022);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -0.55;
-    g.add(p);
-  }
-  for(let i=0; i<6; i++){
-    const a = (i/6) * Math.PI*2 + 0.45;
-    const p = _buildPetal(T, baseCol, 0.072, 0.062, 0.50, 'narrow');
-    p.position.set(Math.cos(a)*0.016, -0.005, Math.sin(a)*0.016);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -0.85;
-    g.add(p);
-  }
-  for(let i=0; i<5; i++){
-    const a = (i/5) * Math.PI*2 + 0.9;
-    const p = _buildPetal(T, baseCol, 0.060, 0.052, 0.62, 'narrow');
-    p.position.set(Math.cos(a)*0.011, 0.008, Math.sin(a)*0.011);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.10;
-    g.add(p);
-  }
-  for(let i=0; i<4; i++){
-    const a = (i/4) * Math.PI*2 + 1.3;
-    const p = _buildPetal(T, innerCol, 0.045, 0.040, 0.68, 'narrow');
-    p.position.set(Math.cos(a)*0.006, 0.018, Math.sin(a)*0.006);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.30;
-    g.add(p);
-  }
-  for(let i=0; i<3; i++){
-    const a = (i/3) * Math.PI*2 + 1.7;
-    const p = _buildPetal(T, innerCol, 0.030, 0.027, 0.70, 'narrow');
-    p.position.set(Math.cos(a)*0.003, 0.026, Math.sin(a)*0.003);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.50;
-    g.add(p);
-  }
-  return g;
+  const deepCol = _darken(baseCol, 0.10);
+  return _buildRoseFlower(T, baseCol, deepCol, 1);
 }
 
-// ROSE ROUGE — bouton fermé, sphérique compact
+// ROSE ROUGE — bouton presque fermé, compact (photo 17 référence — roses cascade)
 function _decoRoseRouge(T, data){
-  const g = new T.Group();
   const baseHex = (data && data.coul_rose_rouge) || '#B82828';
   const baseCol = new T.Color(baseHex);
-  const deepCol = _darken(baseCol, 0.10);
-  
-  for(let i=0; i<6; i++){
-    const a = (i/6) * Math.PI*2;
-    const p = _buildPetal(T, baseCol, 0.075, 0.060, 0.55, 'narrow');
-    p.position.set(Math.cos(a)*0.018, -0.012, Math.sin(a)*0.018);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -0.75;
-    g.add(p);
-  }
-  for(let i=0; i<6; i++){
-    const a = (i/6) * Math.PI*2 + 0.5;
-    const p = _buildPetal(T, baseCol, 0.068, 0.055, 0.65, 'narrow');
-    p.position.set(Math.cos(a)*0.012, 0.000, Math.sin(a)*0.012);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.05;
-    g.add(p);
-  }
-  for(let i=0; i<5; i++){
-    const a = (i/5) * Math.PI*2 + 0.9;
-    const p = _buildPetal(T, baseCol, 0.058, 0.050, 0.70, 'narrow');
-    p.position.set(Math.cos(a)*0.008, 0.012, Math.sin(a)*0.008);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.30;
-    g.add(p);
-  }
-  for(let i=0; i<5; i++){
-    const a = (i/5) * Math.PI*2 + 1.3;
-    const p = _buildPetal(T, deepCol, 0.050, 0.044, 0.75, 'narrow');
-    p.position.set(Math.cos(a)*0.005, 0.024, Math.sin(a)*0.005);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.50;
-    g.add(p);
-  }
-  // Couche 5 : pétales très enveloppants qui se rabattent vers le centre
-  for(let i=0; i<4; i++){
-    const a = (i/4) * Math.PI*2 + 1.7;
-    const p = _buildPetal(T, deepCol, 0.042, 0.038, 0.95, 'narrow');
-    p.position.set(Math.cos(a)*0.002, 0.030, Math.sin(a)*0.002);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -2.05;  // très penché vers l'intérieur pour fermer le bouton
-    g.add(p);
-  }
-  // Couche 6 (bouton intérieur) : 3 micro-pétales très serrés qui couvrent le sommet,
-  // remplace l'ancien cylindre pour donner un aspect "bouton fermé" sans aucune
-  // primitive géométrique visible.
-  const deepColDarker = _darken(deepCol, 0.05);
-  for(let i=0; i<3; i++){
-    const a = (i/3) * Math.PI*2 + 0.3;
-    const p = _buildPetal(T, deepColDarker, 0.028, 0.024, 1.10, 'narrow');
-    p.position.set(Math.cos(a)*0.0006, 0.040, Math.sin(a)*0.0006);
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = -2.30;  // rabattu quasi à plat, forme la pointe du bouton
-    g.add(p);
-  }
-  return g;
+  const deepCol = _darken(baseCol, 0.12);
+  return _buildRoseFlower(T, baseCol, deepCol, 0);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -4656,50 +4645,58 @@ function _decoPivoine(T, data){
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// DAHLIA — pétales rayonnants pointus comme aiguilles
+// DAHLIA — pétales lamellaires en rosace, dégradé extérieur clair → centre vif
+// (inspiré photo "5 dahlias blanc et rose pastel" — pétales fins arrondis)
 // ═══════════════════════════════════════════════════════════════════════
 function _decoDahlia(T, data){
   const g = new T.Group();
   const baseHex = (data && data.coul_dahlia) || '#F2A8B8';
   const baseCol = new T.Color(baseHex);
-  const innerCol = _lighten(baseCol, 0.10);
+  // Dégradé : extérieur très pâle (presque blanc/crème) → intérieur saturé
+  const outerCol = _lighten(baseCol, 0.22);
+  const midCol   = _lighten(baseCol, 0.05);
+  const innerCol = baseCol;
   const heartCol = _darken(baseCol, 0.15);
-  
+
+  // 7 couches concentriques, taille décroissante, rotation décalée pour effet rosace
   const layers = [
-    {n: 14, R: 0.005, len: 0.060, wid: 0.014, tilt: -0.10, Y: 0.000, col: baseCol},
-    {n: 12, R: 0.004, len: 0.052, wid: 0.013, tilt: -0.25, Y: 0.005, col: baseCol},
-    {n: 10, R: 0.003, len: 0.044, wid: 0.012, tilt: -0.45, Y: 0.010, col: baseCol},
-    {n: 9,  R: 0.003, len: 0.036, wid: 0.011, tilt: -0.65, Y: 0.014, col: innerCol},
-    {n: 8,  R: 0.002, len: 0.028, wid: 0.010, tilt: -0.90, Y: 0.018, col: innerCol},
-    {n: 6,  R: 0.002, len: 0.020, wid: 0.009, tilt: -1.15, Y: 0.022, col: heartCol}
+    {n: 16, R: 0.024, len: 0.052, wid: 0.018, tilt: -0.05, Y: -0.002, col: outerCol, curl: 0.18, shape: 'narrow'},
+    {n: 14, R: 0.018, len: 0.046, wid: 0.017, tilt: -0.25, Y:  0.004, col: outerCol, curl: 0.22, shape: 'narrow'},
+    {n: 12, R: 0.013, len: 0.040, wid: 0.016, tilt: -0.45, Y:  0.010, col: midCol,   curl: 0.28, shape: 'narrow'},
+    {n: 10, R: 0.009, len: 0.034, wid: 0.014, tilt: -0.70, Y:  0.016, col: midCol,   curl: 0.36, shape: 'narrow'},
+    {n: 8,  R: 0.006, len: 0.028, wid: 0.012, tilt: -0.95, Y:  0.022, col: innerCol, curl: 0.45, shape: 'narrow'},
+    {n: 7,  R: 0.004, len: 0.022, wid: 0.010, tilt: -1.20, Y:  0.027, col: innerCol, curl: 0.55, shape: 'narrow'},
+    {n: 5,  R: 0.002, len: 0.016, wid: 0.008, tilt: -1.50, Y:  0.031, col: heartCol, curl: 0.65, shape: 'narrow'}
   ];
-  
+
   layers.forEach((L, li) => {
     for(let i=0; i<L.n; i++){
-      const a = (i/L.n) * Math.PI*2 + li*0.25;
-      const p = _buildPetal(T, L.col, L.len, L.wid, 0.12, 'spike');
-      p.position.set(Math.cos(a)*L.R, L.Y, Math.sin(a)*L.R);
+      const a = (i/L.n) * Math.PI*2 + li*0.18;
+      const len = L.len * (0.94 + Math.random()*0.08);
+      const wid = L.wid * (0.94 + Math.random()*0.08);
+      const p = _buildPetal(T, L.col, len, wid, L.curl, L.shape);
+      p.position.set(
+        Math.cos(a) * L.R,
+        L.Y + (Math.random()-0.5)*0.002,
+        Math.sin(a) * L.R
+      );
       p.rotation.y = a + Math.PI;
-      p.rotation.x = L.tilt;
+      p.rotation.x = L.tilt + (Math.random()-0.5)*0.08;
+      p.rotation.z = (Math.random()-0.5)*0.10;
       g.add(p);
     }
   });
-  
-  for(let i=0; i<8; i++){
-    const a = (i/8) * Math.PI*2;
-    const p = _buildPetal(T, heartCol, 0.012, 0.007, 0.30, 'spike');
-    p.position.set(Math.cos(a)*0.002, 0.025, Math.sin(a)*0.002);
+
+  // Petite "couronne" centrale plus dense (cœur compact)
+  for(let i=0; i<5; i++){
+    const a = (i/5) * Math.PI*2 + 0.7;
+    const p = _buildPetal(T, heartCol, 0.012, 0.008, 0.75, 'narrow');
+    p.position.set(Math.cos(a)*0.0015, 0.034, Math.sin(a)*0.0015);
     p.rotation.y = a + Math.PI;
-    p.rotation.x = -1.45;
+    p.rotation.x = -1.75;
     g.add(p);
   }
-  
-  const center = new T.Mesh(
-    new T.SphereGeometry(0.006, 8, 6),
-    new T.MeshStandardMaterial({color: heartCol, roughness: 0.55})
-  );
-  center.position.y = 0.030;
-  g.add(center);
+
   return g;
 }
 
@@ -6965,17 +6962,26 @@ function _ensureDecoInlinePanel(){
   if(panel) return panel;
   const canvas = document.getElementById('cake-canvas');
   if(!canvas || !canvas.parentNode) return null;
+  // S'assurer que le parent du canvas est en position:relative pour que
+  // notre position:absolute soit relative au canvas et pas à toute la page
+  const parent = canvas.parentNode;
+  const cs = window.getComputedStyle(parent);
+  if(cs.position==='static'){
+    parent.style.position='relative';
+  }
   panel = document.createElement('div');
   panel.id = 'deco-inline-panel';
+  // Position figée en bas à gauche du canvas
   panel.style.cssText = 'position:absolute;z-index:50;display:none;'+
+    'left:8px;bottom:8px;'+
     'background:rgba(255,255,255,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);'+
     'border:1.5px solid #c9a84c;border-radius:12px;padding:8px 10px;'+
     'box-shadow:0 6px 22px rgba(120,80,40,0.28);'+
-    'width:175px;font-family:Lora,serif;color:#3e1828;'+
+    'width:160px;font-family:Lora,serif;color:#3e1828;'+
     'pointer-events:auto;touch-action:auto;'+
-    'transition:opacity .12s ease;';
+    'transition:opacity .15s ease;';
   // Empêcher les events touch/mouse de passer au canvas 3D (sinon rotation gâteau)
-  ['pointerdown','pointermove','pointerup','touchstart','touchmove','touchend','mousedown','mousemove','mouseup','wheel'].forEach(ev=>{
+  ['pointerdown','pointermove','pointerup','touchstart','touchmove','touchend','mousedown','mousemove','mouseup','wheel','click'].forEach(ev=>{
     panel.addEventListener(ev, e=>e.stopPropagation(), {passive:false});
   });
   canvas.parentNode.appendChild(panel);
@@ -7073,47 +7079,15 @@ function _refreshDecoInlinePanelLabels(idx){
   });
 }
 
-// Projette la position monde de la déco sélectionnée vers le canvas et
-// positionne le panneau à côté. Appelé chaque frame dans la boucle d'animation.
+// Le panneau est maintenant figé en bas à gauche du canvas (CSS left:8px;bottom:8px).
+// Cette fonction reste pour compatibilité mais ne fait plus rien.
 function _updateDecoInlinePanelPos(){
   const panel = document.getElementById('deco-inline-panel');
   if(!panel || panel.style.display==='none') return;
-  if(!_3g || !_3g.decoMeshes || !_3c) return;
+  if(!_3g || !_3g.decoMeshes) return;
   const idx = parseInt(panel.dataset.decoIdx||'-1',10);
   if(isNaN(idx) || idx<0 || !_3g.decoMeshes[idx]) {hideDecoInlinePanel();return;}
-  const dg = _3g.decoMeshes[idx];
-  const T = window.THREE;
-  const v = new T.Vector3();
-  dg.getWorldPosition(v);
-  v.project(_3c);
-  const canvas = document.getElementById('cake-canvas');
-  const container = canvas && canvas.parentNode;
-  if(!canvas || !container) return;
-  const cRect = canvas.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-  // Coords du point dans le repère du container (= parent positionné)
-  const cx = (v.x+1)*0.5*cRect.width + (cRect.left - containerRect.left);
-  const cy = (-v.y+1)*0.5*cRect.height + (cRect.top - containerRect.top);
-
-  // Dimensions du panneau
-  const pW = panel.offsetWidth || 230;
-  const pH = panel.offsetHeight || 200;
-  const margin = 8;
-  // Position préférée : à droite de la déco
-  let left = cx + 30;
-  let top = cy - pH/2;
-  // Si débordement à droite, on bascule à gauche
-  if(left + pW + margin > cRect.width){
-    left = cx - 30 - pW;
-  }
-  // Contraintes finales : on garde le panneau dans la zone visible du canvas
-  left = Math.max(margin, Math.min(cRect.width - pW - margin, left));
-  top  = Math.max(margin, Math.min(cRect.height - pH - margin, top));
-  panel.style.left = left+'px';
-  panel.style.top  = top+'px';
-  // Si la déco est derrière la caméra (v.z>1), on masque
-  panel.style.opacity = (v.z>1) ? '0' : '1';
-  panel.style.pointerEvents = (v.z>1) ? 'none' : 'auto';
+  // Position figée — rien à recalculer.
 }
 
 function _applyDecoPosition(idx,result,commit){
