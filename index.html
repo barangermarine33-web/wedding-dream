@@ -274,6 +274,170 @@ const ld=(k,d)=>{try{const v=localStorage.getItem(k);return v!==null?JSON.parse(
 // ── THEME ────────────────────────────────────────────────────────────────────
 const pk="#d4607a",pm="#f0a8b8",sf="#fef2f6",br="#f5d5e0",tx="#3e1828",tm="#7a3a52",tl="#b07a90",gn="#5a8a6a",rd="#c43a3a",am="#c47a2a",gd="#c9a84c",gl="#e8d48a",bg2="#deb96a";
 
+// ── MODALES CUSTOM (remplacent confirm/alert/prompt natifs) ──────────────────
+// Toutes asynchrones, retournent une Promise.
+// Style cohérent avec l'app (couleurs roses/dorées, font Lora, animation douce).
+function _appModalBase(){
+  // Conteneur unique réutilisable
+  let m = document.getElementById('app-modal-root');
+  if(m) return m;
+  m = document.createElement('div');
+  m.id = 'app-modal-root';
+  m.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;'+
+    'align-items:center;justify-content:center;padding:18px;'+
+    'background:rgba(62,24,40,0.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);'+
+    'font-family:Lora,serif;';
+  document.body.appendChild(m);
+  return m;
+}
+// Pop-up générique. opts: {title?, message, icon?, buttons:[{label, value, primary?, danger?}], input?:{placeholder, value}}
+function appModal(opts){
+  return new Promise(resolve=>{
+    const root = _appModalBase();
+    const isInput = !!opts.input;
+    const icon = opts.icon || '';
+    const headerBg = opts.danger ? 'linear-gradient(135deg,#c43a3a,#a02828)' : 'linear-gradient(135deg,#d4607a,#c9a84c)';
+    let inputHtml = '';
+    if(isInput){
+      const v = (opts.input.value||'').replace(/"/g,'&quot;');
+      const ph = (opts.input.placeholder||'').replace(/"/g,'&quot;');
+      inputHtml = '<input id="app-modal-input" type="text" value="'+v+'" placeholder="'+ph+'" '+
+        'style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid '+br+';border-radius:10px;font-size:14px;font-family:Lora,serif;color:'+tx+';margin-top:10px;outline:none;background:#fff;">';
+    }
+    const btnsHtml = opts.buttons.map((b,i)=>{
+      let style;
+      if(b.primary){
+        style = 'background:linear-gradient(135deg,'+pk+','+gd+');color:#fff;border:none;';
+      } else if(b.danger){
+        style = 'background:#fff0f0;color:'+rd+';border:1.5px solid #ffccd0;';
+      } else {
+        style = 'background:#fff;color:'+tm+';border:1.5px solid '+br+';';
+      }
+      return '<button data-i="'+i+'" style="'+style+'flex:1;padding:11px 14px;border-radius:11px;font-size:13px;font-weight:700;font-family:Lora,serif;cursor:pointer;min-height:42px;">'+
+        (b.label||'')+'</button>';
+    }).join('');
+    root.innerHTML =
+      '<div role="dialog" aria-modal="true" style="background:#fff;border-radius:18px;max-width:380px;width:100%;'+
+        'box-shadow:0 18px 50px rgba(62,24,40,0.35);overflow:hidden;animation:appModalIn .18s ease-out;">'+
+        // Header
+        '<div style="background:'+headerBg+';padding:14px 18px;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;">'+
+          (icon ? '<span style="font-size:18px;">'+icon+'</span>' : '')+
+          '<span>'+(opts.title || 'Wedding Dream')+'</span>'+
+        '</div>'+
+        // Body
+        '<div style="padding:16px 18px;color:'+tx+';font-size:14px;line-height:1.45;">'+
+          (opts.message ? '<div>'+opts.message+'</div>' : '')+
+          inputHtml+
+        '</div>'+
+        // Footer
+        '<div style="padding:0 18px 16px;display:flex;gap:8px;">'+
+          btnsHtml+
+        '</div>'+
+      '</div>';
+    // Animation keyframes (insérée 1 seule fois)
+    if(!document.getElementById('app-modal-style')){
+      const st = document.createElement('style');
+      st.id = 'app-modal-style';
+      st.textContent = '@keyframes appModalIn{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}';
+      document.head.appendChild(st);
+    }
+    root.style.display = 'flex';
+    // Focus auto sur input ou bouton primary
+    setTimeout(()=>{
+      if(isInput){
+        const inp = document.getElementById('app-modal-input');
+        if(inp){inp.focus();inp.select();}
+      } else {
+        const primaryIdx = opts.buttons.findIndex(b=>b.primary);
+        if(primaryIdx>=0){
+          const btn = root.querySelector('button[data-i="'+primaryIdx+'"]');
+          if(btn) btn.focus();
+        }
+      }
+    }, 20);
+    const close = (val)=>{
+      root.style.display = 'none';
+      root.innerHTML = '';
+      resolve(val);
+    };
+    root.querySelectorAll('button[data-i]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        const i = parseInt(btn.dataset.i, 10);
+        if(isInput && opts.buttons[i] && opts.buttons[i].value === true){
+          const inp = document.getElementById('app-modal-input');
+          close(inp ? inp.value : '');
+        } else {
+          close(opts.buttons[i] ? opts.buttons[i].value : null);
+        }
+      });
+    });
+    // Enter = valider (premier bouton primary), Esc = annuler (premier bouton avec value=false/null)
+    const onKey = (e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        const primaryIdx = opts.buttons.findIndex(b=>b.primary);
+        if(primaryIdx>=0){
+          document.removeEventListener('keydown', onKey);
+          const b = opts.buttons[primaryIdx];
+          if(isInput && b.value === true){
+            const inp = document.getElementById('app-modal-input');
+            close(inp ? inp.value : '');
+          } else {
+            close(b.value);
+          }
+        }
+      } else if(e.key==='Escape'){
+        e.preventDefault();
+        document.removeEventListener('keydown', onKey);
+        // Trouver bouton "Annuler" (typiquement value=false ou null)
+        const cancelIdx = opts.buttons.findIndex(b=>b.value===false||b.value===null);
+        close(cancelIdx>=0 ? opts.buttons[cancelIdx].value : null);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+  });
+}
+// Helpers de plus haut niveau, retournent une Promise.
+function appAlert(message, title){
+  return appModal({
+    title: title || 'Information',
+    icon: 'ℹ️',
+    message: String(message||''),
+    buttons: [{label:'OK', value:true, primary:true}]
+  });
+}
+function appConfirm(message, title, opts){
+  opts = opts || {};
+  return appModal({
+    title: title || 'Confirmation',
+    icon: opts.icon || (opts.danger ? '⚠️' : '💬'),
+    message: String(message||''),
+    danger: !!opts.danger,
+    buttons: [
+      {label: opts.cancelLabel || 'Annuler', value:false},
+      {label: opts.okLabel || (opts.danger ? 'Confirmer' : 'OK'), value:true, primary: !opts.danger, danger: !!opts.danger}
+    ]
+  });
+}
+function appPrompt(message, defaultValue, title, opts){
+  opts = opts || {};
+  return appModal({
+    title: title || 'Saisie',
+    icon: opts.icon || '✏️',
+    message: String(message||''),
+    input: {value: defaultValue||'', placeholder: opts.placeholder||''},
+    buttons: [
+      {label:'Annuler', value:null},
+      {label: opts.okLabel || 'OK', value:true, primary:true}
+    ]
+  });
+}
+// Expose globalement
+window.appAlert = appAlert;
+window.appConfirm = appConfirm;
+window.appPrompt = appPrompt;
+window.appModal = appModal;
+
 // ── STATE ────────────────────────────────────────────────────────────────────
 let USER=null, cdInt=null, currentTab=0;
 let TASKS=[], BUDGET=[], GUESTS=[], TABLES=[], VENDORS_FAV=[], VENDORS_CHO=[], ALBUM=[], NOTES='', MENU=[];
@@ -713,8 +877,8 @@ function doLogout(){
   }
 }
 
-function deleteAccount(){
-  if(!confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Toutes vos données locales seront effacées.')) return;
+async function deleteAccount(){
+  if(!await appConfirm('Êtes-vous sûr de vouloir supprimer votre compte ? Toutes vos données locales seront effacées.')) return;
   if(!USER) return;
   // Remove all localStorage keys for this user
   const email = USER.email;
@@ -734,7 +898,7 @@ function deleteAccount(){
       deleteDoc(doc(window.firebaseDB,'mariages',albumId)).catch(e=>console.warn(e));
     }catch(e){console.warn(e);}
   }
-  alert('Compte supprimé. Vous allez être redirigé.');
+  await appAlert('Compte supprimé. Vous allez être redirigé.');
   location.reload();
 }
 
@@ -948,8 +1112,8 @@ function addTask(){
 }
 function toggleTask(id){TASKS=TASKS.map(t=>t.id===id?{...t,done:!t.done}:t);saveTasks();renderChecklist();}
 function removeTask(id){TASKS=TASKS.filter(t=>t.id!==id);saveTasks();renderChecklist();}
-function resetTasks(){
-  if(confirm('Restaurer toutes les tâches par défaut ? Vos tâches personnalisées seront conservées.')){
+async function resetTasks(){
+  if(await appConfirm('Restaurer toutes les tâches par défaut ? Vos tâches personnalisées seront conservées.')){
     const custom = TASKS.filter(t=>t.month==='Personnalisé');
     const existingTexts = new Set(TASKS.map(t=>t.text));
     // Add all missing default tasks (keeping done state of existing ones)
@@ -1007,8 +1171,8 @@ function renderBudget(){
   }).join('')}`;
 }
 function addBudget(){const cat=el('bgt-cat').value.trim();if(!cat)return;BUDGET.push({id:Date.now(),cat,est:Number(el('bgt-est').value)||0,reel:0,paye:0});el('bgt-cat').value='';el('bgt-est').value='';saveBudget();renderBudget();}
-function resetBudget(){
-  if(confirm('Restaurer toutes les catégories par défaut ? Les doublons et catégories ajoutées seront supprimés.')){
+async function resetBudget(){
+  if(await appConfirm('Restaurer toutes les catégories par défaut ? Les doublons et catégories ajoutées seront supprimés.')){
     BUDGET = DEF_BUDGET.map(def=>({...def,reel:0,paye:0}));
     saveBudget();renderBudget();
   }
@@ -1474,8 +1638,8 @@ function renderVendors(){
   renderFavs();renderChosen();
 }
 
-function geoSearch(){
-  if(!navigator.geolocation){alert('Géolocalisation non disponible.');return;}
+async function geoSearch(){
+  if(!navigator.geolocation){await appAlert('Géolocalisation non disponible.');return;}
   const btn=el('vnd-geo-btn');btn.textContent='📍 Localisation...';btn.disabled=true;
   navigator.geolocation.getCurrentPosition(
     pos=>{
@@ -1485,7 +1649,7 @@ function geoSearch(){
       const query=el('vnd-loc')?.value.trim()||'prestataire mariage';
       searchVendorsWithLocation(query,pos.coords.latitude,pos.coords.longitude);
     },
-    err=>{btn.textContent='📍 Autour de moi';btn.disabled=false;alert('Impossible d\'obtenir votre position. Vérifiez les permissions.');}
+    err=>{btn.textContent='📍 Autour de moi';btn.disabled=false;appAlert('Impossible d\'obtenir votre position. Vérifiez les permissions.');}
   );
 }
 
@@ -1739,8 +1903,8 @@ function addMenuItem(si){
   saveMenu();renderMenu();
 }
 function saveMenu(){sv('menu_'+USER.email,MENU);}
-function resetMenu(){
-  if(confirm('Réinitialiser le menu par défaut ? Vos modifications seront perdues.')){
+async function resetMenu(){
+  if(await appConfirm('Réinitialiser le menu par défaut ? Vos modifications seront perdues.')){
     MENU = DEF_MENU.map(s=>({...s, items:s.items.map(i=>({...i}))}));
     saveMenu(); renderMenu();
   }
@@ -1751,8 +1915,8 @@ function addMenuCategory(){
   MENU.push({id:Date.now(),section:inp.value.trim(),items:[]});
   inp.value='';saveMenu();renderMenu();
 }
-function removeMenuCategory(si){
-  if(MENU[si].items.length>0 && !confirm('Supprimer cette catégorie et tous ses plats ?'))return;
+async function removeMenuCategory(si){
+  if(MENU[si].items.length>0 && !await appConfirm('Supprimer cette catégorie et tous ses plats ?'))return;
   MENU.splice(si,1);saveMenu();renderMenu();
 }
 function renameMenuCategory(si){
@@ -1825,8 +1989,8 @@ function getDecoData(){
 }
 
 function saveDecoData(data){ sv('deco_custom_'+USER.email, data); }
-function resetDecorations(){
-  if(confirm('Réinitialiser les décorations par défaut ? Vos modifications seront perdues.')){
+async function resetDecorations(){
+  if(await appConfirm('Réinitialiser les décorations par défaut ? Vos modifications seront perdues.')){
     sv('deco_custom_'+USER.email, {});
     sv('deco_'+USER.email, {});
     renderDecorations();
@@ -1839,10 +2003,10 @@ function addDecoCategory(){
   data[inp.value.trim()]=[];
   saveDecoData(data);inp.value='';renderDecorations();
 }
-function removeDecoCategory(cat){
+async function removeDecoCategory(cat){
   const data=getDecoData();
   const count=(data[cat]||[]).length;
-  if(count>0&&!confirm('Supprimer cette catégorie et ses '+count+' éléments ?'))return;
+  if(count>0&&!await appConfirm('Supprimer cette catégorie et ses '+count+' éléments ?'))return;
   delete data[cat];saveDecoData(data);renderDecorations();
 }
 function renameDecoCategory(cat,catIdx){
@@ -2016,9 +2180,9 @@ function renderAlbum(){
   if(inp) inp.value = driveUrl;
 }
 
-function saveDriveUrl(){
+async function saveDriveUrl(){
   const url = document.getElementById('drive-url-input')?.value.trim();
-  if(!url){alert('Veuillez entrer un lien.');return;}
+  if(!url){await appAlert('Veuillez entrer un lien.');return;}
   sv('drive_url_'+USER.email, url);
   if(window.firebaseDB && window.firebaseLib){
     const {doc, setDoc} = window.firebaseLib;
@@ -2030,21 +2194,21 @@ function saveDriveUrl(){
 
 function getCurrentDriveUrl(){ return ld('drive_url_'+USER.email, ''); }
 
-function shareCurrentDriveUrl(){
+async function shareCurrentDriveUrl(){
   const url = getCurrentDriveUrl();
-  if(!url){alert('Aucun lien enregistré.');return;}
+  if(!url){await appAlert('Aucun lien enregistré.');return;}
   if(navigator.share){navigator.share({title:'Album photo de notre mariage',text:'Ajoutez vos photos !',url});}
   else{copyCurrentDriveUrl();}
 }
 
-function copyCurrentDriveUrl(){
+async function copyCurrentDriveUrl(){
   const url = getCurrentDriveUrl();
-  if(!url){alert('Aucun lien enregistré.');return;}
+  if(!url){await appAlert('Aucun lien enregistré.');return;}
   try{
     const ta=document.createElement('textarea');ta.value=url;ta.style.cssText='position:fixed;opacity:0;';
     document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);
-    alert('Lien copié !');
-  }catch(e){prompt('Copiez ce lien :',url);}
+    await appAlert('Lien copié !');
+  }catch(e){await appPrompt('Copiez ce lien :',url);}
 }
 
 // ── NOTES ─────────────────────────────────────────────────────────────────────
@@ -2119,9 +2283,9 @@ window.addEventListener('load', function(){
 });
 
 // ── ACCOUNT DELETION ─────────────────────────────────────────────────────────
-function confirmDeleteAccount(){
-  if(!confirm('Êtes-vous sûr de vouloir supprimer définitivement votre compte et toutes vos données ? Cette action est irréversible.'))return;
-  const confirmText=prompt('Tapez SUPPRIMER pour confirmer :');
+async function confirmDeleteAccount(){
+  if(!await appConfirm('Êtes-vous sûr de vouloir supprimer définitivement votre compte et toutes vos données ? Cette action est irréversible.'))return;
+  const confirmText=await appPrompt('Tapez SUPPRIMER pour confirmer :');
   if(confirmText!=='SUPPRIMER')return;
   // Delete all user data from localStorage
   if(USER&&USER.email){
@@ -2130,7 +2294,7 @@ function confirmDeleteAccount(){
     localStorage.removeItem('sess');
     localStorage.removeItem('u_'+ld('sess',''));
   }
-  alert('Compte supprimé. À bientôt.');
+  await appAlert('Compte supprimé. À bientôt.');
   location.reload();
 }
 
@@ -2628,8 +2792,8 @@ const DECO_CATALOG = [
 
 // ── MULTI-PRESET SAVE ─────────────────────────────────────────────────────────
 // Nouveau gâteau : reset complet vers les valeurs par défaut
-function newCakeDesign(){
-  if(!confirm('Créer un nouveau gâteau ? Le gâteau actuel sera réinitialisé (les designs sauvegardés ne seront pas affectés).'))return;
+async function newCakeDesign(){
+  if(!await appConfirm('Créer un nouveau gâteau ? Le gâteau actuel sera réinitialisé (les designs sauvegardés ne seront pas affectés).'))return;
   // Default cake : 2 étages, rond, lisse, pas d'effet, pas de décos, pas de drip, pas de topper
   const d={
     etages:2,
@@ -2658,17 +2822,17 @@ function newCakeDesign(){
   saveCakeData(d);renderCake3D();
 }
 // Supprimer un design sauvegardé : efface le slot ET reset le gâteau actuel
-function deleteCakeSlot(i){
+async function deleteCakeSlot(i){
   const slots=getCakeSlots();
   if(!slots[i])return;
-  if(!confirm('Supprimer définitivement ce design sauvegardé ? Le gâteau actuel sera aussi réinitialisé.'))return;
+  if(!await appConfirm('Supprimer définitivement ce design sauvegardé ? Le gâteau actuel sera aussi réinitialisé.'))return;
   slots[i]=null;
   sv('cakeslots_'+USER.email,slots);
   // Reset current cake to default
   newCakeDesignSilent();
 }
-function newCakeDesign(){
-  if(!confirm('Créer un nouveau gâteau ? Le design actuel sera perdu (sauf si tu l\'as sauvegardé).'))return;
+async function newCakeDesign(){
+  if(!await appConfirm('Créer un nouveau gâteau ? Le design actuel sera perdu (sauf si tu l\'as sauvegardé).'))return;
   newCakeDesignSilent();
 }
 // Reset sans confirmation (pour deleteCakeSlot)
@@ -2698,23 +2862,23 @@ function saveCakeSlot(i,nom){
   sv('cakeslots_'+USER.email,slots);
   renderCake3D(); // refresh to show updated gallery
 }
-function promptSaveCakeSlot(){
+async function promptSaveCakeSlot(){
   const slots=getCakeSlots();
   // Find first empty slot, or ask which to overwrite
   let target=-1;
   for(let i=0;i<3;i++){if(!slots[i]){target=i;break;}}
   if(target===-1){
-    const choice=prompt('Les 3 emplacements sont occupés.\nEntrez 1, 2 ou 3 pour écraser un design :');
+    const choice=await appPrompt('Les 3 emplacements sont occupés.\nEntrez 1, 2 ou 3 pour écraser un design :');
     if(!choice)return;
     target=parseInt(choice)-1;
     if(target<0||target>2)return;
   }
-  const nom=prompt('Nom de ce design :','Mon gâteau '+(target+1));
+  const nom=await appPrompt('Nom de ce design :','Mon gâteau '+(target+1));
   if(nom===null)return;
   saveCakeSlot(target,nom||'Design '+(target+1));
 }
-function loadCakeSlot(i){
-  const slots=getCakeSlots();if(!slots[i])return alert('Pas de design sauvegardé ici');
+async function loadCakeSlot(i){
+  const slots=getCakeSlots();if(!slots[i])return await appAlert('Pas de design sauvegardé ici');
   saveCakeData(slots[i]);renderCake3D();}
 // ── THREE.JS 3D CAKE ENGINE — Professional PBR Renderer ────────────────────
 let _3r=null,_3s=null,_3c=null,_3g=null,_3id=null;
@@ -2921,161 +3085,144 @@ function buildCake3D(data){
 
     if(texId==='spatule'){
       // ════════════════════════════════════════════════════════════════════
-      // PALETTE KNIFE / TEXTURED BUTTERCREAM
-      // Inspiré de la photo de référence : patchs irréguliers de glaçage
-      // étalés à la spatule dans des directions aléatoires, avec des
-      // arêtes vives où la spatule a été levée → effet "stucco / plâtre".
+      // TEXTURE SPATULE — Coups de palette lisses et allongés
+      // Référence photo Etsy : des traits de spatule longs, lisses, qui se
+      // chevauchent en directions variées. Pas de polygones nets — chaque
+      // trait est une ellipse allongée avec une légère crête centrale.
       // ════════════════════════════════════════════════════════════════════
-      // Couleur de base du glaçage (avec très subtile variation par patch)
-      const segCount = segs || 40;
-
-      // Nombre de patchs proportionnel à la surface visible (max 130 pour rester fluide sur mobile)
+      // Densité réduite + tailles plus grandes = aspect "raclé" plutôt qu'"écailleux"
       const circumference = 2 * Math.PI * ((rB + rT) / 2);
       const surfaceArea = circumference * tH;
-      const patchDensity = 95; // patchs par unité de surface (équilibre rendu/perf)
-      const nPatches = Math.max(50, Math.min(130, Math.round(surfaceArea * patchDensity)));
+      const patchDensity = 38; // beaucoup moins dense qu'avant (95 → 38)
+      const nPatches = Math.max(28, Math.min(70, Math.round(surfaceArea * patchDensity)));
 
-      // ─── Helper : construit un patch (slab irrégulier) ──────────────────
-      // Renvoie un Mesh à coller tangentiellement à la surface du cylindre.
-      function _buildSpatulaPatch(sizeW, sizeH, thick, colorTint){
-        // Shape irrégulier — 5 à 7 sommets autour d'un centre, avec
-        // courbures aléatoires pour un contour "déchiré" naturel.
-        const nCorners = 5 + Math.floor(Math.random()*3); // 5..7
+      // ─── Helper : construit un trait de spatule (ellipse très allongée, lisse) ───
+      function _buildSpatulaStroke(sizeW, sizeH, thick, colorTint){
+        // Forme ELLIPSE avec petites variations sur les bords (pas de polygone à coins)
+        // → bords parfaitement lisses, le pétale ne ressemble pas à un cube
         const shape = new T.Shape();
         const halfW = sizeW/2, halfH = sizeH/2;
-        const pts = [];
-        for(let k=0; k<nCorners; k++){
-          const a = (k/nCorners)*Math.PI*2 + (Math.random()-0.5)*0.4;
-          // Rayon variable selon l'angle pour forme allongée (ratio w/h)
-          const baseR = (Math.abs(Math.cos(a))*halfW + Math.abs(Math.sin(a))*halfH);
-          const r = baseR * (0.78 + Math.random()*0.35);
-          pts.push([Math.cos(a)*r, Math.sin(a)*r]);
+        // On échantillonne l'ellipse en 32 points avec petite perturbation radiale (~5%)
+        const nSamples = 32;
+        for(let k=0; k<=nSamples; k++){
+          const a = (k/nSamples) * Math.PI*2;
+          const radNoise = 1.0 + (Math.random()-0.5)*0.08;
+          const x = Math.cos(a) * halfW * radNoise;
+          const y = Math.sin(a) * halfH * radNoise;
+          if(k===0) shape.moveTo(x, y);
+          else shape.lineTo(x, y);
         }
-        // Tracé du contour avec petites courbes de Bézier entre sommets
-        shape.moveTo(pts[0][0], pts[0][1]);
-        for(let k=0; k<nCorners; k++){
-          const p1 = pts[k];
-          const p2 = pts[(k+1)%nCorners];
-          const mx = (p1[0]+p2[0])/2 + (Math.random()-0.5)*sizeW*0.06;
-          const my = (p1[1]+p2[1])/2 + (Math.random()-0.5)*sizeH*0.06;
-          shape.quadraticCurveTo(mx, my, p2[0], p2[1]);
-        }
-        // Extrude : épaisseur faible mais bevel marqué pour le ridge vif
+        // Bevel minimal pour éviter l'effet "cube" : on veut un trait qui s'élève en douceur depuis la surface
         const extrudeSettings = {
           depth: thick,
           bevelEnabled: true,
-          bevelSegments: 2,
-          bevelSize: thick*0.55,
-          bevelThickness: thick*0.40,
-          curveSegments: 6
+          bevelSegments: 3,
+          bevelSize: thick*0.85,      // bevel large → bords arrondis "qui fondent" dans le cake
+          bevelThickness: thick*0.85, // bevel haut → forme dôme plutôt que pavé
+          curveSegments: 18           // beaucoup de segments → contours parfaitement lisses
         };
         const geo = new T.ExtrudeGeometry(shape, extrudeSettings);
-        // Variation organique : sur une face, on rabaisse légèrement un côté
-        // pour simuler le "lift" de la spatule (asymétrie du ridge).
+
+        // Déformation : crête centrale qui suit l'axe long du trait
+        // (la spatule laisse une trace plus haute au milieu, fine sur les côtés)
         const pos = geo.attributes.position;
-        const liftDir = Math.random()*Math.PI*2;
-        const lx = Math.cos(liftDir), ly = Math.sin(liftDir);
         for(let i=0; i<pos.count; i++){
-          const x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
-          if(z > thick*0.5){
-            // Sur la face avant : ridge plus haut côté "lift", plus bas opposé
-            const dot = (x*lx + y*ly) / Math.max(0.001, Math.hypot(halfW, halfH));
-            pos.setZ(i, z + dot*thick*0.45);
-          } else if(z < -0.001){
-            // Face arrière : légère ondulation pour ne pas être plate
-            pos.setZ(i, z - Math.random()*thick*0.05);
+          const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+          if(z > thick*0.3){
+            // Sur la face avant : monter d'autant plus qu'on est près de l'axe long (x=0)
+            const xFrac = x / halfW;          // -1 .. 1 le long de la largeur
+            const yFrac = y / halfH;          // -1 .. 1 le long de la hauteur
+            // Crête : haute au centre (yFrac=0), basse aux extrémités
+            const crete = Math.cos(yFrac * Math.PI*0.5) * Math.cos(xFrac * Math.PI*0.4);
+            // Variation aléatoire douce le long du trait (effet "main pas parfaite")
+            const wobble = Math.sin(yFrac * 3.7 + xFrac * 1.3) * 0.15;
+            pos.setZ(i, z + crete*thick*0.50 + wobble*thick*0.18);
           }
         }
         geo.computeVertexNormals();
         const mat = new T.MeshStandardMaterial({
           color: colorTint,
-          roughness: 0.86 + Math.random()*0.08,
+          roughness: 0.82,   // un peu moins mat = aspect "buttercream légèrement satiné"
           metalness: 0.0,
           flatShading: false
         });
         return new T.Mesh(geo, mat);
       }
 
-      // ─── Génération des patchs : positionnés autour du cylindre ─────────
-      const patchOuterPush = 0.004; // distance de la surface (l'épaisseur compte aussi)
+      // ─── Génération des coups de spatule ─────────────────────────────────
+      const patchOuterPush = 0.001; // pratiquement collé à la surface
       for(let p = 0; p < nPatches; p++){
-        // Position aléatoire le long du tier (avec une légère grille pour éviter trop d'agrégats)
+        // Position aléatoire le long du tier, avec un peu de stratification verticale
+        // pour éviter les zones vides ou les bouchons
         const angRand = Math.random() * Math.PI * 2;
         const hFrac = Math.random();
         const yPos = curY + hFrac * tH;
         const radAtY = rB + (rT - rB) * hFrac;
 
-        // Taille du patch — varie entre petite tache et grande coulée
-        const sizeBase = 0.045 + Math.random()*0.075; // 4.5cm à 12cm visuels
-        // Allongé OU compact, au hasard
-        const aspect = 0.7 + Math.random()*1.4;
-        const sizeW = sizeBase * aspect;
-        const sizeH = sizeBase / Math.sqrt(aspect);
-        // Épaisseur du patch (relief)
-        const thick = 0.014 + Math.random()*0.020; // 1.4 à 3.4 mm visuels
+        // Taille des traits : longs et étroits (signature palette knife)
+        // Largeur : entre 3 et 7 cm (vue rapprochée du gâteau)
+        // Longueur (sizeH) : 1.5 à 3x la largeur → vraiment allongé
+        const sizeW = 0.030 + Math.random()*0.040;
+        const sizeH = sizeW * (1.6 + Math.random()*1.6);
+        // Épaisseur faible : on veut une crête, pas un pavé
+        const thick = 0.006 + Math.random()*0.010;
 
-        // Teinte légèrement variable (très subtile)
-        const vBright = 0.93 + Math.random()*0.10; // ombres et clairs
-        // Glaçage blanc cassé / coloré : on teint la couleur de base
-        const tintR = Math.min(1, rgb.r * vBright);
-        const tintG = Math.min(1, rgb.g * vBright);
-        const tintB = Math.min(1, rgb.b * vBright);
-        const tint = new T.Color(tintR, tintG, tintB);
+        // Teinte : variation très subtile pour éviter l'effet "patchwork" coloré
+        const vBright = 0.96 + Math.random()*0.07;
+        const tint = new T.Color(
+          Math.min(1, rgb.r * vBright),
+          Math.min(1, rgb.g * vBright),
+          Math.min(1, rgb.b * vBright)
+        );
 
-        const patch = _buildSpatulaPatch(sizeW, sizeH, thick, tint);
+        const stroke = _buildSpatulaStroke(sizeW, sizeH, thick, tint);
 
-        // Pour un cylindre rond : placer tangent à la surface en (angRand, yPos)
+        // Placement tangentiel à la surface du cylindre
         if(isRound){
-          const cosA = Math.cos(angRand), sinA = Math.sin(angRand);
-          // Position : sur la surface du cylindre, légèrement poussée vers l'extérieur
-          patch.position.set(
+          stroke.position.set(
             Math.sin(angRand) * (radAtY + patchOuterPush),
             yPos,
             Math.cos(angRand) * (radAtY + patchOuterPush)
           );
-          // Orienter le patch tangent au cylindre : son axe +Z doit pointer vers l'extérieur radial
-          // Rotation Y pour pointer dans la bonne direction
-          patch.rotation.y = angRand;
-          // Rotation Z aléatoire (autour de la normale) : direction du coup de spatule
-          patch.rotation.z = Math.random() * Math.PI * 2;
-          // Légère inclinaison X/Y pour casser l'uniformité
-          patch.rotation.x = (Math.random()-0.5) * 0.20;
+          stroke.rotation.y = angRand;
+          // Direction du coup de spatule : variable, mais on biaise un peu vers les
+          // diagonales pour reproduire le style des photos (rarement purement vertical/horizontal)
+          stroke.rotation.z = Math.random() * Math.PI * 2;
+          stroke.rotation.x = (Math.random()-0.5) * 0.12;
         } else if(isHex){
-          // Hexagone : choisir la face la plus proche et y coller le patch
           const faceIdx = Math.floor(angRand / (Math.PI/3));
           const faceAng = faceIdx * (Math.PI/3) + Math.PI/6;
-          const cosF = Math.cos(faceAng), sinF = Math.sin(faceAng);
-          patch.position.set(
+          stroke.position.set(
             Math.sin(faceAng) * (radAtY*0.866 + patchOuterPush),
             yPos,
             Math.cos(faceAng) * (radAtY*0.866 + patchOuterPush)
           );
-          patch.rotation.y = faceAng;
-          patch.rotation.z = Math.random() * Math.PI * 2;
-          patch.rotation.x = (Math.random()-0.5) * 0.20;
+          stroke.rotation.y = faceAng;
+          stroke.rotation.z = Math.random() * Math.PI * 2;
+          stroke.rotation.x = (Math.random()-0.5) * 0.12;
         } else {
           // Carré : choisir une des 4 faces
           const side = Math.floor(Math.random()*4);
           const faceAng = side * Math.PI / 2;
           const offsetR = rB * 0.96 + patchOuterPush;
-          patch.position.set(
+          stroke.position.set(
             Math.sin(faceAng) * offsetR + (side%2===0?(Math.random()-0.5)*rB*1.5:0),
             yPos,
             Math.cos(faceAng) * offsetR + (side%2===1?(Math.random()-0.5)*rB*1.5:0)
           );
-          patch.rotation.y = faceAng;
-          patch.rotation.z = Math.random() * Math.PI * 2;
-          patch.rotation.x = (Math.random()-0.5) * 0.20;
+          stroke.rotation.y = faceAng;
+          stroke.rotation.z = Math.random() * Math.PI * 2;
+          stroke.rotation.x = (Math.random()-0.5) * 0.12;
         }
-        patch.castShadow = true;
-        patch.receiveShadow = true;
-        _3g.add(patch);
+        stroke.castShadow = true;
+        stroke.receiveShadow = true;
+        _3g.add(stroke);
       }
 
       // ─── Rendre le cylindre de base légèrement mat & plus rugueux ───────
       // (pour qu'il "lise" avec les patchs et n'ait pas l'air d'un fond brillant)
       if(tier && tier.material){
-        tier.material.roughness = 0.88;
+        tier.material.roughness = 0.84;
         tier.material.metalness = 0.0;
       }
     }
@@ -3160,44 +3307,57 @@ function buildCake3D(data){
       }
     }
     if(texId==='spatule'){
-      // Top : quelques patchs irréguliers à plat (effet glaçage étalé sur le dessus)
-      const nTopPatches = 8 + Math.floor(Math.random()*6); // 8..13
+      // Top : coups de spatule à plat sur le dessus (même style que les côtés)
+      const nTopPatches = 6 + Math.floor(Math.random()*5); // 6..10
       for(let w=0; w<nTopPatches; w++){
         const aT = Math.random()*Math.PI*2;
-        const rT2 = Math.random()*rT*0.85;
-        const sizeBase = 0.05 + Math.random()*0.07;
-        const aspect = 0.7 + Math.random()*1.2;
-        const sw = sizeBase * aspect, sh = sizeBase / Math.sqrt(aspect);
-        const thick = 0.010 + Math.random()*0.012;
-        // Forme irrégulière (réutilise la même technique que pour les patchs latéraux)
-        const nCorners = 5 + Math.floor(Math.random()*3);
+        const rT2 = Math.random()*rT*0.78;
+        // Traits longs et étroits, comme sur les côtés
+        const sw = 0.030 + Math.random()*0.035;
+        const sh = sw * (1.4 + Math.random()*1.4);
+        const thick = 0.006 + Math.random()*0.008;
+        // Forme ellipse lisse (32 points avec micro-perturbation)
         const shape = new T.Shape();
-        const pts=[];
-        for(let k=0;k<nCorners;k++){
-          const a=(k/nCorners)*Math.PI*2 + (Math.random()-0.5)*0.4;
-          const baseR=(Math.abs(Math.cos(a))*sw/2+Math.abs(Math.sin(a))*sh/2);
-          const r=baseR*(0.78+Math.random()*0.35);
-          pts.push([Math.cos(a)*r, Math.sin(a)*r]);
+        const halfW = sw/2, halfH = sh/2;
+        const nSamples = 32;
+        for(let k=0; k<=nSamples; k++){
+          const a = (k/nSamples) * Math.PI*2;
+          const radNoise = 1.0 + (Math.random()-0.5)*0.08;
+          const x = Math.cos(a) * halfW * radNoise;
+          const y = Math.sin(a) * halfH * radNoise;
+          if(k===0) shape.moveTo(x, y);
+          else shape.lineTo(x, y);
         }
-        shape.moveTo(pts[0][0],pts[0][1]);
-        for(let k=0;k<nCorners;k++){
-          const p1=pts[k], p2=pts[(k+1)%nCorners];
-          const mx=(p1[0]+p2[0])/2+(Math.random()-0.5)*sw*0.06;
-          const my=(p1[1]+p2[1])/2+(Math.random()-0.5)*sh*0.06;
-          shape.quadraticCurveTo(mx,my,p2[0],p2[1]);
-        }
-        const tg=new T.ExtrudeGeometry(shape,{
-          depth:thick,bevelEnabled:true,bevelSegments:2,
-          bevelSize:thick*0.55,bevelThickness:thick*0.4,curveSegments:6
+        const tg = new T.ExtrudeGeometry(shape, {
+          depth: thick,
+          bevelEnabled: true,
+          bevelSegments: 3,
+          bevelSize: thick*0.85,
+          bevelThickness: thick*0.85,
+          curveSegments: 18
         });
-        const v=0.93+Math.random()*0.10;
-        const tm=new T.Mesh(tg,new T.MeshStandardMaterial({
-          color:new T.Color(capCol.r*v,capCol.g*v,capCol.b*v),
-          roughness:0.86+Math.random()*0.08,metalness:0.0}));
-        tm.rotation.x=-Math.PI/2; // à plat
-        tm.rotation.z=Math.random()*Math.PI*2;
+        // Crête centrale légère (même déformation que les côtés)
+        const tpos = tg.attributes.position;
+        for(let i=0; i<tpos.count; i++){
+          const x = tpos.getX(i), y = tpos.getY(i), z = tpos.getZ(i);
+          if(z > thick*0.3){
+            const xFrac = x / halfW;
+            const yFrac = y / halfH;
+            const crete = Math.cos(yFrac * Math.PI*0.5) * Math.cos(xFrac * Math.PI*0.4);
+            const wobble = Math.sin(yFrac * 3.7 + xFrac * 1.3) * 0.15;
+            tpos.setZ(i, z + crete*thick*0.50 + wobble*thick*0.18);
+          }
+        }
+        tg.computeVertexNormals();
+        const v = 0.96 + Math.random()*0.07;
+        const tm = new T.Mesh(tg, new T.MeshStandardMaterial({
+          color: new T.Color(capCol.r*v, capCol.g*v, capCol.b*v),
+          roughness: 0.82, metalness: 0.0
+        }));
+        tm.rotation.x = -Math.PI/2; // à plat
+        tm.rotation.z = Math.random()*Math.PI*2;
         tm.position.set(Math.cos(aT)*rT2, curY+tH+capH+0.001, Math.sin(aT)*rT2);
-        tm.castShadow=true;
+        tm.castShadow = true;
         _3g.add(tm);
       }
     }
@@ -4422,106 +4582,140 @@ function _buildPetal(T, color, len, wid, curl, shapeType, thickness){
   for(let i=0; i<pos.count; i++){
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
     const yFrac = Math.max(0, y / len);
-    const newZ = z - Math.sin(yFrac * Math.PI * 0.65) * curl * len;
+    const xFrac = x / w;
+
+    // 1. COURBURE PRINCIPALE en cuillère : le pétale s'incurve vers l'arrière
+    //    progressivement de la base au bout. Multiplicateur "curl" piloté par le caller.
+    //    On utilise sin(yFrac * PI * 0.6) pour avoir une vraie forme concave (pas une simple inclinaison).
+    let newZ = z - Math.sin(yFrac * Math.PI * 0.60) * curl * len * 1.15;
+
     if(shapeType !== 'spike'){
-      const xFrac = x / w;
-      const ondulation = Math.sin(xFrac * Math.PI * 1.2) * 0.002 * yFrac;
-      pos.setZ(i, newZ + ondulation);
-    } else {
-      pos.setZ(i, newZ);
+      // 2. BORDS RETROUSSÉS : les bords latéraux du pétale se courbent vers l'arrière
+      //    (caractéristique des pétales de rose qui s'enroulent en bordure)
+      const edgeRoll = Math.pow(Math.abs(xFrac), 1.8) * yFrac * curl * len * 0.45;
+      newZ -= edgeRoll;
+
+      // 3. ONDULATION DOUCE le long du bord pour réalisme (pas une vague droite)
+      const ondulation = Math.sin(xFrac * Math.PI * 1.3) * 0.0025 * yFrac;
+      newZ += ondulation;
+
+      // 4. LÉGER BOMBEMENT CENTRAL : ventre du pétale (rappelle le toucher d'une vraie fleur)
+      const belly = (1 - Math.abs(xFrac)) * Math.sin(yFrac * Math.PI) * 0.0035;
+      newZ += belly;
     }
+
+    pos.setZ(i, newZ);
   }
   geo.computeVertexNormals();
   
   return new T.Mesh(geo, new T.MeshStandardMaterial({
-    color: color, roughness: 0.48, metalness: 0.02, side: T.DoubleSide
+    color: color, roughness: 0.42, metalness: 0.03, side: T.DoubleSide
   }));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ROSES — Helper unifié inspiré des roses des photos de mariage réelles.
-// stage : 0 = bouton presque fermé (rose rouge serrée)
-//         1 = mi-ouverte (rose rose, spirale visible)
-//         2 = épanouie ouverte (rose blanche, pétales rabattus en cascade)
-// Construction : spirale phylotaxique de pétales depuis l'extérieur vers le cœur,
-// avec resserrement progressif et inclinaison croissante.
+// ROSES — Helper unifié inspiré des photos de roses des mariages.
+// stage : 0 = bouton presque fermé (rose rouge — photo Etsy "rose botanique rouge foncé")
+//         1 = mi-ouverte avec spirale visible (rose rose — photo "Rose éternelle rose")
+//         2 = épanouie ouverte (rose blanche — photo "Tige rose ouverte 61cm blanc")
 // ═══════════════════════════════════════════════════════════════════════
 function _buildRoseFlower(T, baseCol, deepCol, stage){
   const g = new T.Group();
 
-  // Paramètres dépendant du stade
-  // outerOpen : ouverture des pétales extérieurs (rad). 2=épanouie, 1=mi, 0.3=bouton
-  // layers : nombre de couches de pétales
-  // petalsByLayer : 7-9 par couche en moyenne (rappelle une vraie rose)
-  const openByStage  = [-0.30, -0.65, -1.05]; // rotation.x couche extérieure
-  const closeByStage = [-2.30, -2.10, -1.85]; // rotation.x couche cœur
-  const sizeByStage  = [0.082, 0.090, 0.098]; // longueur pétale extérieur
+  // Paramètres par stade
+  // openByStage : tilt couche extérieure (plus négatif = plus rabattu vers le bas)
+  // closeByStage : tilt couche centrale (plus négatif = plus dressé vers le ciel)
+  const openByStage  = [-0.50, -0.85, -1.30];
+  const closeByStage = [-2.45, -2.25, -2.00];
+  const sizeByStage  = [0.075, 0.085, 0.092];
   const outerOpen  = openByStage[stage];
   const innerClose = closeByStage[stage];
   const outerLen   = sizeByStage[stage];
 
-  // 5 couches de l'extérieur vers le cœur
-  // Chaque couche : tilt progressivement plus fermé, taille progressivement plus petite,
-  // rayon progressivement plus petit, hauteur Y progressivement plus haute.
+  // 6 couches au lieu de 5 pour densifier la fleur (les vraies roses ont ~30-40 pétales)
+  // n : nombre de pétales par couche
+  // tiltMix : 0=couche externe, 1=couche cœur (interpole entre outerOpen et innerClose)
+  // rad : distance au centre (X/Z)
+  // y : hauteur (Y) — la fleur monte progressivement vers le cœur
+  // sizeFactor : taille relative du pétale par rapport à outerLen
+  // shape : 'wide' = pétale large arrondi (roses blanches/roses), 'narrow' = serré (roses rouges fermées)
+  // colMix : 0 = couleur de base, 1 = couleur foncée. Le cœur est toujours plus sombre.
   const layers = [
-    {n: 8, tiltMix: 0.00, rad: 0.030, y: -0.022, sizeFactor: 1.00, shape: stage===2?'wide':'narrow', colMix: 0.0},
-    {n: 7, tiltMix: 0.25, rad: 0.020, y: -0.008, sizeFactor: 0.86, shape: stage===2?'wide':'narrow', colMix: 0.0},
-    {n: 6, tiltMix: 0.50, rad: 0.013, y:  0.006, sizeFactor: 0.72, shape: 'narrow',                 colMix: 0.0},
-    {n: 5, tiltMix: 0.75, rad: 0.007, y:  0.018, sizeFactor: 0.58, shape: 'narrow',                 colMix: 0.50},
-    {n: 4, tiltMix: 0.92, rad: 0.003, y:  0.028, sizeFactor: 0.46, shape: 'narrow',                 colMix: 0.80}
+    {n: 11, tiltMix: 0.00, rad: 0.034, y: -0.024, sizeFactor: 1.00, shape: stage>=1 ? 'wide':'narrow', colMix: 0.0},
+    {n: 10, tiltMix: 0.18, rad: 0.027, y: -0.012, sizeFactor: 0.92, shape: stage>=1 ? 'wide':'narrow', colMix: 0.0},
+    {n:  9, tiltMix: 0.36, rad: 0.020, y: -0.001, sizeFactor: 0.82, shape: stage>=1 ? 'wide':'narrow', colMix: 0.0},
+    {n:  8, tiltMix: 0.54, rad: 0.014, y:  0.009, sizeFactor: 0.72, shape: 'narrow', colMix: 0.15},
+    {n:  7, tiltMix: 0.72, rad: 0.009, y:  0.018, sizeFactor: 0.60, shape: 'narrow', colMix: 0.40},
+    {n:  6, tiltMix: 0.88, rad: 0.005, y:  0.026, sizeFactor: 0.48, shape: 'narrow', colMix: 0.70}
   ];
 
   layers.forEach((L, li) => {
-    // Décalage spiralé pour ne pas aligner les couches
-    const phaseShift = li * 0.62;
-    // Inclinaison interpolée entre outerOpen (extérieur) et innerClose (cœur)
+    // Phylotaxie : chaque couche tourne d'un angle aléatoire pour éviter alignement vertical des pétales
+    const phaseShift = li * 0.42 + (li>0 ? 0.18 : 0);
     const tilt = outerOpen + (innerClose - outerOpen) * L.tiltMix;
-    // Couleur : intérieur légèrement plus sombre que l'extérieur
+    // Couleur interpolée
     let col;
     if(L.colMix > 0){
-      const rMix = baseCol.r*(1-L.colMix) + deepCol.r*L.colMix;
-      const gMix = baseCol.g*(1-L.colMix) + deepCol.g*L.colMix;
-      const bMix = baseCol.b*(1-L.colMix) + deepCol.b*L.colMix;
-      col = new T.Color(rMix, gMix, bMix);
+      const r = baseCol.r*(1-L.colMix) + deepCol.r*L.colMix;
+      const g_ = baseCol.g*(1-L.colMix) + deepCol.g*L.colMix;
+      const b = baseCol.b*(1-L.colMix) + deepCol.b*L.colMix;
+      col = new T.Color(r, g_, b);
     } else {
       col = baseCol;
     }
 
     for(let i=0; i<L.n; i++){
       const a = (i/L.n)*Math.PI*2 + phaseShift;
-      const len = outerLen * L.sizeFactor * (0.96 + Math.random()*0.08);
-      const wid = len * (0.78 + Math.random()*0.10);
-      // Curl : pétale plus courbé sur les couches internes (plus enveloppant)
-      const curl = 0.30 + L.tiltMix*0.55 + Math.random()*0.10;
+      const len = outerLen * L.sizeFactor * (0.94 + Math.random()*0.10);
+      // Largeur du pétale : couche extérieure = pétale plus large et arrondi,
+      // couche intérieure = pétale plus étroit (plus serré).
+      const widFactor = stage===2 ? (0.95 - L.tiltMix*0.20) : (0.80 - L.tiltMix*0.15);
+      const wid = len * widFactor;
+      // Curl progressif : plus on va vers le cœur, plus le pétale s'enroule.
+      // Photo rose : le pétale extérieur est presque plat, le pétale central très enroulé.
+      const curl = 0.20 + L.tiltMix*0.65 + Math.random()*0.08;
       const p = _buildPetal(T, col, len, wid, curl, L.shape);
       p.position.set(
         Math.cos(a) * L.rad,
-        L.y + (Math.random()-0.5)*0.003,
+        L.y + (Math.random()-0.5)*0.0025,
         Math.sin(a) * L.rad
       );
-      // Orientation : pétale tourné vers l'extérieur (sa face avant vers a)
+      // Orientation : face avant du pétale vers l'extérieur de la fleur
       p.rotation.y = a + Math.PI;
-      // Inclinaison vers le centre (négatif = rabattu)
+      // Inclinaison : couche externe légèrement vers le bas, cœur vers le haut
       p.rotation.x = tilt + (Math.random()-0.5)*0.10;
-      // Petite torsion aléatoire pour réalisme
-      p.rotation.z = (Math.random()-0.5)*0.20;
+      // Petite torsion latérale aléatoire pour réalisme
+      p.rotation.z = (Math.random()-0.5)*0.18;
       g.add(p);
     }
   });
 
-  // Cœur final : 2-3 micro-pétales très serrés rabattus à plat (ferme le sommet
-  // pour qu'on ne voie pas de vide en regardant la rose de dessus).
-  const heartCount = stage===0 ? 3 : (stage===1 ? 2 : 2);
-  for(let i=0; i<heartCount; i++){
-    const a = (i/heartCount)*Math.PI*2;
-    const p = _buildPetal(T, deepCol, 0.024, 0.020, 1.15, 'narrow');
+  // ─── CŒUR : spirale très serrée de 3-4 pétales enroulés ───
+  // Reproduit le motif "œil" central des roses (la fameuse spirale phylotaxique
+  // qu'on voit sur la photo rose rose : 4-5 pétales qui s'enroulent serrés).
+  const coreN = stage===0 ? 4 : (stage===1 ? 3 : 3);
+  for(let i=0; i<coreN; i++){
+    const a = (i/coreN)*Math.PI*2 + Math.PI*0.3;
+    // Pétale "tube" très enroulé qui forme la pointe centrale de la rose
+    const p = _buildPetal(T, deepCol, 0.020, 0.014, 1.50, 'narrow');
     p.position.set(
-      Math.cos(a)*0.0008,
-      0.035 + (stage===0?0.004:0),
-      Math.sin(a)*0.0008
+      Math.cos(a)*0.001,
+      0.030,
+      Math.sin(a)*0.001
     );
     p.rotation.y = a + Math.PI;
-    p.rotation.x = innerClose - 0.20;
+    p.rotation.x = innerClose - 0.30;
+    // Légère torsion en spirale pour effet "rouleau"
+    p.rotation.z = i * 0.4;
+    g.add(p);
+  }
+  // Tout petit point central foncé (creux du cœur)
+  for(let i=0; i<2; i++){
+    const a = i*Math.PI;
+    const p = _buildPetal(T, _darken(deepCol, 0.10), 0.014, 0.010, 1.70, 'narrow');
+    p.position.set(0, 0.036, 0);
+    p.rotation.y = a;
+    p.rotation.x = innerClose - 0.45;
     g.add(p);
   }
 
@@ -4553,13 +4747,14 @@ function _decoRoseRouge(T, data){
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// PIVOINE — boule chiffonnée chaotique
+// PIVOINE — Boule chiffonnée de pétales + cœur d'étamines JAUNES visibles
+// (inspiré photo "Pivoines reines du jardin" — pétales rose pâle + étamines jaunes)
 // ═══════════════════════════════════════════════════════════════════════
 function _decoPivoine(T, data){
   const g = new T.Group();
   const baseHex = (data && data.coul_pivoine) || '#F490B0';
   const baseCol = new T.Color(baseHex);
-  
+
   function pivoinePetal(col, len, wid){
     const shape = new T.Shape();
     const w = wid/2;
@@ -4625,22 +4820,48 @@ function _decoPivoine(T, data){
     }
   });
   
-  for(let i=0; i<18; i++){
-    const a = Math.random() * Math.PI*2;
-    const r = Math.random() * 0.008;
-    const p = pivoinePetal(_darken(baseCol, 0.12), 0.022 + Math.random()*0.012, 0.022 + Math.random()*0.010);
-    p.position.set(
-      Math.cos(a)*r,
-      0.034 + Math.random()*0.010,
-      Math.sin(a)*r
+  // ─── CŒUR D'ÉTAMINES JAUNES (signature visuelle de la pivoine) ───
+  // Sur la photo, le centre de la pivoine est jaune vif (étamines + stigmate).
+  // On construit ~25-30 mini-fils dorés disposés en couronne dense.
+  const stamenCol = new T.Color(0xFFD840);
+  const stamenDeep = new T.Color(0xE8AC20);
+  const stamenMat = new T.MeshStandardMaterial({color: stamenCol, roughness: 0.45, metalness: 0.0});
+  const stamenDeepMat = new T.MeshStandardMaterial({color: stamenDeep, roughness: 0.50, metalness: 0.0});
+
+  // Anneau d'étamines extérieures (24 mini-fils)
+  for(let i=0; i<24; i++){
+    const a = (i/24) * Math.PI*2;
+    const r = 0.010 + Math.random()*0.004;
+    // Étamine = petit fil court qui pointe vers le haut/extérieur
+    const stem = new T.Mesh(
+      new T.CylinderGeometry(0.0008, 0.0010, 0.012, 4),
+      stamenMat
     );
-    p.rotation.y = a + Math.PI + (Math.random()-0.5)*0.5;
-    p.rotation.x = -1.55 + (Math.random()-0.5)*0.3;
-    p.rotation.z = (Math.random()-0.5) * 0.6;
-    p.scale.setScalar(0.7 + Math.random()*0.4);
-    g.add(p);
+    stem.position.set(Math.cos(a)*r, 0.034 + Math.random()*0.003, Math.sin(a)*r);
+    // Incliner légèrement vers l'extérieur
+    stem.rotation.z = (Math.PI/2 - 0.3) * (a < Math.PI ? 1 : -1) * 0.15;
+    stem.rotation.x = (Math.random()-0.5)*0.4;
+    g.add(stem);
+    // Anthère (petit grain au sommet de l'étamine)
+    const anther = new T.Mesh(
+      new T.SphereGeometry(0.0016, 5, 4),
+      stamenDeepMat
+    );
+    anther.position.set(Math.cos(a)*r*1.05, 0.041 + Math.random()*0.002, Math.sin(a)*r*1.05);
+    g.add(anther);
   }
-  
+  // Petit dôme central (stigmate) plus dense
+  for(let i=0; i<12; i++){
+    const a = (i/12) * Math.PI*2;
+    const r = 0.003 + Math.random()*0.003;
+    const blob = new T.Mesh(
+      new T.SphereGeometry(0.0022, 5, 4),
+      stamenDeepMat
+    );
+    blob.position.set(Math.cos(a)*r, 0.038 + Math.random()*0.002, Math.sin(a)*r);
+    g.add(blob);
+  }
+
   return g;
 }
 
@@ -7521,7 +7742,7 @@ function renderCake3D(){
     // 3D Canvas
     '<div style="background:linear-gradient(160deg,#f8f4f0,#fff5f0);border-radius:20px;margin-bottom:14px;overflow:hidden;box-shadow:0 4px 24px rgba(180,120,100,0.15);border:1.5px solid #f0e0d8;position:relative;">'+
       '<canvas id="cake-canvas" style="width:100%;height:370px;display:block;touch-action:none;cursor:grab;"></canvas>'+
-      '<div id="deco-drag-hint" style="display:none;position:absolute;top:10px;left:10px;right:60px;background:rgba(201,168,76,0.92);color:#fff;padding:8px 12px;border-radius:10px;font-size:12px;font-family:Lora,serif;pointer-events:none;"></div>'+
+      '<div id="deco-drag-hint" style="display:none;position:absolute;bottom:36px;left:10px;max-width:62%;background:rgba(201,168,76,0.94);color:#fff;padding:7px 11px;border-radius:10px;font-size:11px;font-family:Lora,serif;pointer-events:none;box-shadow:0 3px 12px rgba(120,80,40,0.25);line-height:1.3;"></div>'+
       '<div style="position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(201,168,76,0.75);pointer-events:none;font-family:Lora,serif;font-style:italic;">✦ Glisse pour tourner · Pince pour zoomer</div>'+
       '<div style="position:absolute;top:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:240px;">'+
         '<button onclick="toggleAutoRot3D()" id="btn-autorot" style="background:linear-gradient(135deg,#c9a84c,#a8872e);border:none;border-radius:20px;color:#fff;padding:5px 11px;font-size:10px;font-family:Lora,serif;cursor:pointer;box-shadow:0 2px 8px rgba(180,140,40,0.3);">⏸ Rotation</button>'+
@@ -7585,7 +7806,7 @@ function renderCake3D(){
         const bord=disabled?'#e8d8e0':(sel?'#d4607a':'#f5d5e0');
         const col=disabled?'#c0a8b0':(sel?'#d4607a':'#7a3a52');
         const msg=allEffectsDisabled?'Aucun effet artistique disponible pour la texture Rustique':'Cet effet n\\u2019est disponible qu\\u2019avec la texture Lisse';
-        const handler=disabled?('alert(\''+msg+'\')'):('updateCakeProp(\'effet\',\''+e.id+'\')');
+        const handler=disabled?('appAlert(\''+msg+'\')'):('updateCakeProp(\'effet\',\''+e.id+'\')');
         return '<button onclick="'+handler+'" style="padding:6px 12px;border-radius:20px;border:1.5px solid '+bord+';background:'+bg+';cursor:pointer;font-size:12px;font-family:Lora,serif;color:'+col+';">'+e.nom+(e.requireLisse?' <span style="font-size:10px;opacity:0.7;">(lisse)</span>':'')+'</button>';
       }).join('')+
       '</div>'+
@@ -7877,24 +8098,24 @@ function updateDecoProp(idx,key,val){
 }
 
 /* dummy stubs – ancienne API drag supprimée */
-function initDecoDrag(){}
+async function initDecoDrag(){}
 // legacy stubs (remplacés par Three.js engine)
 let _dragging=null,_offX=0,_offY=0;
 
 // ── CAKE HELPER FUNCTIONS ─────────────────────────────────────────────────────
-function exportCakePNG(){
+async function exportCakePNG(){
   const canvas=document.getElementById('cake-canvas');
-  if(!canvas){alert('Le canvas 3D n\'est pas disponible.');return;}
+  if(!canvas){await appAlert('Le canvas 3D n\'est pas disponible.');return;}
   try{
     // Force one render pass then export
     if(_3r&&_3s&&_3c){_3r.render(_3s,_3c);}
     const url=canvas.toDataURL('image/png');
-    if(!url||url==='data:,'){alert('Export indisponible, réessaie.');return;}
+    if(!url||url==='data:,'){await appAlert('Export indisponible, réessaie.');return;}
     const a=document.createElement('a');
     a.download='mon-gateau-mariage.png';
     a.href=url;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
-  }catch(e){alert('Erreur export: '+e.message);}
+  }catch(e){await appAlert('Erreur export: '+e.message);}
 }
 
 function sendCakeOrder(){
