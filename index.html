@@ -296,7 +296,7 @@ function appModal(opts){
     const root = _appModalBase();
     const isInput = !!opts.input;
     const icon = opts.icon || '';
-    const headerBg = opts.danger ? 'linear-gradient(135deg,#c43a3a,#a02828)' : 'linear-gradient(135deg,#d4607a,#c9a84c)';
+    const headerBg = opts.danger ? 'linear-gradient(135deg,#c43a3a,#a02828)' : pk;
     let inputHtml = '';
     if(isInput){
       const v = (opts.input.value||'').replace(/"/g,'&quot;');
@@ -307,7 +307,7 @@ function appModal(opts){
     const btnsHtml = opts.buttons.map((b,i)=>{
       let style;
       if(b.primary){
-        style = 'background:linear-gradient(135deg,'+pk+','+gd+');color:#fff;border:none;';
+        style = 'background:'+pk+';color:#fff;border:none;';
       } else if(b.danger){
         style = 'background:#fff0f0;color:'+rd+';border:1.5px solid #ffccd0;';
       } else {
@@ -2394,6 +2394,7 @@ function getCakeData(){
     decoration: d.decoration||'aucune',
     couleurRuban:d.couleurRuban||'#D4607A',
     drip:       d.drip||'aucun',
+    dripColore: d.dripColore||'#E03080',
     couleurEffet: d.couleurEffet||'#7E3FAA',
     topper:     d.topper||'aucun',
     topperText: d.topperText||'',
@@ -3045,15 +3046,61 @@ function buildCake3D(data){
     const tMat=_mat(_col(gl),texId,isChoc);
 
     // ── TIER BODY ──────────────────────────────────────────────────────────
+    // Si texture spatule : facettes planes avec jitter pour effet "coups de palette"
+    const isSpatule = (texId === 'spatule');
     let tGeo;
     if(isHex){
-      tGeo=new T.CylinderGeometry(rT,rB,tH,6,1);
+      tGeo=new T.CylinderGeometry(rT,rB,tH, 6, isSpatule?12:1);
     } else if(isRound){
-      tGeo=new T.CylinderGeometry(rT,rB,tH,segs,1);
+      // Cylindre haute résolution pour la spatule (vertices nombreux = relief lisse)
+      tGeo=new T.CylinderGeometry(rT,rB,tH, isSpatule?48:segs, isSpatule?16:1);
     } else {
-      tGeo=new T.BoxGeometry(rB*1.90,tH,rB*1.90,1,1,1);
+      tGeo=new T.BoxGeometry(rB*1.90,tH,rB*1.90, isSpatule?8:1, isSpatule?8:1, isSpatule?8:1);
     }
-    const tier=new T.Mesh(tGeo,tMat);
+
+    // ─── TEXTURE SPATULE : bruit lisse sur la surface ───
+    // Approche simple qui marche : on déplace chaque vertex radialement selon un bruit
+    // 2D (angle, hauteur) avec plusieurs octaves. Pas de quantification, pas de
+    // flatShading → surface continue avec relief organique.
+    if(isSpatule){
+      const pos = tGeo.attributes.position;
+      for(let i=0; i<pos.count; i++){
+        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        const r = Math.sqrt(x*x + z*z);
+        if(r < 0.001) continue;
+        const ang = Math.atan2(z, x);
+        const yN = (y + tH*0.5) / tH; // 0..1 sur la hauteur
+
+        // Bruit multi-octave : grosse échelle + petite échelle
+        // Octave 1 : grosses bosses (traits de spatule larges)
+        const n1 = Math.sin(ang * 4.0 + yN * 8.0) * Math.cos(ang * 2.5 - yN * 3.0);
+        // Octave 2 : détails fins
+        const n2 = Math.sin(ang * 11.0 - yN * 5.0) * Math.cos(ang * 7.0 + yN * 9.0);
+        // Octave 3 : grain très fin
+        const n3 = Math.sin(ang * 22.0 + yN * 17.0) * 0.5;
+
+        // Combinaison : amplitude principale + détail + grain
+        const noise = n1 * 0.020 + n2 * 0.008 + n3 * 0.003;
+        // Toujours positif (pousse vers l'extérieur, pas de creux)
+        const push = Math.max(0, noise + 0.012);
+        const nr = r + push;
+        pos.setX(i, Math.cos(ang) * nr);
+        pos.setZ(i, Math.sin(ang) * nr);
+      }
+      tGeo.computeVertexNormals();
+    }
+
+    const tMatSpatule = isSpatule ? _mat(_col(gl), texId, isChoc) : null;
+    const tMatToUse = tMatSpatule || tMat;
+    if(isSpatule){
+      // Rugosité élevée pour aspect mat de buttercream
+      // PAS de flatShading : on veut une surface lisse avec bosses continues
+      tMatToUse.roughness = 0.78;
+      tMatToUse.metalness = 0.0;
+      tMatToUse.flatShading = false;
+      tMatToUse.needsUpdate = true;
+    }
+    const tier=new T.Mesh(tGeo, tMatToUse);
     tier.position.y=curY+tH/2;
     tier.castShadow=true;tier.receiveShadow=true;
     _3g.add(tier);
@@ -3083,101 +3130,115 @@ function buildCake3D(data){
       }
     }
 
-    if(texId==='spatule'){
+    if(false && texId==='spatule'){
+      // Ancien code patchs — désactivé, on déforme maintenant les vertices du cylindre directement.
       // ════════════════════════════════════════════════════════════════════
-      // TEXTURE SPATULE — Coups de palette lisses et allongés
-      // Référence photo Etsy : des traits de spatule longs, lisses, qui se
-      // chevauchent en directions variées. Pas de polygones nets — chaque
-      // trait est une ellipse allongée avec une légère crête centrale.
+      // TEXTURE SPATULE v3 — Patchs larges qui se chevauchent pour reproduire
+      // la photo de référence (gâteau Etsy palette-knife buttercream blanc).
+      // Pas de petits grains : des plaques de glaçage étalé qui se recouvrent
+      // partiellement, avec relief central marqué et bords arrondis.
       // ════════════════════════════════════════════════════════════════════
-      // Densité réduite + tailles plus grandes = aspect "raclé" plutôt qu'"écailleux"
       const circumference = 2 * Math.PI * ((rB + rT) / 2);
       const surfaceArea = circumference * tH;
-      const patchDensity = 38; // beaucoup moins dense qu'avant (95 → 38)
-      const nPatches = Math.max(28, Math.min(70, Math.round(surfaceArea * patchDensity)));
+      // Densité élevée pour assurer le chevauchement (~50% de la surface couverte par patch moyen)
+      const patchDensity = 75;
+      const nPatches = Math.max(50, Math.min(110, Math.round(surfaceArea * patchDensity)));
 
-      // ─── Helper : construit un trait de spatule (ellipse très allongée, lisse) ───
+      // ─── Helper : construit un patch de spatule (plaque arrondie irrégulière) ───
       function _buildSpatulaStroke(sizeW, sizeH, thick, colorTint){
-        // Forme ELLIPSE avec petites variations sur les bords (pas de polygone à coins)
-        // → bords parfaitement lisses, le pétale ne ressemble pas à un cube
+        // Forme : ellipse "écrasée" avec contour irrégulier mais sans coins
+        // (28 points avec petite perturbation = bords doux mais pas parfaitement ronds)
         const shape = new T.Shape();
         const halfW = sizeW/2, halfH = sizeH/2;
-        // On échantillonne l'ellipse en 32 points avec petite perturbation radiale (~5%)
-        const nSamples = 32;
+        const nSamples = 28;
+        // Variations cohérentes par patch : un peu écrasé d'un côté ou de l'autre
+        const skewA = Math.random()*Math.PI*2;
+        const skewAmt = 0.10 + Math.random()*0.12;
         for(let k=0; k<=nSamples; k++){
           const a = (k/nSamples) * Math.PI*2;
-          const radNoise = 1.0 + (Math.random()-0.5)*0.08;
-          const x = Math.cos(a) * halfW * radNoise;
-          const y = Math.sin(a) * halfH * radNoise;
+          // Bruit doux le long du contour (basse fréquence + haute fréquence)
+          const noise = 1.0 + Math.sin(a*2 + skewA)*skewAmt + (Math.random()-0.5)*0.06;
+          const x = Math.cos(a) * halfW * noise;
+          const y = Math.sin(a) * halfH * noise;
           if(k===0) shape.moveTo(x, y);
           else shape.lineTo(x, y);
         }
-        // Bevel minimal pour éviter l'effet "cube" : on veut un trait qui s'élève en douceur depuis la surface
         const extrudeSettings = {
           depth: thick,
           bevelEnabled: true,
-          bevelSegments: 3,
-          bevelSize: thick*0.85,      // bevel large → bords arrondis "qui fondent" dans le cake
-          bevelThickness: thick*0.85, // bevel haut → forme dôme plutôt que pavé
-          curveSegments: 18           // beaucoup de segments → contours parfaitement lisses
+          bevelSegments: 4,
+          bevelSize: thick*0.95,       // bevel TRÈS large → bord qui "fond" totalement dans la pâte
+          bevelThickness: thick*0.70,
+          curveSegments: 22            // contour parfaitement lisse
         };
         const geo = new T.ExtrudeGeometry(shape, extrudeSettings);
 
-        // Déformation : crête centrale qui suit l'axe long du trait
-        // (la spatule laisse une trace plus haute au milieu, fine sur les côtés)
+        // Déformation : crête centrale en cuvette inversée (rappel du raclage)
         const pos = geo.attributes.position;
         for(let i=0; i<pos.count; i++){
           const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-          if(z > thick*0.3){
-            // Sur la face avant : monter d'autant plus qu'on est près de l'axe long (x=0)
-            const xFrac = x / halfW;          // -1 .. 1 le long de la largeur
-            const yFrac = y / halfH;          // -1 .. 1 le long de la hauteur
-            // Crête : haute au centre (yFrac=0), basse aux extrémités
-            const crete = Math.cos(yFrac * Math.PI*0.5) * Math.cos(xFrac * Math.PI*0.4);
-            // Variation aléatoire douce le long du trait (effet "main pas parfaite")
-            const wobble = Math.sin(yFrac * 3.7 + xFrac * 1.3) * 0.15;
-            pos.setZ(i, z + crete*thick*0.50 + wobble*thick*0.18);
+          if(z > thick*0.20){
+            const xFrac = x / halfW;
+            const yFrac = y / halfH;
+            // Distance normalisée au centre du patch
+            const distC = Math.sqrt(xFrac*xFrac + yFrac*yFrac);
+            // Profil : haut au centre, qui s'estompe vers les bords
+            const dome = Math.max(0, Math.cos(distC * Math.PI*0.5));
+            // Vague qui suit l'axe long pour effet "raclé"
+            const wave = Math.sin(yFrac * 2.4 + xFrac * 0.8) * 0.18;
+            pos.setZ(i, z + dome*thick*0.85 + wave*thick*0.25);
           }
         }
         geo.computeVertexNormals();
         const mat = new T.MeshStandardMaterial({
           color: colorTint,
-          roughness: 0.82,   // un peu moins mat = aspect "buttercream légèrement satiné"
+          roughness: 0.78,
           metalness: 0.0,
           flatShading: false
         });
         return new T.Mesh(geo, mat);
       }
 
-      // ─── Génération des coups de spatule ─────────────────────────────────
-      const patchOuterPush = 0.001; // pratiquement collé à la surface
-      for(let p = 0; p < nPatches; p++){
-        // Position aléatoire le long du tier, avec un peu de stratification verticale
-        // pour éviter les zones vides ou les bouchons
-        const angRand = Math.random() * Math.PI * 2;
-        const hFrac = Math.random();
-        const yPos = curY + hFrac * tH;
+      // ─── Génération des patchs : grille semi-aléatoire pour assurer la couverture ───
+      // Au lieu de positions purement aléatoires (qui laissent des zones vides),
+      // on échantillonne sur une grille avec jitter, ce qui couvre uniformément.
+      const colsPerCircle = 8;   // 8 colonnes autour du gâteau
+      const rowsPerTier = 4;     // 4 rangées sur la hauteur
+      const positions = [];
+      for(let ci=0; ci<colsPerCircle; ci++){
+        for(let ri=0; ri<rowsPerTier; ri++){
+          positions.push({
+            ang: (ci/colsPerCircle)*Math.PI*2 + (Math.random()-0.5)*0.45,
+            hF: (ri+0.5)/rowsPerTier + (Math.random()-0.5)*0.22
+          });
+        }
+      }
+      // Ajouter des patches purement aléatoires (par dessus) pour casser la grille
+      const nExtra = Math.max(20, nPatches - positions.length);
+      for(let p=0; p<nExtra; p++){
+        positions.push({
+          ang: Math.random()*Math.PI*2,
+          hF: Math.random()
+        });
+      }
+
+      const patchOuterPush = 0.002;
+      positions.forEach(({ang: angRand, hF: hFrac})=>{
+        const yPos = curY + Math.max(0.02, Math.min(0.98, hFrac)) * tH;
         const radAtY = rB + (rT - rB) * hFrac;
-
-        // Taille des traits : longs et étroits (signature palette knife)
-        // Largeur : entre 3 et 7 cm (vue rapprochée du gâteau)
-        // Longueur (sizeH) : 1.5 à 3x la largeur → vraiment allongé
-        const sizeW = 0.030 + Math.random()*0.040;
-        const sizeH = sizeW * (1.6 + Math.random()*1.6);
-        // Épaisseur faible : on veut une crête, pas un pavé
-        const thick = 0.006 + Math.random()*0.010;
-
-        // Teinte : variation très subtile pour éviter l'effet "patchwork" coloré
-        const vBright = 0.96 + Math.random()*0.07;
+        // Taille des patchs : LARGES (8 à 14 cm visuels)
+        const sizeW = 0.075 + Math.random()*0.055;
+        // Ratio H/W : modérément allongé (1.0 à 1.6×)
+        const sizeH = sizeW * (1.0 + Math.random()*0.6);
+        // Épaisseur : visible mais pas excessive
+        const thick = 0.012 + Math.random()*0.012;
+        const vBright = 0.96 + Math.random()*0.08;
         const tint = new T.Color(
           Math.min(1, rgb.r * vBright),
           Math.min(1, rgb.g * vBright),
           Math.min(1, rgb.b * vBright)
         );
-
         const stroke = _buildSpatulaStroke(sizeW, sizeH, thick, tint);
-
-        // Placement tangentiel à la surface du cylindre
         if(isRound){
           stroke.position.set(
             Math.sin(angRand) * (radAtY + patchOuterPush),
@@ -3185,10 +3246,8 @@ function buildCake3D(data){
             Math.cos(angRand) * (radAtY + patchOuterPush)
           );
           stroke.rotation.y = angRand;
-          // Direction du coup de spatule : variable, mais on biaise un peu vers les
-          // diagonales pour reproduire le style des photos (rarement purement vertical/horizontal)
           stroke.rotation.z = Math.random() * Math.PI * 2;
-          stroke.rotation.x = (Math.random()-0.5) * 0.12;
+          stroke.rotation.x = (Math.random()-0.5) * 0.10;
         } else if(isHex){
           const faceIdx = Math.floor(angRand / (Math.PI/3));
           const faceAng = faceIdx * (Math.PI/3) + Math.PI/6;
@@ -3199,9 +3258,8 @@ function buildCake3D(data){
           );
           stroke.rotation.y = faceAng;
           stroke.rotation.z = Math.random() * Math.PI * 2;
-          stroke.rotation.x = (Math.random()-0.5) * 0.12;
+          stroke.rotation.x = (Math.random()-0.5) * 0.10;
         } else {
-          // Carré : choisir une des 4 faces
           const side = Math.floor(Math.random()*4);
           const faceAng = side * Math.PI / 2;
           const offsetR = rB * 0.96 + patchOuterPush;
@@ -3212,17 +3270,16 @@ function buildCake3D(data){
           );
           stroke.rotation.y = faceAng;
           stroke.rotation.z = Math.random() * Math.PI * 2;
-          stroke.rotation.x = (Math.random()-0.5) * 0.12;
+          stroke.rotation.x = (Math.random()-0.5) * 0.10;
         }
         stroke.castShadow = true;
         stroke.receiveShadow = true;
         _3g.add(stroke);
-      }
+      });
 
-      // ─── Rendre le cylindre de base légèrement mat & plus rugueux ───────
-      // (pour qu'il "lise" avec les patchs et n'ait pas l'air d'un fond brillant)
+      // ─── Rendre le cylindre de base plus rugueux et même couleur que les patchs ───
       if(tier && tier.material){
-        tier.material.roughness = 0.84;
+        tier.material.roughness = 0.85;
         tier.material.metalness = 0.0;
       }
     }
@@ -3283,11 +3340,50 @@ function buildCake3D(data){
     }
     // Cap plus fin pour éviter le double-trait avec le drip
     const capH=0.018;
-    const capGeo=isHex?new T.CylinderGeometry(rT,rT,capH,6,1):
-                 isRound?new T.CylinderGeometry(rT,rT,capH,segs,1):
-                 new T.BoxGeometry(rB*1.90,capH,rB*1.90,1,1,1);
+    const capGeo=isHex?new T.CylinderGeometry(rT,rT,capH,6, isSpatule?6:1):
+                 isRound?new T.CylinderGeometry(rT,rT,capH, isSpatule?48:segs, isSpatule?6:1):
+                 new T.BoxGeometry(rB*1.90,capH,rB*1.90, isSpatule?8:1, isSpatule?4:1, isSpatule?8:1);
     const capMat=new T.MeshStandardMaterial({
       color:capCol,roughness:capRoughness,metalness:0.01});
+
+    // ─── DÉFORMATION SPATULE DU CAP : bruit lisse cohérent avec le tier ───
+    if(isSpatule){
+      const cpos = capGeo.attributes.position;
+      for(let i=0; i<cpos.count; i++){
+        const x = cpos.getX(i), y = cpos.getY(i), z = cpos.getZ(i);
+        // Sur le dessus du cap (y > 0)
+        if(y > 0.001){
+          const r = Math.sqrt(x*x + z*z);
+          if(r < 0.001) continue;
+          const ang = Math.atan2(z, x);
+          const rN = r / Math.max(0.001, rT); // 0..1
+          // Bruit multi-octave
+          const n1 = Math.sin(ang * 5.0 + rN * 9.0) * Math.cos(ang * 2.5 - rN * 4.0);
+          const n2 = Math.sin(ang * 11.0 - rN * 6.0) * 0.6;
+          const lift = Math.max(0, n1 * 0.015 + n2 * 0.006 + 0.008);
+          cpos.setY(i, y + lift);
+        }
+        // Côté du cap : même bruit que le tier
+        else if(Math.abs(y) < capH*0.49){
+          const r = Math.sqrt(x*x + z*z);
+          if(r > 0.001){
+            const ang = Math.atan2(z, x);
+            const yN = (y + capH*0.5) / capH;
+            const n1 = Math.sin(ang * 4.0 + yN * 8.0) * Math.cos(ang * 2.5 - yN * 3.0);
+            const n2 = Math.sin(ang * 11.0 - yN * 5.0) * 0.6;
+            const push = Math.max(0, n1 * 0.018 + n2 * 0.008 + 0.010);
+            const nr = r + push;
+            cpos.setX(i, Math.cos(ang) * nr);
+            cpos.setZ(i, Math.sin(ang) * nr);
+          }
+        }
+      }
+      capGeo.computeVertexNormals();
+      capMat.roughness = 0.78;
+      capMat.flatShading = false;
+      capMat.needsUpdate = true;
+    }
+
     const cap=new T.Mesh(capGeo,capMat);
     cap.position.y=curY+tH+capH/2;cap.castShadow=true;_3g.add(cap);
 
@@ -3306,55 +3402,57 @@ function buildCake3D(data){
         _3g.add(rm);
       }
     }
-    if(texId==='spatule'){
-      // Top : coups de spatule à plat sur le dessus (même style que les côtés)
-      const nTopPatches = 6 + Math.floor(Math.random()*5); // 6..10
+    if(false && texId==='spatule'){
+      // Ancien code top cap spatule — désactivé, le cap est maintenant déformé directement.
+      const nTopPatches = 10 + Math.floor(Math.random()*5); // 10..14
       for(let w=0; w<nTopPatches; w++){
         const aT = Math.random()*Math.PI*2;
-        const rT2 = Math.random()*rT*0.78;
-        // Traits longs et étroits, comme sur les côtés
-        const sw = 0.030 + Math.random()*0.035;
-        const sh = sw * (1.4 + Math.random()*1.4);
-        const thick = 0.006 + Math.random()*0.008;
-        // Forme ellipse lisse (32 points avec micro-perturbation)
+        const rT2 = Math.random()*rT*0.72;
+        // Patchs gros (comme sur les côtés)
+        const sw = 0.075 + Math.random()*0.050;
+        const sh = sw * (1.0 + Math.random()*0.5);
+        const thick = 0.012 + Math.random()*0.010;
+        // Forme arrondie irrégulière
         const shape = new T.Shape();
         const halfW = sw/2, halfH = sh/2;
-        const nSamples = 32;
+        const nSamples = 28;
+        const skewA = Math.random()*Math.PI*2;
+        const skewAmt = 0.10 + Math.random()*0.12;
         for(let k=0; k<=nSamples; k++){
           const a = (k/nSamples) * Math.PI*2;
-          const radNoise = 1.0 + (Math.random()-0.5)*0.08;
-          const x = Math.cos(a) * halfW * radNoise;
-          const y = Math.sin(a) * halfH * radNoise;
+          const noise = 1.0 + Math.sin(a*2 + skewA)*skewAmt + (Math.random()-0.5)*0.06;
+          const x = Math.cos(a) * halfW * noise;
+          const y = Math.sin(a) * halfH * noise;
           if(k===0) shape.moveTo(x, y);
           else shape.lineTo(x, y);
         }
         const tg = new T.ExtrudeGeometry(shape, {
           depth: thick,
           bevelEnabled: true,
-          bevelSegments: 3,
-          bevelSize: thick*0.85,
-          bevelThickness: thick*0.85,
-          curveSegments: 18
+          bevelSegments: 4,
+          bevelSize: thick*0.95,
+          bevelThickness: thick*0.70,
+          curveSegments: 22
         });
-        // Crête centrale légère (même déformation que les côtés)
         const tpos = tg.attributes.position;
         for(let i=0; i<tpos.count; i++){
           const x = tpos.getX(i), y = tpos.getY(i), z = tpos.getZ(i);
-          if(z > thick*0.3){
+          if(z > thick*0.20){
             const xFrac = x / halfW;
             const yFrac = y / halfH;
-            const crete = Math.cos(yFrac * Math.PI*0.5) * Math.cos(xFrac * Math.PI*0.4);
-            const wobble = Math.sin(yFrac * 3.7 + xFrac * 1.3) * 0.15;
-            tpos.setZ(i, z + crete*thick*0.50 + wobble*thick*0.18);
+            const distC = Math.sqrt(xFrac*xFrac + yFrac*yFrac);
+            const dome = Math.max(0, Math.cos(distC * Math.PI*0.5));
+            const wave = Math.sin(yFrac * 2.4 + xFrac * 0.8) * 0.18;
+            tpos.setZ(i, z + dome*thick*0.85 + wave*thick*0.25);
           }
         }
         tg.computeVertexNormals();
-        const v = 0.96 + Math.random()*0.07;
+        const v = 0.96 + Math.random()*0.08;
         const tm = new T.Mesh(tg, new T.MeshStandardMaterial({
           color: new T.Color(capCol.r*v, capCol.g*v, capCol.b*v),
-          roughness: 0.82, metalness: 0.0
+          roughness: 0.78, metalness: 0.0
         }));
-        tm.rotation.x = -Math.PI/2; // à plat
+        tm.rotation.x = -Math.PI/2;
         tm.rotation.z = Math.random()*Math.PI*2;
         tm.position.set(Math.cos(aT)*rT2, curY+tH+capH+0.001, Math.sin(aT)*rT2);
         tm.castShadow = true;
@@ -4204,7 +4302,7 @@ function buildCake3D(data){
     // Calcul du rayon à la hauteur exacte (tier conique : rB en bas → rT en haut)
     const rBot=_3tierR[ti]||0.8;
     const rTop=rBot*0.94;
-    const tFracInTier=0.08+heightFrac*0.84;
+    const tFracInTier=0.05+heightFrac*0.90;
     const rAtH=rBot+(rTop-rBot)*tFracInTier;
 
     const ang=((d.angle||0)/360)*Math.PI*2;
@@ -4298,7 +4396,7 @@ function buildCake3D(data){
       pY = surfY + outVy * surfaceOffset;
       pZ = surfZ + outVz * surfaceOffset;
     } else {
-      const decoY = sY + tH*(0.08 + heightFrac*0.84);
+      const decoY = sY + tH*(0.05 + heightFrac*0.90);
       const surfX = Math.sin(ang) * rAtH;
       const surfZ = Math.cos(ang) * rAtH;
       pX = surfX + outVx * surfaceOffset;
@@ -4590,17 +4688,18 @@ function _buildPetal(T, color, len, wid, curl, shapeType, thickness){
     let newZ = z - Math.sin(yFrac * Math.PI * 0.60) * curl * len * 1.15;
 
     if(shapeType !== 'spike'){
-      // 2. BORDS RETROUSSÉS : les bords latéraux du pétale se courbent vers l'arrière
-      //    (caractéristique des pétales de rose qui s'enroulent en bordure)
-      const edgeRoll = Math.pow(Math.abs(xFrac), 1.8) * yFrac * curl * len * 0.45;
+      // 2. BORDS LÉGÈREMENT retroussés (mais pas enroulés en cigarette comme avant)
+      //    Le pétale d'une rose se courbe en cuillère, ses bords ne se roulent pas
+      //    sauf à la toute pointe (yFrac proche de 1).
+      const edgeRoll = Math.pow(Math.abs(xFrac), 2.4) * Math.pow(yFrac, 1.8) * curl * len * 0.18;
       newZ -= edgeRoll;
 
       // 3. ONDULATION DOUCE le long du bord pour réalisme (pas une vague droite)
-      const ondulation = Math.sin(xFrac * Math.PI * 1.3) * 0.0025 * yFrac;
+      const ondulation = Math.sin(xFrac * Math.PI * 1.3) * 0.0020 * yFrac;
       newZ += ondulation;
 
       // 4. LÉGER BOMBEMENT CENTRAL : ventre du pétale (rappelle le toucher d'une vraie fleur)
-      const belly = (1 - Math.abs(xFrac)) * Math.sin(yFrac * Math.PI) * 0.0035;
+      const belly = (1 - Math.abs(xFrac)) * Math.sin(yFrac * Math.PI) * 0.0030;
       newZ += belly;
     }
 
@@ -4622,102 +4721,164 @@ function _buildPetal(T, color, len, wid, curl, shapeType, thickness){
 function _buildRoseFlower(T, baseCol, deepCol, stage){
   const g = new T.Group();
 
-  // Paramètres par stade
-  // openByStage : tilt couche extérieure (plus négatif = plus rabattu vers le bas)
-  // closeByStage : tilt couche centrale (plus négatif = plus dressé vers le ciel)
-  const openByStage  = [-0.50, -0.85, -1.30];
-  const closeByStage = [-2.45, -2.25, -2.00];
-  const sizeByStage  = [0.075, 0.085, 0.092];
-  const outerOpen  = openByStage[stage];
-  const innerClose = closeByStage[stage];
-  const outerLen   = sizeByStage[stage];
+  // ─── PHILOSOPHIE SIMPLE ───
+  // Construction "boule de fleur stylisée" : pétales arrondis disposés en
+  // couches concentriques sur une demi-sphère. Pas de tentative de réalisme
+  // photo : on vise un rendu propre et reconnaissable, type icône 3D.
+  //
+  // Chaque pétale est posé sur une "calotte sphérique" :
+  //   - sa base est près du centre de la fleur (vers le bas)
+  //   - sa pointe pointe vers l'extérieur (selon la latitude φ)
+  //   - couches internes : φ petit (pétales presque verticaux)
+  //   - couches externes : φ grand (pétales presque horizontaux)
+  // Vue de face, on voit toujours les pétales bien orientés.
 
-  // 6 couches au lieu de 5 pour densifier la fleur (les vraies roses ont ~30-40 pétales)
-  // n : nombre de pétales par couche
-  // tiltMix : 0=couche externe, 1=couche cœur (interpole entre outerOpen et innerClose)
-  // rad : distance au centre (X/Z)
-  // y : hauteur (Y) — la fleur monte progressivement vers le cœur
-  // sizeFactor : taille relative du pétale par rapport à outerLen
-  // shape : 'wide' = pétale large arrondi (roses blanches/roses), 'narrow' = serré (roses rouges fermées)
-  // colMix : 0 = couleur de base, 1 = couleur foncée. Le cœur est toujours plus sombre.
-  const layers = [
-    {n: 11, tiltMix: 0.00, rad: 0.034, y: -0.024, sizeFactor: 1.00, shape: stage>=1 ? 'wide':'narrow', colMix: 0.0},
-    {n: 10, tiltMix: 0.18, rad: 0.027, y: -0.012, sizeFactor: 0.92, shape: stage>=1 ? 'wide':'narrow', colMix: 0.0},
-    {n:  9, tiltMix: 0.36, rad: 0.020, y: -0.001, sizeFactor: 0.82, shape: stage>=1 ? 'wide':'narrow', colMix: 0.0},
-    {n:  8, tiltMix: 0.54, rad: 0.014, y:  0.009, sizeFactor: 0.72, shape: 'narrow', colMix: 0.15},
-    {n:  7, tiltMix: 0.72, rad: 0.009, y:  0.018, sizeFactor: 0.60, shape: 'narrow', colMix: 0.40},
-    {n:  6, tiltMix: 0.88, rad: 0.005, y:  0.026, sizeFactor: 0.48, shape: 'narrow', colMix: 0.70}
+  const sizeByStage  = [0.105, 0.120, 0.135];
+  const baseLen = sizeByStage[stage];
+
+  // Anneaux selon le stade (plus ouvert = plus d'anneaux)
+  // Format : [phi (latitude), n_petales, len_factor]
+  const ringsByStage = [
+    // stade 0 : bouton fermé — anneaux serrés, peu inclinés
+    [[0.20, 6, 0.55], [0.50, 8, 0.70], [0.80, 10, 0.80]],
+    // stade 1 : mi-ouvert — 4 anneaux
+    [[0.15, 6, 0.50], [0.42, 8, 0.70], [0.72, 10, 0.85], [1.00, 12, 0.95]],
+    // stade 2 : ouverte — 4 anneaux mais sans aller jusqu'à horizontal
+    [[0.15, 6, 0.50], [0.40, 8, 0.70], [0.70, 10, 0.90], [1.05, 13, 1.00]]
   ];
+  const rings = ringsByStage[stage];
 
-  layers.forEach((L, li) => {
-    // Phylotaxie : chaque couche tourne d'un angle aléatoire pour éviter alignement vertical des pétales
-    const phaseShift = li * 0.42 + (li>0 ? 0.18 : 0);
-    const tilt = outerOpen + (innerClose - outerOpen) * L.tiltMix;
-    // Couleur interpolée
-    let col;
-    if(L.colMix > 0){
-      const r = baseCol.r*(1-L.colMix) + deepCol.r*L.colMix;
-      const g_ = baseCol.g*(1-L.colMix) + deepCol.g*L.colMix;
-      const b = baseCol.b*(1-L.colMix) + deepCol.b*L.colMix;
-      col = new T.Color(r, g_, b);
-    } else {
-      col = baseCol;
-    }
+  // Rayon de la demi-sphère imaginaire
+  const sphereRadius = baseLen * 0.18;
+  const sphereCenterY = -baseLen * 0.05;
 
-    for(let i=0; i<L.n; i++){
-      const a = (i/L.n)*Math.PI*2 + phaseShift;
-      const len = outerLen * L.sizeFactor * (0.94 + Math.random()*0.10);
-      // Largeur du pétale : couche extérieure = pétale plus large et arrondi,
-      // couche intérieure = pétale plus étroit (plus serré).
-      const widFactor = stage===2 ? (0.95 - L.tiltMix*0.20) : (0.80 - L.tiltMix*0.15);
-      const wid = len * widFactor;
-      // Curl progressif : plus on va vers le cœur, plus le pétale s'enroule.
-      // Photo rose : le pétale extérieur est presque plat, le pétale central très enroulé.
-      const curl = 0.20 + L.tiltMix*0.65 + Math.random()*0.08;
-      const p = _buildPetal(T, col, len, wid, curl, L.shape);
+  // BOUTON CENTRAL : 4 mini-pétales au sommet pour combler le creux central
+  for(let i = 0; i < 4; i++){
+    const angle = i * Math.PI / 2 + 0.4;
+    const radius = baseLen * 0.015;
+    const y = sphereCenterY + sphereRadius * 1.0 + baseLen * 0.01 * (i % 2);
+    const tilt = -0.10; // légèrement penché vers extérieur
+    const length = baseLen * 0.32;
+    const width = length * 0.80;
+    const curl = 0.6;
+    const colMix = 0.45;
+    const col = new T.Color(
+      baseCol.r * (1 - colMix) + deepCol.r * colMix,
+      baseCol.g * (1 - colMix) + deepCol.g * colMix,
+      baseCol.b * (1 - colMix) + deepCol.b * colMix
+    );
+    const p = _buildPetal(T, col, length, width, curl, 'wide');
+    p.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+    // Rotation : -PI/2 + tilt sur X (penche vers extérieur) puis angle sur Y
+    const qTilt = new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0), -Math.PI/2 + tilt);
+    const qAng = new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0), angle);
+    p.quaternion.copy(qAng).multiply(qTilt);
+    g.add(p);
+  }
+
+  // ANNEAUX CONCENTRIQUES sur la demi-sphère
+  for(let ringIdx = 0; ringIdx < rings.length; ringIdx++){
+    const ring = rings[ringIdx];
+    const phi = ring[0];
+    const nPet = ring[1];
+    const lenFactor = ring[2];
+
+    // Position des pétales sur la sphère à latitude phi
+    const ringRadiusXZ = sphereRadius * Math.sin(phi);
+    const ringY = sphereCenterY + sphereRadius * Math.cos(phi);
+
+    // L'inclinaison du pétale : compromis entre tangent et vertical
+    // tilt = phi * 0.75 : pétales penchés mais pas complètement tangents
+    // → la rose forme une demi-boule pas une coupe ouverte
+    const tilt = phi * 0.75;
+
+    // Décalage angulaire entre anneaux pour créer un peu de spirale visuelle
+    const phase = ringIdx * 0.35;
+
+    // Couleur : plus claire vers l'extérieur
+    const colMix = 0.30 * (1 - ringIdx / Math.max(1, rings.length - 1));
+    const col = new T.Color(
+      baseCol.r * (1 - colMix) + deepCol.r * colMix,
+      baseCol.g * (1 - colMix) + deepCol.g * colMix,
+      baseCol.b * (1 - colMix) + deepCol.b * colMix
+    );
+
+    for(let i = 0; i < nPet; i++){
+      const angle = i * 2 * Math.PI / nPet + phase;
+      const length = baseLen * lenFactor;
+      // Largeur proportionnelle : pétales un peu plus larges que longs sur extérieur
+      const width = length * (0.85 + 0.15 * (ringIdx / Math.max(1, rings.length - 1)));
+      // Curl modéré, décroissant vers l'extérieur
+      const curl = 0.55 - 0.20 * (ringIdx / Math.max(1, rings.length - 1));
+
+      const p = _buildPetal(T, col, length, width, curl, 'wide');
       p.position.set(
-        Math.cos(a) * L.rad,
-        L.y + (Math.random()-0.5)*0.0025,
-        Math.sin(a) * L.rad
+        Math.cos(angle) * ringRadiusXZ,
+        ringY,
+        Math.sin(angle) * ringRadiusXZ
       );
-      // Orientation : face avant du pétale vers l'extérieur de la fleur
-      p.rotation.y = a + Math.PI;
-      // Inclinaison : couche externe légèrement vers le bas, cœur vers le haut
-      p.rotation.x = tilt + (Math.random()-0.5)*0.10;
-      // Petite torsion latérale aléatoire pour réalisme
-      p.rotation.z = (Math.random()-0.5)*0.18;
+      // Rotation : pétale tangent à la sphère, sa pointe vers l'extérieur
+      // -PI/2 + tilt sur X (de vertical à horizontal selon tilt)
+      // angle sur Y pour placer autour de l'axe
+      const qTilt = new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0), -Math.PI/2 + tilt);
+      const qAng = new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0), angle);
+      p.quaternion.copy(qAng).multiply(qTilt);
       g.add(p);
     }
-  });
+  }
 
-  // ─── CŒUR : spirale très serrée de 3-4 pétales enroulés ───
-  // Reproduit le motif "œil" central des roses (la fameuse spirale phylotaxique
-  // qu'on voit sur la photo rose rose : 4-5 pétales qui s'enroulent serrés).
-  const coreN = stage===0 ? 4 : (stage===1 ? 3 : 3);
-  for(let i=0; i<coreN; i++){
-    const a = (i/coreN)*Math.PI*2 + Math.PI*0.3;
-    // Pétale "tube" très enroulé qui forme la pointe centrale de la rose
-    const p = _buildPetal(T, deepCol, 0.020, 0.014, 1.50, 'narrow');
-    p.position.set(
-      Math.cos(a)*0.001,
-      0.030,
-      Math.sin(a)*0.001
-    );
-    p.rotation.y = a + Math.PI;
-    p.rotation.x = innerClose - 0.30;
-    // Légère torsion en spirale pour effet "rouleau"
-    p.rotation.z = i * 0.4;
-    g.add(p);
+  // ─── 2 FEUILLES VERTES en dessous, couchées presque horizontales ───
+  function _buildLeaf(col, len, wid){
+    const shape = new T.Shape();
+    const w = wid/2;
+    shape.moveTo(0, 0);
+    shape.bezierCurveTo(-w*1.0, len*0.18, -w*0.75, len*0.55, -w*0.25, len*0.92);
+    shape.bezierCurveTo(-w*0.10, len*1.02, w*0.10, len*1.02, w*0.25, len*0.92);
+    shape.bezierCurveTo(w*0.75, len*0.55, w*1.0, len*0.18, 0, 0);
+    const geo = new T.ExtrudeGeometry(shape, {
+      depth: 0.004, bevelEnabled: true,
+      bevelSegments: 1, bevelSize: 0.0015, bevelThickness: 0.0008,
+      curveSegments: 6
+    });
+    // Légère courbure
+    const pos = geo.attributes.position;
+    for(let k=0; k<pos.count; k++){
+      const x = pos.getX(k), y = pos.getY(k), z = pos.getZ(k);
+      const yFrac = Math.max(0, y/len);
+      const newZ = z - Math.sin(yFrac * Math.PI * 0.45) * 0.20 * len;
+      pos.setZ(k, newZ);
+    }
+    geo.computeVertexNormals();
+    return new T.Mesh(geo, new T.MeshStandardMaterial({
+      color: col, roughness: 0.60, metalness: 0.0, side: T.DoubleSide
+    }));
   }
-  // Tout petit point central foncé (creux du cœur)
-  for(let i=0; i<2; i++){
-    const a = i*Math.PI;
-    const p = _buildPetal(T, _darken(deepCol, 0.10), 0.014, 0.010, 1.70, 'narrow');
-    p.position.set(0, 0.036, 0);
-    p.rotation.y = a;
-    p.rotation.x = innerClose - 0.45;
-    g.add(p);
-  }
+
+  const leafCol = new T.Color(0x5A9858);
+  const leafCol2 = new T.Color(0x4A8848);
+  const leafLen = baseLen * 0.85;
+  const leafWid = baseLen * 0.40;
+  const leafY = -baseLen * 0.10; // en dessous de la fleur
+
+  // Feuille gauche : couchée à plat, pointe vers la gauche-arrière
+  const leafL = _buildLeaf(leafCol, leafLen, leafWid);
+  leafL.position.set(-baseLen * 0.04, leafY, baseLen * 0.02);
+  // -PI/2 sur X = couche à plat (face vers le haut)
+  // puis rotation Y pour pointer vers la gauche
+  const qL = new T.Quaternion()
+    .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0), Math.PI*0.6))
+    .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0), -Math.PI/2));
+  leafL.quaternion.copy(qL);
+  g.add(leafL);
+
+  // Feuille droite : symétrique
+  const leafR = _buildLeaf(leafCol2, leafLen * 0.92, leafWid * 0.95);
+  leafR.position.set(baseLen * 0.04, leafY, baseLen * 0.02);
+  const qR = new T.Quaternion()
+    .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0), -Math.PI*0.6))
+    .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0), -Math.PI/2));
+  leafR.quaternion.copy(qR);
+  g.add(leafR);
 
   return g;
 }
@@ -7315,14 +7476,93 @@ function _applyDecoPosition(idx,result,commit){
   if(!result)return;
   const d=getCakeData();
   if(!d.decos||!d.decos[idx])return;
+  // Met à jour les données
   d.decos[idx].tier=result.tier;
   d.decos[idx].angle=result.angle;
   d.decos[idx].height=result.height;
-  // Nouvelle propriété : face = 'side' | 'top'
   if(result.face) d.decos[idx].face = result.face;
-  if(commit){saveCakeData(d);}
-  buildCake3D(d);
+
+  // ─── DÉPLACEMENT LIVE PENDANT LE DRAG ────────────────────────────────
+  // Au lieu de reconstruire tout le gâteau (qui regénère les autres décos
+  // avec leurs Math.random() internes → effet "elles bougent"), on déplace
+  // uniquement le mesh concerné. Reconstruction complète seulement au commit.
+  if(!commit && _3g && _3g.decoMeshes && _3g.decoMeshes[idx]){
+    const T = window.THREE;
+    const dg = _3g.decoMeshes[idx];
+    const decoData = d.decos[idx];
+    const ti = Math.min((d.etages||2)-1, Math.max(0, decoData.tier||0));
+    const tH = (typeof HEIGHTS!=='undefined' ? HEIGHTS[ti] : 0.55) || 0.55;
+    const sY = _3tierY[ti] || 0.260;
+    const heightFrac = Math.max(0, Math.min(1, decoData.height||0.5));
+    const rBot = _3tierR[ti] || 0.8;
+    const rTop = rBot * 0.94;
+    const tFracInTier = 0.05 + heightFrac*0.90;
+    const rAtH = rBot + (rTop-rBot) * tFracInTier;
+    const ang = ((decoData.angle||0)/360) * Math.PI*2;
+    const face = decoData.face || 'side';
+    const tilt = ((decoData.tilt||0)/180) * Math.PI;
+    const spin = ((decoData.spin||0)/180) * Math.PI;
+    // Met à jour la rotation
+    if(face === 'top'){
+      dg.rotation.set(-Math.PI/2 + tilt, ang + spin, 0);
+    } else {
+      dg.rotation.set(tilt, ang, spin);
+    }
+    // Recalcule bbox pour offset surface (la rotation a changé)
+    dg.updateMatrixWorld(true);
+    const _bb = new T.Box3();
+    let _hasMesh = false;
+    // Position temporaire à l'origine pour mesure
+    const oldPos = dg.position.clone();
+    dg.position.set(0,0,0);
+    dg.updateMatrixWorld(true);
+    dg.traverse(o=>{
+      if(o.isMesh && !o.userData.isHitArea){
+        o.updateMatrixWorld(true);
+        const geoBB = new T.Box3().setFromObject(o);
+        if(_hasMesh){ _bb.union(geoBB); } else { _bb.copy(geoBB); _hasMesh = true; }
+      }
+    });
+    const outVx = face==='top' ? 0 : Math.sin(ang);
+    const outVy = face==='top' ? 1 : 0;
+    const outVz = face==='top' ? 0 : Math.cos(ang);
+    let minProj = Infinity;
+    if(_hasMesh){
+      const cs = [
+        [_bb.min.x,_bb.min.y,_bb.min.z],[_bb.max.x,_bb.min.y,_bb.min.z],
+        [_bb.min.x,_bb.max.y,_bb.min.z],[_bb.max.x,_bb.max.y,_bb.min.z],
+        [_bb.min.x,_bb.min.y,_bb.max.z],[_bb.max.x,_bb.min.y,_bb.max.z],
+        [_bb.min.x,_bb.max.y,_bb.max.z],[_bb.max.x,_bb.max.y,_bb.max.z]
+      ];
+      for(let k=0;k<8;k++){
+        const proj = cs[k][0]*outVx + cs[k][1]*outVy + cs[k][2]*outVz;
+        if(proj<minProj) minProj = proj;
+      }
+    } else {
+      minProj = 0;
+    }
+    const surfaceOffset = Math.max(0.012, (-minProj)*0.70 + 0.005);
+    let pX, pY, pZ;
+    if(face === 'top'){
+      const topR = rTop;
+      const rOnTop = Math.max(0, Math.min(1, decoData.height||0.0)) * topR * 0.85;
+      pX = Math.sin(ang)*rOnTop + outVx*surfaceOffset;
+      pY = sY + tH + outVy*surfaceOffset;
+      pZ = Math.cos(ang)*rOnTop + outVz*surfaceOffset;
+    } else {
+      const decoY = sY + tH*(0.05 + heightFrac*0.90);
+      pX = Math.sin(ang)*rAtH + outVx*surfaceOffset;
+      pY = decoY + outVy*surfaceOffset;
+      pZ = Math.cos(ang)*rAtH + outVz*surfaceOffset;
+    }
+    dg.position.set(pX, pY, pZ);
+    return; // Ne PAS reconstruire le gâteau pendant le drag
+  }
+
+  // ─── COMMIT : sauvegarde et reconstruction complète ────────────────────
   if(commit){
+    saveCakeData(d);
+    buildCake3D(d);
     ['angle','height','tier'].forEach(k=>{
       const sl=document.getElementById('deco-'+k+'-'+idx);
       if(sl)sl.value=d.decos[idx][k];
@@ -7434,8 +7674,8 @@ function _raycastCakeSurface(ndcX,ndcY){
 
   return{
     tier: tierIdx,
-    angle: Math.round(normAngle),
-    height: parseFloat((face === 'top' ? topHeightFrac : heightInTier).toFixed(2)),
+    angle: parseFloat(normAngle.toFixed(2)),
+    height: parseFloat((face === 'top' ? topHeightFrac : heightInTier).toFixed(4)),
     face: face
   };
 }
