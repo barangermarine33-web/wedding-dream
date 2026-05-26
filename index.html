@@ -58,6 +58,19 @@
 html{overscroll-behavior-y:none;}
 body{overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;background:var(--bg);font-family:Lora,serif;color:var(--text);min-height:100vh;padding-top:var(--sat);padding-left:var(--sal);padding-right:var(--sar);}
 body{background:#fff9fb;font-family:Lora,serif;color:#3e1828;min-height:100vh;}
+
+/* ── RESPONSIVE DESKTOP : limite la largeur du contenu sur grand écran ── */
+/* Sur téléphone (≤900px) : tout prend 100% de la largeur, layout mobile natif */
+/* Sur PC (>900px) : on contraint la zone de contenu à 720px max, centrée */
+@media (min-width: 900px) {
+  body { max-width: 720px; margin: 0 auto; box-shadow: 0 0 24px rgba(120,80,40,0.10); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  /* L'écran auth aussi doit s'adapter sur PC */
+  #auth-screen { max-width: 720px; margin: 0 auto; }
+  /* La barre d'onglets sticky reste dans le contenu */
+  #tabs-bar { max-width: 720px; }
+}
+/* Sur très grand écran (>1400px) : peu importe, le contenu reste à 720px centré */
+
 .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:11px;padding:11px 18px;cursor:pointer;font-weight:700;font-family:Lora,serif;font-size:14px;transition:opacity .15s,transform .1s;min-height:44px;}
 .btn:active{opacity:.82;transform:scale(.98);}
 .btn-sec{background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:11px;padding:10px 16px;cursor:pointer;font-weight:700;font-family:Lora,serif;font-size:13px;min-height:44px;}
@@ -267,9 +280,118 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
 </script>
 <script>
 
-// ── STORAGE ──────────────────────────────────────────────────────────────────
-const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+// ── STORAGE (localStorage + sync Firestore) ─────────────────────────────────
+//
+// Stratégie de synchronisation :
+// 1) sv(key, value) écrit en localStorage IMMÉDIATEMENT (rapide, offline-safe)
+// 2) Si la clé concerne l'utilisateur connecté, on planifie un push vers Firestore
+//    avec un debounce de 1500ms (évite de spammer le serveur sur les modifs rapides)
+// 3) loadUserDataFromFirestore() est appelée au login pour récupérer les données
+//    avant que startApp() ne charge depuis localStorage
+//
+// Les données synchronisées sont stockées dans Firestore sous le chemin :
+//   userData/{emailNormalisé}/items/{clé}
+// où emailNormalisé remplace les caractères spéciaux par '_'.
+// Cela permet la lecture/écriture par clé individuelle (TASKS, BUDGET, etc.)
+// sans avoir à transférer toute la base à chaque modification.
+
+// Clés "utilisateur" : celles qui doivent être synchronisées entre appareils
+// (préfixes utilisés par startApp et les renderers)
+const SYNC_KEY_PREFIXES = [
+  'tasks_', 'budget_', 'guests_', 'tables_', 'vfav_', 'vcho_',
+  'notes_', 'menu_', 'album_', 'drive_url_', 'cake_'
+];
+
+function _isSyncKey(k){
+  if(!k) return false;
+  return SYNC_KEY_PREFIXES.some(p => k.indexOf(p) === 0);
+}
+
+// Normalise un email pour servir d'ID Firestore (pas de '.', '/', '@', etc.)
+function _emailToDocId(email){
+  return (email||'').toLowerCase().replace(/[^a-z0-9]/gi,'_');
+}
+
+// Queue de synchronisations en attente (clé → valeur)
+const _syncQueue = {};
+let _syncTimer = null;
+
+function _scheduleFirestoreSync(){
+  if(_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(_flushFirestoreSync, 1500);
+}
+
+async function _flushFirestoreSync(){
+  _syncTimer = null;
+  if(!window.firebaseDB || !window.firebaseLib) return;
+  const {doc, setDoc} = window.firebaseLib;
+  // On vide la queue (on copie d'abord pour pas perdre des items pendant l'écriture)
+  const queue = {..._syncQueue};
+  for(const k in _syncQueue) delete _syncQueue[k];
+  // Pour chaque entrée : trouver l'email cible (clé contient _email comme suffixe)
+  for(const [key, value] of Object.entries(queue)){
+    try{
+      // Récupère l'email actuel
+      const sess = localStorage.getItem('sess');
+      const email = sess ? JSON.parse(sess) : null;
+      if(!email) continue;
+      const docId = _emailToDocId(email);
+      // Stockage : userData/{docId} = un seul document avec tous les items en champs
+      // (plus simple que sub-collection items et économise les requêtes)
+      await setDoc(doc(window.firebaseDB, 'userData', docId), {
+        [key]: value,
+        _updatedAt: Date.now(),
+        _email: email
+      }, {merge: true});
+    } catch(e){
+      console.warn('[sync] failed for', key, e.code||e.message);
+      // En cas d'échec, on remet en queue pour retry
+      _syncQueue[key] = value;
+    }
+  }
+  // Si des items ont été remis en queue, on retentera dans 5s
+  if(Object.keys(_syncQueue).length > 0){
+    setTimeout(_flushFirestoreSync, 5000);
+  }
+}
+
+const sv=(k,v)=>{
+  try{localStorage.setItem(k,JSON.stringify(v));}catch{}
+  // Sync vers Firestore si clé utilisateur
+  if(_isSyncKey(k)){
+    _syncQueue[k] = v;
+    _scheduleFirestoreSync();
+  }
+};
 const ld=(k,d)=>{try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d;}catch{return d;}};
+
+// Charge les données utilisateur depuis Firestore et les écrit en localStorage
+// pour que startApp les retrouve. Appelée APRÈS Firebase Auth login réussi.
+async function loadUserDataFromFirestore(email){
+  if(!window.firebaseDB || !window.firebaseLib || !email) return false;
+  try{
+    const {doc, getDoc} = window.firebaseLib;
+    const docId = _emailToDocId(email);
+    const snap = await getDoc(doc(window.firebaseDB, 'userData', docId));
+    if(!snap.exists()) return false;
+    const data = snap.data() || {};
+    let nLoaded = 0;
+    for(const [k, v] of Object.entries(data)){
+      if(k.startsWith('_')) continue; // ignore metadata
+      if(_isSyncKey(k) && v !== undefined && v !== null){
+        try{
+          localStorage.setItem(k, JSON.stringify(v));
+          nLoaded++;
+        }catch{}
+      }
+    }
+    console.log('[sync] '+nLoaded+' clés chargées depuis Firestore pour '+email);
+    return true;
+  } catch(e){
+    console.warn('[sync] loadUserDataFromFirestore failed:', e.code||e.message);
+    return false;
+  }
+}
 
 // ── THEME ────────────────────────────────────────────────────────────────────
 const pk="#d4607a",pm="#f0a8b8",sf="#fef2f6",br="#f5d5e0",tx="#3e1828",tm="#7a3a52",tl="#b07a90",gn="#5a8a6a",rd="#c43a3a",am="#c47a2a",gd="#c9a84c",gl="#e8d48a",bg2="#deb96a";
@@ -603,6 +725,9 @@ async function doLogin(){
     } else {
       sv('rem_e',null);sv('rem_p',null);
     }
+    // Charge les données Firestore pour avoir la version la plus récente
+    // (si l'utilisateur a modifié sur un autre appareil)
+    try { await loadUserDataFromFirestore(email); } catch(_){}
     startApp(u);
     return;
   }
@@ -629,7 +754,10 @@ async function doLogin(){
       if(btn){btn.textContent='Se connecter';btn.disabled=false;}
       sv('rem_e',email);sv('rem_p',pass);
       sv('sess',email);
-      syncUserToFirebase(u);
+      // ─── CHARGEMENT DES DONNÉES UTILISATEUR DEPUIS FIRESTORE ───
+      // Avant de démarrer l'app, on récupère les données déjà synchronisées
+      // depuis Firestore. Sans ça, le device verrait des données vides ou périmées.
+      await loadUserDataFromFirestore(email);
       startApp(u);
       return;
     } catch(authErr){
@@ -656,6 +784,7 @@ async function doLogin(){
               sv('u_'+email,u);
               sv('rem_e',email);sv('rem_p',pass);
               sv('sess',email);
+              await loadUserDataFromFirestore(email);
               startApp(u);
               return;
             }
@@ -1602,7 +1731,34 @@ function closeSeatModal(){el('seat-modal').classList.remove('open');seatPicker=n
 
 // ── VENDORS ───────────────────────────────────────────────────────────────────
 let sortFav='alpha',sortCho='alpha';
-const vSort=(list,s)=>[...list].sort((a,b)=>s==='alpha'?a.nom.localeCompare(b.nom):s==='prix'?(a.prixNum||0)-(b.prixNum||0):(a.distance||0)-(b.distance||0));
+// Tri pour vendors : alpha, prix (depuis prix_perso/prix_indicatif), distance
+// - Prix : on extrait le premier nombre de la chaîne (ex "1500€" → 1500)
+//   Si pas de prix → mis en fin de liste (Infinity)
+// - Distance : si pas définie → mis en fin de liste
+const _parsePrice = (v) => {
+  // Cherche un nombre dans prix_perso d'abord (saisi par l'utilisateur), puis prix_indicatif
+  const txt = (v.prix_perso || v.prix_indicatif || '').toString();
+  const m = txt.match(/(\d[\d\s.,]*)/);
+  if(!m) return Infinity;
+  return parseFloat(m[1].replace(/[\s.]/g,'').replace(',','.')) || Infinity;
+};
+const vSort = (list, s) => [...list].sort((a, b) => {
+  if(s === 'alpha') {
+    return (a.nom||'').localeCompare(b.nom||'');
+  }
+  if(s === 'prix') {
+    const pa = _parsePrice(a), pb = _parsePrice(b);
+    if(pa === pb) return (a.nom||'').localeCompare(b.nom||'');
+    return pa - pb; // croissant : du moins cher au plus cher
+  }
+  if(s === 'distance') {
+    const da = (a.distance == null || isNaN(a.distance)) ? Infinity : a.distance;
+    const db = (b.distance == null || isNaN(b.distance)) ? Infinity : b.distance;
+    if(da === db) return (a.nom||'').localeCompare(b.nom||'');
+    return da - db; // croissant : du plus proche au plus lointain
+  }
+  return 0;
+});
 function setSortFav(s,btn){sortFav=s;btn.closest('div').querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderFavs();}
 function setSortCho(s,btn){sortCho=s;btn.closest('div').querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderChosen();}
 function addToFav(i){const v=window._vndResults?.[i];if(!v||VENDORS_FAV.find(f=>f.nom===v.nom))return;VENDORS_FAV.push({...v,id:Date.now()});sv(`vfav_${USER.email}`,VENDORS_FAV);renderFavs();if(window._vndResults)renderVndResults(el('vnd-loc')?.value.trim()||'');}
@@ -1616,9 +1772,8 @@ function renderVendors(){
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
       <input class="inp" id="vnd-loc" placeholder="Ex: traiteur, photographe, fleuriste..." style="flex:1;min-width:140px;" onkeydown="if(event.key==='Enter')searchVendors()">
       <button class="btn" onclick="searchVendors()" id="vnd-btn" style="min-width:110px;">Rechercher</button>
-      <button class="btn-sec" onclick="geoSearch()" id="vnd-geo-btn" title="Utiliser ma position" style="padding:10px 14px;">📍 Autour de moi</button>
     </div>
-    <p style="font-size:11px;color:${tl};font-style:italic;">📍 Recherche de vrais prestataires via OpenStreetMap. Clique "Autour de moi" pour des résultats géolocalisés.</p>
+    <p style="font-size:11px;color:${tl};font-style:italic;">📍 Recherche de vrais prestataires via OpenStreetMap, triés par distance (proximité géographique).</p>
   </div>
   <div id="vnd-results-wrap" style="margin-bottom:16px;"></div>
   <div style="margin-bottom:18px;">
@@ -1656,16 +1811,35 @@ async function geoSearch(){
 
 async function searchVendors(){
   const query=el('vnd-loc')?.value.trim();if(!query)return;
-  const lat=window._userLat||null;const lng=window._userLng||null;
-  if(!lat){
-    // Ask for geolocation first
-    if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(
-        pos=>{window._userLat=pos.coords.latitude;window._userLng=pos.coords.longitude;searchVendorsWithLocation(query,pos.coords.latitude,pos.coords.longitude);},
-        ()=>searchVendorsWithLocation(query,null,null)
-      );
-    } else { searchVendorsWithLocation(query,null,null); }
-  } else { searchVendorsWithLocation(query,lat,lng); }
+  // Si on a déjà la position en cache, l'utiliser directement
+  const cachedLat=window._userLat;const cachedLng=window._userLng;
+  if(cachedLat&&cachedLng){
+    searchVendorsWithLocation(query,cachedLat,cachedLng);
+    return;
+  }
+  // Sinon : demander la géoloc automatiquement (sans bouton dédié)
+  const btn=el('vnd-btn');
+  if(btn){btn.textContent='Localisation...';btn.disabled=true;}
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        window._userLat=pos.coords.latitude;
+        window._userLng=pos.coords.longitude;
+        if(btn){btn.textContent='Rechercher';btn.disabled=false;}
+        searchVendorsWithLocation(query,pos.coords.latitude,pos.coords.longitude);
+      },
+      err=>{
+        // Géoloc refusée ou échouée : recherche texte sans géoloc
+        console.warn('Géolocalisation indisponible :',err&&err.message);
+        if(btn){btn.textContent='Rechercher';btn.disabled=false;}
+        searchVendorsWithLocation(query,null,null);
+      },
+      {timeout:8000, maximumAge:300000, enableHighAccuracy:false}
+    );
+  } else {
+    if(btn){btn.textContent='Rechercher';btn.disabled=false;}
+    searchVendorsWithLocation(query,null,null);
+  }
 }
 
 async function searchVendorsWithLocation(query,lat,lng){
@@ -1678,31 +1852,111 @@ async function searchVendorsWithLocation(query,lat,lng){
   // Sinon : Nominatim (recherche par texte en France)
 
   // Mappe le terme cherché vers une catégorie OSM (tag amenity/shop/craft)
-  // et un type de business pour l'affichage
+  // et un type de business pour l'affichage.
+  // Couvre les 18 catégories de l'onglet Budget avec des tags précis.
   const q=query.toLowerCase();
   function osmFilters(){
-    // Retourne un tableau de filtres Overpass (chacun = un "node[tag=value]")
-    // et la catégorie affichée
-    if(q.includes('traiteur')) return {f:['amenity=restaurant','shop=caterer','craft=caterer'],cat:'Traiteur'};
-    if(q.includes('photographe')||q.includes('photo')) return {f:['shop=photo','craft=photographer','amenity=photo_booth'],cat:'Photographe'};
-    if(q.includes('fleuriste')||q.includes('fleur')) return {f:['shop=florist'],cat:'Fleuriste'};
-    if(q.includes('coiff')) return {f:['shop=hairdresser'],cat:'Coiffeur'};
-    if(q.includes('maquill')||q.includes('beaut')) return {f:['shop=beauty','shop=cosmetics'],cat:'Maquillage'};
-    if(q.includes('boulang')||q.includes('patiss')||q.includes('gateau')||q.includes('gâteau')||q.includes('wedding cake'))
-      return {f:['shop=bakery','shop=pastry','shop=confectionery'],cat:'Pâtisserie'};
-    if(q.includes('musique')||q.includes('dj')||q.includes('musicien'))
-      return {f:['amenity=nightclub','shop=music'],cat:'Musique/DJ'};
-    if(q.includes('voiture')||q.includes('limousine')||q.includes('location auto'))
-      return {f:['shop=car','amenity=car_rental'],cat:'Voiture'};
-    if(q.includes('robe')||q.includes('costume')||q.includes('mariée')||q.includes('vêtement'))
-      return {f:['shop=wedding_contract','shop=clothes','shop=bridal'],cat:'Tenue'};
-    if(q.includes('salle')||q.includes('lieu')||q.includes('domaine')||q.includes('château')||q.includes('reception'))
-      return {f:['amenity=events_venue','tourism=hotel','leisure=resort','building=castle'],cat:'Salle'};
-    if(q.includes('bijou')||q.includes('alliance'))
-      return {f:['shop=jewelry'],cat:'Bijoutier'};
-    if(q.includes('décor')||q.includes('decor'))
-      return {f:['shop=interior_decoration','shop=craft'],cat:'Décoration'};
-    // Défaut : on cherche par nom contenant le mot-clé
+    // ─── Lieu de réception / Salle ───
+    if(q.includes('lieu de réception')||q.includes('lieu de reception')||q.includes('salle')||
+       q.includes('domaine')||q.includes('château')||q.includes('chateau')||q.includes('réception')||
+       q.includes('reception')||q.includes('venue')||q.includes('mariage'))
+      return {f:['amenity=events_venue','amenity=conference_centre','amenity=community_centre',
+                 'tourism=hotel','historic=castle','building=castle','leisure=resort'],cat:'Lieu/Salle'};
+
+    // ─── Traiteur (PAS restaurant) ───
+    if(q.includes('traiteur')||q.includes('catering'))
+      return {f:['shop=caterer','craft=caterer','craft=catering','amenity=catering'],cat:'Traiteur'};
+
+    // ─── Photographe ───
+    if(q.includes('photographe')||q.includes('photograph'))
+      return {f:['shop=photo','craft=photographer','office=photographer'],cat:'Photographe'};
+
+    // ─── Vidéaste ───
+    if(q.includes('vidéaste')||q.includes('videaste')||q.includes('vidéo')||q.includes('video')||
+       q.includes('cameraman')||q.includes('filmaker')||q.includes('film'))
+      return {f:['craft=videographer','office=videographer','shop=video'],cat:'Vidéaste'};
+
+    // ─── DJ / Musique ───
+    if(q.includes('dj')||q.includes('musique')||q.includes('musicien')||q.includes('orchestre')||
+       q.includes('groupe de musique')||q.includes('groupe musical')||q.includes('animation musicale'))
+      return {f:['craft=musical_instrument','shop=musical_instrument','office=dj','shop=music'],cat:'DJ/Musique'};
+
+    // ─── Officiant ───
+    if(q.includes('officiant')||q.includes('céremon')||q.includes('ceremon')||q.includes('curé')||
+       q.includes('cure')||q.includes('prêtre')||q.includes('pretre')||q.includes('rabbin')||q.includes('imam'))
+      return {f:['amenity=place_of_worship','office=religion'],cat:'Officiant'};
+
+    // ─── Fleuriste ───
+    if(q.includes('fleuriste')||q.includes('fleur')||q.includes('bouquet'))
+      return {f:['shop=florist'],cat:'Fleuriste'};
+
+    // ─── Robe de mariée ───
+    if(q.includes('robe de mariée')||q.includes('robe de mariee')||q.includes('robe')||
+       q.includes('mariée')||q.includes('mariee')||q.includes('bridal'))
+      return {f:['shop=wedding_contract','shop=bridal'],cat:'Robe mariée'};
+
+    // ─── Costumier / Tailleur ───
+    if(q.includes('costumier')||q.includes('tailleur')||q.includes('costume')||q.includes('smoking')||
+       q.includes('marié homme')||q.includes('marie homme'))
+      return {f:['craft=tailor','shop=tailor','shop=clothes'],cat:'Costume/Tailleur'};
+
+    // ─── Coiffeur ───
+    if(q.includes('coiff'))
+      return {f:['shop=hairdresser','shop=hairdresser_supply'],cat:'Coiffeur'};
+
+    // ─── Maquilleur / Esthéticien ───
+    if(q.includes('maquill')||q.includes('estheti')||q.includes('esthéti')||q.includes('beaut')||
+       q.includes('makeup')||q.includes('institut'))
+      return {f:['shop=beauty','shop=cosmetics','leisure=spa'],cat:'Maquillage/Beauté'};
+
+    // ─── Accessoiriste / Bijouterie ───
+    if(q.includes('accessoir')||q.includes('bijou')||q.includes('alliance')||q.includes('bague'))
+      return {f:['shop=jewelry','shop=accessories'],cat:'Bijoutier/Accessoires'};
+
+    // ─── Location de matériel ───
+    if(q.includes('location de matériel')||q.includes('location de materiel')||
+       q.includes('matériel')||q.includes('materiel')||q.includes('location événement')||
+       q.includes('location event'))
+      return {f:['shop=rental','amenity=rental'],cat:'Location matériel'};
+
+    // ─── Animateur / DJ events ───
+    if(q.includes('animateur')||q.includes('magicien')||q.includes('artiste')||q.includes('spectacle')||
+       q.includes('animation'))
+      return {f:['office=event_management','shop=art','craft=artist'],cat:'Animation'};
+
+    // ─── Imprimeur / Faire-parts ───
+    if(q.includes('imprimeur')||q.includes('imprimerie')||q.includes('faire-part')||q.includes('faire part')||
+       q.includes('papeterie')||q.includes('print'))
+      return {f:['shop=stationery','shop=copyshop','craft=printer','shop=print'],cat:'Imprimeur'};
+
+    // ─── Location de véhicule / Voiture ───
+    if(q.includes('voiture')||q.includes('limousine')||q.includes('location auto')||
+       q.includes('location de véhicule')||q.includes('location de vehicule')||q.includes('véhicule')||
+       q.includes('vehicule')||q.includes('chauffeur'))
+      return {f:['amenity=car_rental','shop=car','office=taxi'],cat:'Véhicule'};
+
+    // ─── Navettes / Transport ───
+    if(q.includes('navette')||q.includes('transport')||q.includes('bus')||q.includes('autocar')||
+       q.includes('minibus'))
+      return {f:['office=travel_agent','amenity=bus_station','amenity=taxi'],cat:'Transport'};
+
+    // ─── Hébergement / Hôtel ───
+    if(q.includes('hébergement')||q.includes('hebergement')||q.includes('hôtel')||q.includes('hotel')||
+       q.includes('gîte')||q.includes('gite')||q.includes('chambres d\'hôtes')||q.includes('logement'))
+      return {f:['tourism=hotel','tourism=guest_house','tourism=apartment','tourism=hostel','tourism=motel'],cat:'Hébergement'};
+
+    // ─── Pâtisserie / Wedding cake ───
+    if(q.includes('boulang')||q.includes('patiss')||q.includes('pâtiss')||q.includes('gateau')||
+       q.includes('gâteau')||q.includes('wedding cake')||q.includes('cake')||q.includes('pièce montée')||
+       q.includes('piece montee'))
+      return {f:['shop=bakery','shop=pastry','shop=confectionery','craft=confectioner'],cat:'Pâtisserie/Cake'};
+
+    // ─── Décoration ───
+    if(q.includes('décor')||q.includes('decor')||q.includes('event design')||q.includes('wedding planner')||
+       q.includes('organisateur'))
+      return {f:['shop=interior_decoration','craft=upholsterer','office=event_management'],cat:'Décoration/Planner'};
+
+    // ─── Défaut : pas de filtre type, recherche par nom ───
     return {f:null,cat:'Prestataire'};
   }
   const {f:filters,cat}=osmFilters();
@@ -1720,27 +1974,43 @@ async function searchVendorsWithLocation(query,lat,lng){
   try{
     if(lat&&lng&&filters){
       // ─── RECHERCHE GÉOLOCALISÉE via OVERPASS ───
-      // Rayon de 15km autour de la position de l'utilisateur
-      const radius=15000;
-      // Construit la requête Overpass : union de tous les filtres
-      // On cherche nodes, ways et relations pour couvrir tous les types d'éléments OSM
-      const filterParts=filters.map(f=>{
-        const [k,v]=f.split('=');
-        return `node["${k}"="${v}"](around:${radius},${lat},${lng});`+
-               `way["${k}"="${v}"](around:${radius},${lat},${lng});`;
-      }).join('');
-      const overpassQ=`[out:json][timeout:25];(${filterParts});out center 30;`;
-      const url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(overpassQ);
-      const res=await fetch(url);
-      if(!res.ok) throw new Error('Overpass HTTP '+res.status);
-      const data=await res.json();
-      results=(data.elements||[]).map((e,idx)=>{
+      // On élargit progressivement le rayon si pas assez de résultats.
+      // Les traiteurs/photographes sont moins denses qu'un restaurant.
+      const radii=[15000, 40000, 100000]; // 15km → 40km → 100km
+      let rawResults=[];
+      for(const radius of radii){
+        const filterParts=filters.map(f=>{
+          const [k,v]=f.split('=');
+          return `node["${k}"="${v}"](around:${radius},${lat},${lng});`+
+                 `way["${k}"="${v}"](around:${radius},${lat},${lng});`;
+        }).join('');
+        const overpassQ=`[out:json][timeout:25];(${filterParts});out center 50;`;
+        const url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(overpassQ);
+        let res;
+        try { res=await fetch(url); } catch(netErr){ throw new Error('Réseau : '+netErr.message); }
+        if(!res.ok){
+          // Si Overpass est saturé (HTTP 429 ou 504), on tente le rayon suivant
+          if(res.status===429||res.status===504){continue;}
+          throw new Error('Overpass HTTP '+res.status);
+        }
+        const data=await res.json();
+        rawResults=data.elements||[];
+        // On filtre tout de suite les résultats avec un nom valide
+        const named=rawResults.filter(e=>(e.tags||{}).name);
+        // Si on a au moins 5 prestataires nommés, on garde ce rayon
+        if(named.length>=5){
+          rawResults=named;
+          break;
+        }
+        // Sinon on essaie un rayon plus grand
+        rawResults=named;
+      }
+      results=rawResults.map((e,idx)=>{
         const tags=e.tags||{};
         const elat=e.lat||(e.center&&e.center.lat);
         const elon=e.lon||(e.center&&e.center.lon);
         if(!elat||!elon)return null;
         const dist=haversine(lat,lng,elat,elon);
-        // Construit une adresse à partir des tags OSM disponibles
         const addr=[tags['addr:housenumber'],tags['addr:street'],tags['addr:postcode'],tags['addr:city']]
           .filter(Boolean).join(' ');
         return {
@@ -1757,7 +2027,7 @@ async function searchVendorsWithLocation(query,lat,lng){
         };
       }).filter(v=>v&&v.nom!=='Sans nom')
         .sort((a,b)=>a.distance-b.distance)
-        .slice(0,15);
+        .slice(0,20);
     } else {
       // ─── PAS DE GÉOLOC : recherche TEXTUELLE via NOMINATIM ───
       // Nominatim accepte un free-text search
@@ -2344,12 +2614,17 @@ function renderNotes(){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-window.addEventListener('load', function(){
+window.addEventListener('load', async function(){
   // Check active session
   const sess = ld('sess', null);
   if(sess){
     const u = ld('u_'+sess, null);
-    if(u){ startApp(u); return; }
+    if(u){
+      // Charger les données Firestore avant de démarrer (sync entre appareils)
+      try { await loadUserDataFromFirestore(sess); } catch(_){}
+      startApp(u);
+      return;
+    }
   }
   const remE = ld('rem_e', '');
   const remP = ld('rem_p', '');
