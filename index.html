@@ -21,13 +21,20 @@
   --sar:env(safe-area-inset-right,0px);
   --sab:env(safe-area-inset-bottom,0px);
   --sal:env(safe-area-inset-left,0px);
-  /* Light theme */
-  --bg:#fff9fb;--bg2:#fef2f6;--bg3:#fff;
-  --text:#3e1828;--text2:#7a3a52;--text3:#b07a90;
-  --border:#f5d5e0;--card:#fff;
-  --accent:#d4607a;--accent2:#b84060;
-  --gold:#c9a84c;--gold2:#a8872e;
-  --shadow:rgba(212,96,122,0.12);
+  /* Light theme — contraste augmenté sur les roses pâles, doré conservé */
+  --bg:#fbe6ee;    /* fond général : rose pâle plus marqué (avant #fff9fb très blanc) */
+  --bg2:#f5d4e0;   /* fond secondaire : plus rosé (avant #fef2f6) */
+  --bg3:#fff;      /* blanc pur conservé pour les cartes */
+  --text:#2d0a18;  /* texte principal : presque bordeaux pour contraste max (avant #3e1828) */
+  --text2:#5a1a30; /* texte secondaire (avant #7a3a52) */
+  --text3:#8a4a60; /* texte tertiaire (avant #b07a90 quasi-pâle) */
+  --border:#d8a0b8;/* bordures rose pâle plus visibles (avant #f5d5e0 quasi-invisible) */
+  --card:#fff;     /* cartes restent blanches pour contraste */
+  --accent:#b84060;/* rose foncé pour boutons (avant #d4607a) */
+  --accent2:#9a2848; /* rose très foncé (avant #b84060) */
+  --gold:#c9a84c;  /* DORÉ INCHANGÉ */
+  --gold2:#a8872e; /* DORÉ INCHANGÉ */
+  --shadow:rgba(154,40,72,0.15);
 }
 @media(prefers-color-scheme:dark){
   :root{
@@ -63,16 +70,26 @@ body{background:#fff9fb;font-family:Lora,serif;color:#3e1828;min-height:100vh;}
    Sur PC, on garde la page pleine largeur (comme un site normal).
    Le contenu intérieur de chaque section est limité à 900px et centré
    en ajoutant un padding horizontal qui grandit avec la largeur de l'écran.
-   Le fond (header rose, barre d'onglets) couvre TOUTE la largeur de l'écran. */
+   Le fond (header rose, barre d'onglets) couvre TOUTE la largeur de l'écran.
+   On agrandit aussi les textes de ~12 % pour qu'ils ne soient pas trop petits. */
 @media (min-width: 900px) {
-  /* On élargit le padding interne de chaque section pour centrer leur contenu.
-     Le calc(): bord gauche/droit = (100vw - 900px) / 2, mais clampé à 16px min. */
+  /* Tailles globales : on injecte une variable CSS pour le facteur d'échelle */
+  html { font-size: 18px; }       /* base 18px au lieu de 16px par défaut */
+  body { font-size: 15px; }       /* lecture confortable sur PC */
+
+  /* Padding latéral : centre les éléments dans une bande de 900px max */
   header, #tabs-bar, [id^="page-"] {
     padding-left: max(16px, calc((100vw - 900px) / 2)) !important;
     padding-right: max(16px, calc((100vw - 900px) / 2)) !important;
   }
-  /* La barre d'onglets : son contenu interne doit aussi être centré */
   #tabs-bar > div { justify-content: center; }
+
+  /* Boutons, inputs, et textes : agrandissement uniforme +1px à +2px */
+  .btn { font-size: 15px; padding: 12px 20px; }
+  .btn-sec { font-size: 14px; padding: 11px 18px; }
+  .inp { font-size: 15px; padding: 11px 14px; }
+  .lbl { font-size: 12px; }
+  .tab-btn { font-size: 13px; padding: 7px 16px; }
 }
 
 .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:11px;padding:11px 18px;cursor:pointer;font-weight:700;font-family:Lora,serif;font-size:14px;transition:opacity .15s,transform .1s;min-height:44px;}
@@ -398,7 +415,7 @@ async function loadUserDataFromFirestore(email){
 }
 
 // ── THEME ────────────────────────────────────────────────────────────────────
-const pk="#d4607a",pm="#f0a8b8",sf="#fef2f6",br="#f5d5e0",tx="#3e1828",tm="#7a3a52",tl="#b07a90",gn="#5a8a6a",rd="#c43a3a",am="#c47a2a",gd="#c9a84c",gl="#e8d48a",bg2="#deb96a";
+const pk="#b84060",pm="#e89aac",sf="#f5d4e0",br="#d8a0b8",tx="#2d0a18",tm="#5a1a30",tl="#8a4a60",gn="#5a8a6a",rd="#c43a3a",am="#c47a2a",gd="#c9a84c",gl="#e8d48a",bg2="#deb96a";
 
 // ── MODALES CUSTOM (remplacent confirm/alert/prompt natifs) ──────────────────
 // Toutes asynchrones, retournent une Promise.
@@ -1662,10 +1679,31 @@ function addTableEl(table){
     seat.className='tp-seat';
     const hidden=(table.hiddenSeats||[]).includes(i);
     const g=GUESTS.find(g=>g.seatTableId===table.id&&g.seatIdx===i);
-    seat.style.cssText=`position:absolute;left:${sx}px;top:${sy}px;width:26px;height:26px;border-radius:50%;border:${hidden?`2px dashed ${br}`:'2.5px solid #fff'};background:${hidden?'rgba(255,255,255,.35)':g?(g.cote==='p1'?'#e8a0b0':'#a0b0e8'):'#f5e0e8'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.13);z-index:3;color:${hidden?br:'#fff'};user-select:none;`;
+    seat.style.cssText=`position:absolute;left:${sx}px;top:${sy}px;width:26px;height:26px;border-radius:50%;border:${hidden?`2px dashed ${br}`:'2.5px solid #fff'};background:${hidden?'rgba(255,255,255,.35)':g?(g.cote==='p1'?'#e8a0b0':'#a0b0e8'):'#f5e0e8'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.13);z-index:10;color:${hidden?br:'#fff'};user-select:none;touch-action:manipulation;`;
     seat.textContent=hidden?'·':(g?g.nom.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase():'+');
     seat.title=g?g.nom:'Libre';
-    seat.onclick=e=>{e.stopPropagation();openSeatModal(table.id,i);};
+    // CORRECTIF DOUBLE :
+    // 1) On bloque pointerdown sur la chaise pour empêcher le drag du parent
+    //    de capturer l'event (setPointerCapture absorberait sinon le click).
+    // 2) On bind l'ouverture de la modale à la fois sur 'click' et 'pointerup'
+    //    pour fiabilité maximale (sur mobile, click peut parfois ne pas se déclencher
+    //    si l'utilisateur a légèrement bougé son doigt).
+    seat.addEventListener('pointerdown',e=>{e.stopPropagation();});
+    let seatTouched=false;
+    seat.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(seatTouched){seatTouched=false;return;}
+      openSeatModal(table.id,i);
+    });
+    // Fallback pour mobile : si pointerup arrive sans click (rare), on déclenche aussi
+    seat.addEventListener('pointerup',e=>{
+      // Ne déclenche que si le pointer est resté sur la chaise (pas un drag externe)
+      if(e.pointerType==='touch'){
+        seatTouched=true;
+        e.stopPropagation();
+        openSeatModal(table.id,i);
+      }
+    });
     div.appendChild(seat);
   }
 
@@ -1773,11 +1811,48 @@ function renderVendors(){
   el('page-4').innerHTML=`
   <div class="card" style="padding:14px;margin-bottom:14px;background:linear-gradient(135deg,${sf},#fff);">
     <div style="font-size:13px;color:${tm};margin-bottom:10px;font-weight:700;">Rechercher un prestataire</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <input class="inp" id="vnd-loc" placeholder="Ex: traiteur, photographe, fleuriste..." style="flex:1;min-width:140px;" onkeydown="if(event.key==='Enter')searchVendors()">
-      <button class="btn" onclick="searchVendors()" id="vnd-btn" style="min-width:110px;">Rechercher</button>
+
+    <!-- Grille de boutons catégories : chaque clic lance une recherche par TAG OSM précis -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:6px;margin-bottom:12px;">
+      ${[
+        {key:'salle',label:'Salle / Domaine',icon:'🏛️'},
+        {key:'traiteur',label:'Traiteur',icon:'🍽️'},
+        {key:'photographe',label:'Photographe',icon:'📷'},
+        {key:'videaste',label:'Vidéaste',icon:'🎥'},
+        {key:'dj',label:'DJ / Musique',icon:'🎵'},
+        {key:'fleuriste',label:'Fleuriste',icon:'💐'},
+        {key:'patisserie',label:'Pâtisserie',icon:'🎂'},
+        {key:'robe',label:'Robe mariée',icon:'👰'},
+        {key:'costume',label:'Costume',icon:'🤵'},
+        {key:'coiffeur',label:'Coiffeur',icon:'💇'},
+        {key:'beaute',label:'Maquillage',icon:'💄'},
+        {key:'bijou',label:'Bijouterie',icon:'💍'},
+        {key:'imprimeur',label:'Imprimeur',icon:'📜'},
+        {key:'voiture',label:'Voiture',icon:'🚗'},
+        {key:'hotel',label:'Hébergement',icon:'🏨'},
+        {key:'decor',label:'Décoration',icon:'🎀'}
+      ].map(c=>`<button onclick="searchByCategory('${c.key}','${c.label}')" class="vnd-cat-btn" style="background:#fff;color:${tx};border:1.5px solid ${br};border-radius:10px;padding:8px 10px;cursor:pointer;font-size:11px;font-weight:600;font-family:Lora,serif;text-align:left;display:flex;align-items:center;gap:6px;transition:all .15s;">
+        <span style="font-size:14px;">${c.icon}</span><span>${c.label}</span>
+      </button>`).join('')}
     </div>
-    <p style="font-size:11px;color:${tl};font-style:italic;">📍 Recherche de vrais prestataires via OpenStreetMap, triés par distance (proximité géographique).</p>
+
+    <!-- Slider rayon -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <label style="font-size:11px;color:${tl};font-weight:700;flex-shrink:0;">Rayon :</label>
+      <input type="range" id="vnd-radius" min="5" max="100" step="5" value="20" oninput="document.getElementById('vnd-radius-val').textContent=this.value+' km'" style="flex:1;accent-color:${pk};">
+      <span id="vnd-radius-val" style="font-size:12px;color:${tx};font-weight:700;min-width:50px;text-align:right;">20 km</span>
+    </div>
+
+    <!-- Recherche libre (optionnelle, si la catégorie ne couvre pas le besoin) -->
+    <details style="margin-top:8px;">
+      <summary style="font-size:11px;color:${tl};cursor:pointer;">+ Recherche par texte libre</summary>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <input class="inp" id="vnd-loc" placeholder="Ex: domaine de la roseraie, château..." style="flex:1;min-width:140px;font-size:12px;" onkeydown="if(event.key==='Enter')searchVendors()">
+        <button class="btn" onclick="searchVendors()" id="vnd-btn" style="min-width:100px;font-size:12px;">Rechercher</button>
+      </div>
+    </details>
+
+    <p style="font-size:11px;color:${tl};font-style:italic;margin-top:10px;">📍 Données OpenStreetMap, triées par distance autour de votre position.</p>
   </div>
   <div id="vnd-results-wrap" style="margin-bottom:16px;"></div>
   <div style="margin-bottom:18px;">
@@ -1833,7 +1908,6 @@ async function searchVendors(){
         searchVendorsWithLocation(query,pos.coords.latitude,pos.coords.longitude);
       },
       err=>{
-        // Géoloc refusée ou échouée : recherche texte sans géoloc
         console.warn('Géolocalisation indisponible :',err&&err.message);
         if(btn){btn.textContent='Rechercher';btn.disabled=false;}
         searchVendorsWithLocation(query,null,null);
@@ -1844,6 +1918,156 @@ async function searchVendors(){
     if(btn){btn.textContent='Rechercher';btn.disabled=false;}
     searchVendorsWithLocation(query,null,null);
   }
+}
+
+// ─── TABLE CENTRALE des catégories → tags OSM ───
+// Une seule source de vérité, utilisée à la fois par les boutons catégorie
+// et par la détection de la query texte libre (osmFilters dans searchVendorsWithLocation).
+const VND_CATEGORIES = {
+  salle:       {label:'Lieu/Salle',         tags:['amenity=events_venue','amenity=conference_centre','amenity=community_centre','tourism=hotel','historic=castle','building=castle','leisure=resort']},
+  traiteur:    {label:'Traiteur',           tags:['shop=caterer','craft=caterer','craft=catering','amenity=catering']},
+  photographe: {label:'Photographe',        tags:['shop=photo','craft=photographer','office=photographer']},
+  videaste:    {label:'Vidéaste',           tags:['craft=videographer','office=videographer','shop=video']},
+  dj:          {label:'DJ/Musique',         tags:['craft=musical_instrument','shop=musical_instrument','office=dj','shop=music']},
+  fleuriste:   {label:'Fleuriste',          tags:['shop=florist']},
+  patisserie:  {label:'Pâtisserie/Cake',    tags:['shop=bakery','shop=pastry','shop=confectionery','craft=confectioner']},
+  robe:        {label:'Robe mariée',        tags:['shop=wedding_contract','shop=bridal']},
+  costume:     {label:'Costume/Tailleur',   tags:['craft=tailor','shop=tailor','shop=clothes']},
+  coiffeur:    {label:'Coiffeur',           tags:['shop=hairdresser']},
+  beaute:      {label:'Maquillage/Beauté',  tags:['shop=beauty','shop=cosmetics','leisure=spa']},
+  bijou:       {label:'Bijoutier',          tags:['shop=jewelry']},
+  imprimeur:   {label:'Imprimeur',          tags:['shop=stationery','shop=copyshop','craft=printer']},
+  voiture:     {label:'Véhicule',           tags:['amenity=car_rental','shop=car']},
+  hotel:       {label:'Hébergement',        tags:['tourism=hotel','tourism=guest_house','tourism=apartment','tourism=hostel']},
+  decor:       {label:'Décoration',         tags:['shop=interior_decoration','craft=upholsterer','office=event_management']}
+};
+
+// Lancée au clic sur un bouton catégorie : recherche par TAG OSM uniquement
+// (pas par nom). C'est ce qui fait que "Salle" trouve toutes les salles de
+// réception, pas seulement les établissements appelés "Salle".
+async function searchByCategory(catKey, catLabel){
+  const cat = VND_CATEGORIES[catKey];
+  if(!cat){console.warn('Catégorie inconnue:',catKey);return;}
+
+  // Récupérer la valeur du slider rayon (défaut 20 km)
+  const radiusKm = parseInt(el('vnd-radius')?.value || '20', 10);
+
+  const wrap = el('vnd-results-wrap');
+  if(wrap) wrap.innerHTML = `<p style="text-align:center;padding:14px;font-size:12px;color:${tl};">🔍 Recherche des ${catLabel.toLowerCase()}s dans un rayon de ${radiusKm} km...</p>`;
+
+  // Géoloc nécessaire : sans position, on ne peut pas filtrer par rayon
+  let lat = window._userLat, lng = window._userLng;
+  if(!lat || !lng){
+    if(!navigator.geolocation){
+      if(wrap) wrap.innerHTML = `<p style="text-align:center;padding:14px;font-size:13px;color:${rd};">Géolocalisation non disponible.</p>`;
+      return;
+    }
+    if(wrap) wrap.innerHTML = `<p style="text-align:center;padding:14px;font-size:12px;color:${tl};">📍 Demande de localisation...</p>`;
+    try {
+      const pos = await new Promise((resolve,reject)=>{
+        navigator.geolocation.getCurrentPosition(resolve, reject, {timeout:10000, maximumAge:300000});
+      });
+      window._userLat = lat = pos.coords.latitude;
+      window._userLng = lng = pos.coords.longitude;
+    } catch(geoErr){
+      if(wrap) wrap.innerHTML = `<p style="text-align:center;padding:14px;font-size:13px;color:${rd};">Géolocalisation refusée ou indisponible.<br><span style="font-size:11px;font-style:italic;">Autorise la localisation dans les paramètres du navigateur.</span></p>`;
+      return;
+    }
+  }
+
+  await runCategorySearch(cat.tags, catLabel, lat, lng, radiusKm * 1000);
+}
+
+// Recherche par TAG OSM dans un rayon donné, sans recherche par nom
+// → résultats cohérents : tous les fleuristes, tous les traiteurs, etc.
+async function runCategorySearch(tags, catLabel, lat, lng, radiusMeters){
+  const wrap = el('vnd-results-wrap');
+
+  async function fetchWithTimeout(url, opts={}, timeoutMs=12000){
+    const ctrl = new AbortController();
+    const tid = setTimeout(()=>ctrl.abort(), timeoutMs);
+    try { return await fetch(url, {...opts, signal: ctrl.signal}); }
+    finally { clearTimeout(tid); }
+  }
+  function haversine(la1,lo1,la2,lo2){
+    const R=6371,toRad=x=>x*Math.PI/180;
+    const dLa=toRad(la2-la1),dLo=toRad(lo2-lo1);
+    const a=Math.sin(dLa/2)**2+Math.cos(toRad(la1))*Math.cos(toRad(la2))*Math.sin(dLo/2)**2;
+    return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*10)/10;
+  }
+
+  // Construit la requête Overpass : pour chaque tag, on cherche nodes+ways+relations
+  const filterParts = tags.map(t=>{
+    const [k,v]=t.split('=');
+    return `node["${k}"="${v}"](around:${radiusMeters},${lat},${lng});`+
+           `way["${k}"="${v}"](around:${radiusMeters},${lat},${lng});`+
+           `relation["${k}"="${v}"](around:${radiusMeters},${lat},${lng});`;
+  }).join('');
+  const overpassQ = `[out:json][timeout:15];(${filterParts});out center 100;`;
+  const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(overpassQ);
+
+  let results = [];
+  const seenNames = new Set();
+
+  try {
+    const res = await fetchWithTimeout(url, {}, 14000);
+    if(!res.ok) throw new Error('Overpass HTTP ' + res.status);
+    const data = await res.json();
+    const named = (data.elements || []).filter(e=>(e.tags||{}).name);
+
+    for(const e of named){
+      const tagsE = e.tags || {};
+      const elat = e.lat || (e.center && e.center.lat);
+      const elon = e.lon || (e.center && e.center.lon);
+      if(!elat || !elon) continue;
+      const nom = tagsE.name;
+      const key = nom.toLowerCase().trim();
+      if(seenNames.has(key)) continue;
+      seenNames.add(key);
+      const dist = haversine(lat, lng, elat, elon);
+      const addr = [tagsE['addr:housenumber'], tagsE['addr:street'], tagsE['addr:postcode'], tagsE['addr:city']]
+        .filter(Boolean).join(' ');
+      results.push({
+        id: results.length,
+        nom: nom,
+        categorie: catLabel,
+        description: addr || tagsE['addr:city'] || 'Adresse non renseignée',
+        tel: tagsE.phone || tagsE['contact:phone'] || '',
+        site: (tagsE.website || tagsE['contact:website'] || '').replace(/^https?:\/\//,''),
+        distance: dist,
+        adresse: addr,
+        lat: elat,
+        lng: elon
+      });
+    }
+  } catch(err){
+    console.warn('[search] Overpass error:', err.message);
+    if(wrap) wrap.innerHTML = `
+      <div style="text-align:center;padding:16px;font-size:13px;color:${tl};">
+        <div style="margin-bottom:8px;">Le serveur OpenStreetMap est temporairement indisponible.</div>
+        <a href="https://www.google.com/maps/search/${encodeURIComponent(catLabel)}/@${lat},${lng},13z" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
+          🔎 Chercher ${catLabel.toLowerCase()} sur Google Maps
+        </a>
+      </div>`;
+    return;
+  }
+
+  results = results.sort((a,b)=>a.distance - b.distance).slice(0, 30);
+
+  if(!results.length){
+    if(wrap) wrap.innerHTML = `
+      <div style="text-align:center;padding:16px;font-size:13px;color:${tl};">
+        <div style="margin-bottom:8px;">Aucun ${catLabel.toLowerCase()} trouvé dans un rayon de ${Math.round(radiusMeters/1000)} km.</div>
+        <div style="font-size:11px;font-style:italic;margin-bottom:14px;">Essaie d'augmenter le rayon avec le slider, ou consulte Google Maps.</div>
+        <a href="https://www.google.com/maps/search/${encodeURIComponent(catLabel)}/@${lat},${lng},13z" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
+          🔎 Chercher sur Google Maps
+        </a>
+      </div>`;
+    return;
+  }
+
+  window._vndResults = results;
+  renderVndResults(catLabel);
 }
 
 async function searchVendorsWithLocation(query,lat,lng){
@@ -8361,7 +8585,454 @@ function setup3DScene(data){
   requestAnimationFrame(tryInit);
 }
 
-function renderCake(){renderCake3D();}
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIGURATEUR WEDDING CAKE — RENDU SVG STYLISÉ
+// ─────────────────────────────────────────────────────────────────────────────
+// Plus de Three.js 3D : à la place, un rendu SVG vectoriel élégant.
+// L'utilisateur choisit nombre d'étages, couleurs, fleurs, style, feuilles,
+// intérieur. Le SVG se met à jour instantanément avec ombres, dégradés,
+// effet premium. Compatible mobile et desktop, pas d'API payante.
+
+function renderCake(){
+  const d = ld('cake_'+USER.email, {});
+  // Structure des données du configurateur (avec valeurs par défaut)
+  const cfg = {
+    etages: d.cfgEtages || 3,
+    couleur: d.cfgCouleur || '#FAF6EE',      // crème blanche
+    couleurDeco: d.cfgCouleurDeco || '#E89AAC', // rose tendre
+    style: d.cfgStyle || 'romantique',
+    fleur: d.cfgFleur || 'rose',
+    feuille: d.cfgFeuille || 'eucalyptus',
+    interieur: d.cfgInterieur || 'Vanille / Fruits rouges',
+    topper: d.cfgTopper || '',
+  };
+
+  const page = el('page-7');
+  if(!page) return;
+
+  // Styles disponibles avec leurs ajustements visuels
+  const STYLES = {
+    luxe:         {label:'Luxe',          palette:['#FAF6EE','#E8D48A'], ombre:0.35, doree:true},
+    romantique:   {label:'Romantique',    palette:['#FFEBF1','#E89AAC'], ombre:0.25, doree:false},
+    boheme:       {label:'Bohème',        palette:['#F0E6D2','#D4B896'], ombre:0.20, doree:false},
+    moderne:      {label:'Moderne',       palette:['#F8F8F8','#C8C8C8'], ombre:0.18, doree:false},
+    nature:       {label:'Nature',        palette:['#F5F0E8','#A8B888'], ombre:0.22, doree:false},
+    vintage:      {label:'Vintage',       palette:['#F5E6D3','#D4A574'], ombre:0.28, doree:true},
+  };
+  const FLEURS = {
+    rose:       'Roses',
+    pivoine:    'Pivoines',
+    hortensia:  'Hortensias',
+    renoncule:  'Renoncules',
+    aucune:     'Aucune'
+  };
+  const FEUILLES = {
+    eucalyptus:  'Eucalyptus',
+    olivier:     'Olivier',
+    fougere:     'Fougère',
+    sechee:      'Feuilles séchées',
+    aucune:      'Aucune'
+  };
+  const INTERIEURS = [
+    'Vanille / Fruits rouges',
+    'Chocolat / Praliné',
+    'Pistache / Framboise',
+    'Citron / Meringue',
+    'Caramel / Pomme',
+    'Vanille / Confiture',
+    'Café / Noisette',
+  ];
+
+  // Sauvegarde la config (préfixe cfg* pour pas écraser les anciennes données 3D)
+  function saveCfg(){
+    const current = ld('cake_'+USER.email, {});
+    current.cfgEtages = cfg.etages;
+    current.cfgCouleur = cfg.couleur;
+    current.cfgCouleurDeco = cfg.couleurDeco;
+    current.cfgStyle = cfg.style;
+    current.cfgFleur = cfg.fleur;
+    current.cfgFeuille = cfg.feuille;
+    current.cfgInterieur = cfg.interieur;
+    current.cfgTopper = cfg.topper;
+    sv('cake_'+USER.email, current);
+  }
+
+  // ─── GÉNÉRATION DU SVG ─────────────────────────────────────────────────────
+  function buildSVG(){
+    const W = 320, H = 420;
+    const cx = W/2;
+    const baseY = H - 40;            // ligne du sol
+    const totalH = 300;              // hauteur totale du gâteau
+
+    const n = cfg.etages;
+    // Chaque étage : largeur, hauteur, position Y
+    const layerH = totalH / n;
+    // Largeur : étage du bas le plus large, étage du haut le plus étroit
+    // On utilise une décroissance type gâteau wedding classique
+    const widths = [];
+    for(let i=0; i<n; i++){
+      const t = i / Math.max(1, n-1); // 0 (bas) → 1 (haut)
+      const w = 200 - t * 110;        // de 200px en bas à 90px en haut
+      widths.push(w);
+    }
+
+    const style = STYLES[cfg.style] || STYLES.romantique;
+    const ombre = style.ombre;
+    const couleur = cfg.couleur;
+    const couleurDeco = cfg.couleurDeco;
+
+    // Couleur foncée pour l'ombrage
+    function darken(hex, pct){
+      const h = hex.replace('#','');
+      const r = parseInt(h.substr(0,2),16);
+      const g = parseInt(h.substr(2,2),16);
+      const b = parseInt(h.substr(4,2),16);
+      return `rgb(${Math.round(r*(1-pct))},${Math.round(g*(1-pct))},${Math.round(b*(1-pct))})`;
+    }
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:340px;height:auto;display:block;margin:0 auto;">`;
+
+    // Définitions : dégradés et filtres
+    svg += `<defs>`;
+    svg += `<linearGradient id="cakeGrad" x1="0%" y1="0%" x2="100%" y2="0%">`;
+    svg += `<stop offset="0%" stop-color="${darken(couleur,0.22)}"/>`;
+    svg += `<stop offset="35%" stop-color="${couleur}"/>`;
+    svg += `<stop offset="65%" stop-color="${couleur}"/>`;
+    svg += `<stop offset="100%" stop-color="${darken(couleur,0.18)}"/>`;
+    svg += `</linearGradient>`;
+    // Gradient pour le sommet de chaque étage
+    svg += `<linearGradient id="cakeTopGrad" x1="0%" y1="0%" x2="100%" y2="0%">`;
+    svg += `<stop offset="0%" stop-color="${darken(couleur,0.10)}"/>`;
+    svg += `<stop offset="50%" stop-color="${couleur}"/>`;
+    svg += `<stop offset="100%" stop-color="${darken(couleur,0.10)}"/>`;
+    svg += `</linearGradient>`;
+    // Ombre portée
+    svg += `<filter id="cakeShadow" x="-20%" y="-20%" width="140%" height="140%">`;
+    svg += `<feGaussianBlur in="SourceAlpha" stdDeviation="3"/>`;
+    svg += `<feOffset dx="0" dy="4" result="offsetblur"/>`;
+    svg += `<feComponentTransfer><feFuncA type="linear" slope="${ombre}"/></feComponentTransfer>`;
+    svg += `<feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>`;
+    svg += `</filter>`;
+    // Lustre doré (style luxe/vintage)
+    svg += `<linearGradient id="goldGrad" x1="0%" y1="0%" x2="0%" y2="100%">`;
+    svg += `<stop offset="0%" stop-color="#f5d77a"/>`;
+    svg += `<stop offset="50%" stop-color="#d4a843"/>`;
+    svg += `<stop offset="100%" stop-color="#a8842a"/>`;
+    svg += `</linearGradient>`;
+    svg += `</defs>`;
+
+    // Ombre au sol
+    svg += `<ellipse cx="${cx}" cy="${baseY+8}" rx="${widths[0]/2 + 20}" ry="8" fill="rgba(40,20,30,0.18)" filter="url(#cakeShadow)"/>`;
+
+    // Construire chaque étage de bas en haut
+    let currentY = baseY;
+    for(let i=0; i<n; i++){
+      const w = widths[i];
+      const x = cx - w/2;
+      const y = currentY - layerH;
+
+      // Étage cylindrique : rectangle pour le corps + ellipse au sommet
+      // Corps (rectangle)
+      svg += `<rect x="${x}" y="${y + 8}" width="${w}" height="${layerH - 8}" fill="url(#cakeGrad)" filter="url(#cakeShadow)"/>`;
+      // Ombre au-dessous de l'étage suivant (pour effet superposition)
+      if(i < n-1){
+        svg += `<ellipse cx="${cx}" cy="${y}" rx="${w/2}" ry="6" fill="${darken(couleur,0.25)}" opacity="0.65"/>`;
+      }
+      // Sommet (ellipse claire) — sauf si pas le dernier étage
+      svg += `<ellipse cx="${cx}" cy="${y + 8}" rx="${w/2}" ry="8" fill="url(#cakeTopGrad)"/>`;
+
+      // Liseré doré pour les styles luxe / vintage
+      if(style.doree){
+        svg += `<rect x="${x}" y="${y + layerH - 4}" width="${w}" height="2" fill="url(#goldGrad)" opacity="0.85"/>`;
+        svg += `<ellipse cx="${cx}" cy="${y+8}" rx="${w/2}" ry="8" fill="none" stroke="url(#goldGrad)" stroke-width="1" opacity="0.75"/>`;
+      }
+
+      // ─── DÉCORATIONS FLEURS sur cet étage ───
+      if(cfg.fleur !== 'aucune'){
+        // Placer 2-4 fleurs par étage (plus sur le bas, moins en haut)
+        const nFleurs = Math.max(2, 5 - i);
+        for(let f=0; f<nFleurs; f++){
+          // Position : autour du contour de l'étage, alternance avant/derrière
+          const angle = (f / nFleurs) * Math.PI + (i * 0.3); // décalage par étage
+          // On dessine seulement les fleurs sur l'avant (sin > -0.3)
+          const sinA = Math.sin(angle);
+          if(sinA < -0.3) continue;
+          const fx = cx + Math.cos(angle) * (w/2 - 6);
+          const fy = y + layerH - 8 + sinA * 4;
+          const size = 10 + Math.random() * 4;
+          svg += drawFleur(cfg.fleur, fx, fy, size, couleurDeco);
+        }
+
+        // Cluster principal en haut du gâteau (couronne décorative)
+        if(i === n-1){
+          const topClusterY = y - 6;
+          for(let c=0; c<3; c++){
+            const ang = -Math.PI/2 + (c-1)*0.6;
+            const fx = cx + Math.cos(ang) * 14;
+            const fy = topClusterY + Math.sin(ang) * 6;
+            svg += drawFleur(cfg.fleur, fx, fy, 13, couleurDeco);
+          }
+        }
+      }
+
+      // ─── FEUILLES ───
+      if(cfg.feuille !== 'aucune'){
+        const nFeuilles = Math.max(2, 4 - i);
+        for(let f=0; f<nFeuilles; f++){
+          const angle = (f / nFeuilles) * Math.PI + 0.7 + (i * 0.4);
+          const sinA = Math.sin(angle);
+          if(sinA < -0.3) continue;
+          const fx = cx + Math.cos(angle) * (w/2 - 4);
+          const fy = y + layerH - 10 + sinA * 5;
+          svg += drawFeuille(cfg.feuille, fx, fy);
+        }
+      }
+
+      currentY = y;
+    }
+
+    // ─── TOPPER (texte en haut) ───
+    if(cfg.topper && cfg.topper.trim()){
+      const topY = currentY - 20;
+      const topperColor = style.doree ? '#c9a84c' : darken(couleurDeco, 0.25);
+      svg += `<text x="${cx}" y="${topY}" text-anchor="middle" font-family="Playfair Display, Georgia, serif" font-size="14" font-style="italic" font-weight="700" fill="${topperColor}">${cfg.topper.substring(0,20)}</text>`;
+      svg += `<line x1="${cx-30}" y1="${topY+4}" x2="${cx+30}" y2="${topY+4}" stroke="${topperColor}" stroke-width="0.5" opacity="0.6"/>`;
+    }
+
+    svg += `</svg>`;
+    return svg;
+  }
+
+  // ─── FONCTIONS DE DESSIN DES FLEURS (SVG vectoriel stylisé) ────────────────
+  function drawFleur(type, cx, cy, size, color){
+    // Couleur centrale plus foncée
+    const hex = color.replace('#','');
+    const r = parseInt(hex.substr(0,2),16);
+    const g = parseInt(hex.substr(2,2),16);
+    const b = parseInt(hex.substr(4,2),16);
+    const dark = `rgb(${Math.round(r*0.65)},${Math.round(g*0.65)},${Math.round(b*0.65)})`;
+    const light = `rgb(${Math.min(255,Math.round(r*1.15))},${Math.min(255,Math.round(g*1.15))},${Math.min(255,Math.round(b*1.15))})`;
+
+    let s = '';
+    if(type === 'rose'){
+      // Rose : 5-6 pétales arrondis disposés autour d'un coeur
+      const nPetals = 6;
+      for(let p=0; p<nPetals; p++){
+        const a = (p/nPetals) * Math.PI * 2;
+        const px = cx + Math.cos(a) * size * 0.35;
+        const py = cy + Math.sin(a) * size * 0.35;
+        s += `<ellipse cx="${px}" cy="${py}" rx="${size*0.45}" ry="${size*0.55}" fill="${color}" transform="rotate(${a*180/Math.PI} ${px} ${py})" opacity="0.92"/>`;
+      }
+      // Coeur central
+      s += `<circle cx="${cx}" cy="${cy}" r="${size*0.32}" fill="${dark}"/>`;
+      s += `<circle cx="${cx-size*0.1}" cy="${cy-size*0.1}" r="${size*0.18}" fill="${light}" opacity="0.5"/>`;
+    } else if(type === 'pivoine'){
+      // Pivoine : nombreux pétales superposés, plus arrondie qu'une rose
+      const nPetals = 10;
+      for(let p=0; p<nPetals; p++){
+        const a = (p/nPetals) * Math.PI * 2;
+        const r1 = size * 0.6;
+        const px = cx + Math.cos(a) * r1 * 0.4;
+        const py = cy + Math.sin(a) * r1 * 0.4;
+        s += `<ellipse cx="${px}" cy="${py}" rx="${size*0.5}" ry="${size*0.4}" fill="${color}" transform="rotate(${a*180/Math.PI} ${px} ${py})" opacity="0.85"/>`;
+      }
+      // Couche interne plus claire
+      for(let p=0; p<6; p++){
+        const a = (p/6) * Math.PI * 2;
+        const px = cx + Math.cos(a) * size * 0.2;
+        const py = cy + Math.sin(a) * size * 0.2;
+        s += `<ellipse cx="${px}" cy="${py}" rx="${size*0.3}" ry="${size*0.25}" fill="${light}" opacity="0.75"/>`;
+      }
+      s += `<circle cx="${cx}" cy="${cy}" r="${size*0.15}" fill="${dark}"/>`;
+    } else if(type === 'hortensia'){
+      // Hortensia : cluster de petites fleurs à 4 pétales
+      for(let cluster=0; cluster<7; cluster++){
+        const ca = (cluster/7) * Math.PI * 2;
+        const ccx = cx + Math.cos(ca) * size * 0.35;
+        const ccy = cy + Math.sin(ca) * size * 0.35;
+        const ps = size * 0.22;
+        s += `<circle cx="${ccx-ps*0.5}" cy="${ccy-ps*0.5}" r="${ps*0.7}" fill="${color}" opacity="0.9"/>`;
+        s += `<circle cx="${ccx+ps*0.5}" cy="${ccy-ps*0.5}" r="${ps*0.7}" fill="${color}" opacity="0.9"/>`;
+        s += `<circle cx="${ccx-ps*0.5}" cy="${ccy+ps*0.5}" r="${ps*0.7}" fill="${color}" opacity="0.9"/>`;
+        s += `<circle cx="${ccx+ps*0.5}" cy="${ccy+ps*0.5}" r="${ps*0.7}" fill="${color}" opacity="0.9"/>`;
+        s += `<circle cx="${ccx}" cy="${ccy}" r="${ps*0.25}" fill="${dark}"/>`;
+      }
+    } else if(type === 'renoncule'){
+      // Renoncule : couches de pétales superposées en cercles
+      for(let layer=0; layer<3; layer++){
+        const lsize = size * (1 - layer * 0.25);
+        const nP = 8 - layer*2;
+        for(let p=0; p<nP; p++){
+          const a = (p/nP) * Math.PI * 2 + layer * 0.4;
+          const px = cx + Math.cos(a) * lsize * 0.3;
+          const py = cy + Math.sin(a) * lsize * 0.3;
+          s += `<ellipse cx="${px}" cy="${py}" rx="${lsize*0.4}" ry="${lsize*0.3}" fill="${color}" transform="rotate(${a*180/Math.PI} ${px} ${py})" opacity="${0.8 + layer*0.05}"/>`;
+        }
+      }
+      s += `<circle cx="${cx}" cy="${cy}" r="${size*0.15}" fill="${dark}"/>`;
+    }
+    return s;
+  }
+
+  function drawFeuille(type, cx, cy){
+    if(type === 'eucalyptus'){
+      // Eucalyptus : tige avec petites feuilles rondes alternées
+      let s = `<g transform="translate(${cx},${cy}) rotate(${20 + Math.random()*40 - 20})">`;
+      s += `<line x1="0" y1="0" x2="0" y2="-22" stroke="#7a9070" stroke-width="0.8"/>`;
+      for(let i=0; i<4; i++){
+        const y = -4 - i*5;
+        const side = i % 2 === 0 ? -1 : 1;
+        s += `<ellipse cx="${side*4}" cy="${y}" rx="3.5" ry="2.5" fill="#a8c0a0" opacity="0.92"/>`;
+      }
+      s += `</g>`;
+      return s;
+    } else if(type === 'olivier'){
+      // Olivier : feuilles longues et fines argentées
+      let s = `<g transform="translate(${cx},${cy}) rotate(${15 + Math.random()*30 - 15})">`;
+      s += `<line x1="0" y1="0" x2="0" y2="-25" stroke="#6e8060" stroke-width="0.8"/>`;
+      for(let i=0; i<5; i++){
+        const y = -3 - i*5;
+        const side = i % 2 === 0 ? -1 : 1;
+        s += `<ellipse cx="${side*3}" cy="${y}" rx="1.8" ry="4" fill="#a0b890" transform="rotate(${side*30} ${side*3} ${y})" opacity="0.9"/>`;
+      }
+      s += `</g>`;
+      return s;
+    } else if(type === 'fougere'){
+      // Fougère : tige avec feuilles plumeuses
+      let s = `<g transform="translate(${cx},${cy}) rotate(${30 + Math.random()*40 - 20})">`;
+      s += `<line x1="0" y1="0" x2="0" y2="-26" stroke="#5a8050" stroke-width="0.8"/>`;
+      for(let i=0; i<6; i++){
+        const y = -3 - i*4;
+        const side = i % 2 === 0 ? -1 : 1;
+        s += `<ellipse cx="${side*5}" cy="${y}" rx="6" ry="1.5" fill="#7aa070" transform="rotate(${side*30} ${side*5} ${y})" opacity="0.9"/>`;
+      }
+      s += `</g>`;
+      return s;
+    } else if(type === 'sechee'){
+      // Feuilles séchées : tons beige doré
+      let s = `<g transform="translate(${cx},${cy}) rotate(${10 + Math.random()*40 - 20})">`;
+      s += `<line x1="0" y1="0" x2="0" y2="-22" stroke="#b89868" stroke-width="0.8"/>`;
+      for(let i=0; i<4; i++){
+        const y = -4 - i*5;
+        const side = i % 2 === 0 ? -1 : 1;
+        s += `<ellipse cx="${side*4}" cy="${y}" rx="3.5" ry="2.2" fill="#d4b890" opacity="0.9"/>`;
+      }
+      s += `</g>`;
+      return s;
+    }
+    return '';
+  }
+
+  // ─── BUILD HTML PAGE ───────────────────────────────────────────────────────
+  // Helpers UI
+  function row(label, control){
+    return `<div style="margin-bottom:10px;">
+      <label style="display:block;font-size:11px;font-weight:700;color:${tl};letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">${label}</label>
+      ${control}
+    </div>`;
+  }
+  function selectOptions(options, current){
+    return Object.entries(options).map(([val,lbl])=>
+      `<option value="${val}" ${val===current?'selected':''}>${lbl}</option>`
+    ).join('');
+  }
+
+  page.innerHTML = `
+    <div style="margin-bottom:14px;">
+      <h2 style="font-family:Playfair Display,Georgia,serif;font-size:22px;color:${tm};margin:0 0 4px;text-align:center;font-weight:700;">Configurateur Wedding Cake</h2>
+      <p style="text-align:center;font-size:12px;color:${tl};margin:0 0 14px;font-style:italic;">Personnalise ton gâteau, le rendu s'adapte en direct.</p>
+    </div>
+
+    <!-- APERÇU SVG -->
+    <div id="cake-preview" class="card" style="padding:18px 14px;margin-bottom:16px;background:linear-gradient(160deg,#fff,${sf});text-align:center;">
+      ${buildSVG()}
+      <div style="font-size:11px;color:${tl};margin-top:8px;font-style:italic;">Aperçu stylisé · ${STYLES[cfg.style].label}</div>
+    </div>
+
+    <!-- CONTRÔLES -->
+    <div class="card" style="padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;color:${tm};margin-bottom:12px;font-weight:700;border-bottom:1.5px solid ${br};padding-bottom:6px;">🎂 Forme du gâteau</div>
+
+      ${row('Nombre d\'étages',
+        `<div style="display:flex;gap:6px;">
+          ${[1,2,3,4,5].map(n=>`<button onclick="updCakeCfg('etages',${n})" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${cfg.etages===n?pk:br};background:${cfg.etages===n?sf:'#fff'};color:${cfg.etages===n?pk:tx};font-weight:700;cursor:pointer;font-family:inherit;">${n}</button>`).join('')}
+        </div>`
+      )}
+
+      ${row('Style',
+        `<select class="inp" onchange="updCakeCfg('style',this.value)">
+          ${Object.entries(STYLES).map(([k,v])=>`<option value="${k}" ${cfg.style===k?'selected':''}>${v.label}</option>`).join('')}
+        </select>`
+      )}
+
+      ${row('Couleur du gâteau',
+        `<div style="display:flex;gap:8px;align-items:center;">
+          <input type="color" value="${cfg.couleur}" onchange="updCakeCfg('couleur',this.value)" style="width:50px;height:38px;border:1.5px solid ${br};border-radius:8px;cursor:pointer;background:#fff;">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;flex:1;">
+            ${['#FAF6EE','#F8E8DC','#F0E0D0','#E8D8C4','#FFEBF1','#E8DCC8','#E0D4E0','#D8E0E8'].map(c=>
+              `<button onclick="updCakeCfg('couleur','${c}')" style="width:26px;height:26px;border-radius:50%;border:${cfg.couleur===c?`2px solid ${pk}`:`1.5px solid ${br}`};background:${c};cursor:pointer;"></button>`
+            ).join('')}
+          </div>
+        </div>`
+      )}
+    </div>
+
+    <div class="card" style="padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;color:${tm};margin-bottom:12px;font-weight:700;border-bottom:1.5px solid ${br};padding-bottom:6px;">💐 Décorations</div>
+
+      ${row('Fleurs',
+        `<select class="inp" onchange="updCakeCfg('fleur',this.value)">
+          ${selectOptions(FLEURS, cfg.fleur)}
+        </select>`
+      )}
+
+      ${row('Couleur des fleurs',
+        `<div style="display:flex;gap:8px;align-items:center;">
+          <input type="color" value="${cfg.couleurDeco}" onchange="updCakeCfg('couleurDeco',this.value)" style="width:50px;height:38px;border:1.5px solid ${br};border-radius:8px;cursor:pointer;background:#fff;">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;flex:1;">
+            ${['#E89AAC','#D4607A','#B84060','#F5C8D0','#FFE0E8','#C8A8E0','#E8C8AC','#FAF6EE'].map(c=>
+              `<button onclick="updCakeCfg('couleurDeco','${c}')" style="width:26px;height:26px;border-radius:50%;border:${cfg.couleurDeco===c?`2px solid ${pk}`:`1.5px solid ${br}`};background:${c};cursor:pointer;"></button>`
+            ).join('')}
+          </div>
+        </div>`
+      )}
+
+      ${row('Feuillage',
+        `<select class="inp" onchange="updCakeCfg('feuille',this.value)">
+          ${selectOptions(FEUILLES, cfg.feuille)}
+        </select>`
+      )}
+    </div>
+
+    <div class="card" style="padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;color:${tm};margin-bottom:12px;font-weight:700;border-bottom:1.5px solid ${br};padding-bottom:6px;">🍰 Intérieur & finitions</div>
+
+      ${row('Intérieur du gâteau',
+        `<select class="inp" onchange="updCakeCfg('interieur',this.value)">
+          ${INTERIEURS.map(o=>`<option value="${o}" ${cfg.interieur===o?'selected':''}>${o}</option>`).join('')}
+        </select>`
+      )}
+
+      ${row('Topper (texte ou prénoms)',
+        `<input type="text" class="inp" value="${(cfg.topper||'').replace(/"/g,'&quot;')}" placeholder="Ex: Marine & Julian, Mr & Mrs..." maxlength="20" oninput="updCakeCfg('topper',this.value)">`
+      )}
+    </div>
+
+    <div class="card" style="padding:12px 14px;background:linear-gradient(135deg,${sf},#fff);font-size:11px;color:${tl};font-style:italic;line-height:1.5;">
+      💡 <strong>Astuce :</strong> Tu peux montrer cet aperçu à ton pâtissier pour qu'il puisse réaliser ton gâteau de mariage. Toute la configuration est sauvegardée automatiquement.
+    </div>
+  `;
+}
+
+// Fonction appelée par les contrôles pour mettre à jour une propriété
+function updCakeCfg(key, val){
+  const current = ld('cake_'+USER.email, {});
+  current['cfg' + key.charAt(0).toUpperCase() + key.slice(1)] = val;
+  sv('cake_'+USER.email, current);
+  renderCake();
+}
+
+
 function renderCake3D(){
   const data=getCakeData();
   const page=el('page-7');
