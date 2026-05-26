@@ -59,25 +59,20 @@ html{overscroll-behavior-y:none;}
 body{overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;background:var(--bg);font-family:Lora,serif;color:var(--text);min-height:100vh;padding-top:var(--sat);padding-left:var(--sal);padding-right:var(--sar);}
 body{background:#fff9fb;font-family:Lora,serif;color:#3e1828;min-height:100vh;}
 
-/* ── RESPONSIVE DESKTOP ── */
-/* Sur téléphone (≤900px) : tout prend 100% de la largeur, layout mobile natif */
-/* Sur PC (>900px) : la page reste PLEINE LARGEUR (comme un site normal),
-   mais le CONTENU des onglets et la barre d'onglets sont contraints à 900px
-   centrés horizontalement. Les éléments ne sont donc pas étirés. */
+/* ── RESPONSIVE DESKTOP ──
+   Sur PC, on garde la page pleine largeur (comme un site normal).
+   Le contenu intérieur de chaque section est limité à 900px et centré
+   en ajoutant un padding horizontal qui grandit avec la largeur de l'écran.
+   Le fond (header rose, barre d'onglets) couvre TOUTE la largeur de l'écran. */
 @media (min-width: 900px) {
-  /* Contenu principal : largeur limitée et centré */
-  #app, #auth-screen, #tabs-bar, header {
-    max-width: 900px;
-    margin-left: auto;
-    margin-right: auto;
+  /* On élargit le padding interne de chaque section pour centrer leur contenu.
+     Le calc(): bord gauche/droit = (100vw - 900px) / 2, mais clampé à 16px min. */
+  header, #tabs-bar, [id^="page-"] {
+    padding-left: max(16px, calc((100vw - 900px) / 2)) !important;
+    padding-right: max(16px, calc((100vw - 900px) / 2)) !important;
   }
-  /* Les pages des onglets sont à l'intérieur de #app, donc déjà centrées */
-  /* Mais on s'assure que les pages individuelles (page-0, page-1, etc.) le sont aussi */
-  [id^="page-"] {
-    max-width: 900px;
-    margin-left: auto;
-    margin-right: auto;
-  }
+  /* La barre d'onglets : son contenu interne doit aussi être centré */
+  #tabs-bar > div { justify-content: center; }
 }
 
 .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:11px;padding:11px 18px;cursor:pointer;font-weight:700;font-family:Lora,serif;font-size:14px;transition:opacity .15s,transform .1s;min-height:44px;}
@@ -1978,176 +1973,177 @@ async function searchVendorsWithLocation(query,lat,lng){
     return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*10)/10;
   }
 
-  let results=[];
+  // Helper fetch avec timeout dur (sinon une API lente bloque l'UI indéfiniment)
+  async function fetchWithTimeout(url, opts={}, timeoutMs=10000){
+    const ctrl = new AbortController();
+    const tid = setTimeout(()=>ctrl.abort(), timeoutMs);
+    try {
+      const r = await fetch(url, {...opts, signal: ctrl.signal});
+      return r;
+    } finally {
+      clearTimeout(tid);
+    }
+  }
 
+  let results=[];
+  const seenNames=new Set();
+
+  // try/finally pour GARANTIR la réactivation du bouton même si une exception survient
   try{
     if(lat&&lng&&filters){
-      // ─── RECHERCHE GÉOLOCALISÉE en 2 ÉTAPES ───
-      // 1) Overpass API : prestataires correctement taggés en OSM
-      // 2) Nominatim search avec bias géographique : élargit aux établissements
-      //    moins bien taggés mais identifiables par leur nom
-      // On combine les 2 sources et on déduplique par nom.
-
-      const radii=[15000, 40000, 100000]; // 15km → 40km → 100km
-      let rawResults=[];
-      for(const radius of radii){
-        // Pour chaque filtre type tag=valeur, on cherche nodes ET ways ET relations
-        // On ajoute aussi une recherche par NAME qui contient le terme principal
-        // (utile pour les commerçants mal taggés mais avec "Traiteur" dans le nom)
-        const filterParts=filters.map(f=>{
+      // ─── ÉTAPE 1 : OVERPASS API (peut échouer ou timeout, on tolère) ───
+      try {
+        // Un seul rayon (40 km) pour aller vite et éviter les timeouts.
+        // Si Overpass est rapide on récupère assez de résultats sans retry.
+        const radius = 40000;
+        const filterParts = filters.map(f=>{
           const [k,v]=f.split('=');
           return `node["${k}"="${v}"](around:${radius},${lat},${lng});`+
-                 `way["${k}"="${v}"](around:${radius},${lat},${lng});`+
-                 `relation["${k}"="${v}"](around:${radius},${lat},${lng});`;
+                 `way["${k}"="${v}"](around:${radius},${lat},${lng});`;
         }).join('');
 
-        // Recherche supplémentaire par nom : si le nom contient le terme cherché
-        // Ex : "Traiteur Dupont" sera trouvé même s'il est taggé shop=convenience
-        // On utilise le premier mot significatif de la query (>4 lettres) comme regex
-        const mainWord=q.split(/\s+/).find(w=>w.length>=4&&!['mariage','wedding'].includes(w));
-        let nameSearch='';
+        // Recherche par nom : si le nom contient le terme cherché
+        const mainWord = q.split(/\s+/).find(w=>w.length>=4 && !['mariage','wedding'].includes(w));
+        let nameSearch = '';
         if(mainWord){
-          // Échapper pour regex Overpass
-          const safeWord=mainWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-          nameSearch=`node["name"~"${safeWord}",i](around:${radius},${lat},${lng});`+
-                     `way["name"~"${safeWord}",i](around:${radius},${lat},${lng});`;
+          const safeWord = mainWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+          nameSearch = `node["name"~"${safeWord}",i](around:${radius},${lat},${lng});`+
+                       `way["name"~"${safeWord}",i](around:${radius},${lat},${lng});`;
         }
 
-        const overpassQ=`[out:json][timeout:25];(${filterParts}${nameSearch});out center 80;`;
-        const url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(overpassQ);
-        let res;
-        try { res=await fetch(url); } catch(netErr){ throw new Error('Réseau : '+netErr.message); }
-        if(!res.ok){
-          if(res.status===429||res.status===504){continue;}
-          throw new Error('Overpass HTTP '+res.status);
-        }
-        const data=await res.json();
-        const named=(data.elements||[]).filter(e=>(e.tags||{}).name);
-        // Si on a au moins 8 prestataires nommés, on garde ce rayon
-        if(named.length>=8){
-          rawResults=named;
-          break;
-        }
-        rawResults=named;
-      }
-
-      // Mapping → objets vendor
-      const seenNames=new Set();
-      results=rawResults.map((e,idx)=>{
-        const tags=e.tags||{};
-        const elat=e.lat||(e.center&&e.center.lat);
-        const elon=e.lon||(e.center&&e.center.lon);
-        if(!elat||!elon)return null;
-        const nom=tags.name;
-        // Dédupe par nom (insensible casse)
-        const key=nom.toLowerCase().trim();
-        if(seenNames.has(key))return null;
-        seenNames.add(key);
-        const dist=haversine(lat,lng,elat,elon);
-        const addr=[tags['addr:housenumber'],tags['addr:street'],tags['addr:postcode'],tags['addr:city']]
-          .filter(Boolean).join(' ');
-        return {
-          id:idx,
-          nom:nom,
-          categorie:cat,
-          description:addr||tags['addr:city']||'Adresse non renseignée sur OpenStreetMap',
-          tel:tags.phone||tags['contact:phone']||'',
-          site:(tags.website||tags['contact:website']||'').replace(/^https?:\/\//,''),
-          distance:dist,
-          adresse:addr,
-          lat:elat,
-          lng:elon
-        };
-      }).filter(Boolean);
-
-      // ─── FALLBACK NOMINATIM GÉOLOCALISÉ ───
-      // Si on a moins de 10 résultats, on complète avec Nominatim (recherche par
-      // nom autour de la position). Nominatim trouve souvent des établissements
-      // moins bien taggés dans OSM.
-      if(results.length<10){
-        try{
-          // Bounding box ~50km autour de l'utilisateur
-          const dLat=0.45; // ≈ 50km en latitude
-          const dLng=0.65; // ≈ 50km en longitude (varie avec la latitude mais on prend large)
-          const viewbox=`${lng-dLng},${lat+dLat},${lng+dLng},${lat-dLat}`;
-          const nurl=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=30&viewbox=${viewbox}&bounded=1&countrycodes=fr,be,ch,lu`;
-          const nres=await fetch(nurl,{headers:{'Accept-Language':'fr'}});
-          if(nres.ok){
-            const ndata=await nres.json();
-            ndata.forEach((e,idx)=>{
-              const nom=(e.display_name||'').split(',')[0].trim();
-              if(!nom)return;
-              const key=nom.toLowerCase();
-              if(seenNames.has(key))return;
-              seenNames.add(key);
-              const elat=parseFloat(e.lat),elon=parseFloat(e.lon);
-              if(isNaN(elat)||isNaN(elon))return;
-              const dist=haversine(lat,lng,elat,elon);
-              const a=e.address||{};
-              const adresse=[a.house_number,a.road,a.postcode,a.city||a.town||a.village]
-                .filter(Boolean).join(' ');
-              results.push({
-                id: 10000 + idx,
-                nom:nom,
-                categorie:cat,
-                description:adresse||e.display_name,
-                tel:'',
-                site:'',
-                distance:dist,
-                adresse:adresse,
-                lat:elat,
-                lng:elon
-              });
+        // timeout Overpass interne court (8s), pour éviter d'attendre 25s
+        const overpassQ = `[out:json][timeout:8];(${filterParts}${nameSearch});out center 60;`;
+        const url = 'https://overpass-api.de/api/interpreter?data='+encodeURIComponent(overpassQ);
+        const res = await fetchWithTimeout(url, {}, 10000);
+        if(res.ok){
+          const data = await res.json();
+          const named = (data.elements||[]).filter(e=>(e.tags||{}).name);
+          for(const e of named){
+            const tags = e.tags||{};
+            const elat = e.lat || (e.center&&e.center.lat);
+            const elon = e.lon || (e.center&&e.center.lon);
+            if(!elat||!elon) continue;
+            const nom = tags.name;
+            const key = nom.toLowerCase().trim();
+            if(seenNames.has(key)) continue;
+            seenNames.add(key);
+            const dist = haversine(lat,lng,elat,elon);
+            const addr = [tags['addr:housenumber'],tags['addr:street'],tags['addr:postcode'],tags['addr:city']]
+              .filter(Boolean).join(' ');
+            results.push({
+              id: results.length,
+              nom: nom,
+              categorie: cat,
+              description: addr||tags['addr:city']||'Adresse non renseignée',
+              tel: tags.phone||tags['contact:phone']||'',
+              site: (tags.website||tags['contact:website']||'').replace(/^https?:\/\//,''),
+              distance: dist,
+              adresse: addr,
+              lat: elat,
+              lng: elon
             });
           }
-        }catch(nomErr){
-          console.warn('[search] Nominatim fallback failed:',nomErr.message);
         }
+      } catch(overpassErr){
+        // Overpass timeout ou réseau → on bascule sur Nominatim, sans bloquer
+        console.warn('[search] Overpass failed:', overpassErr.message);
       }
 
-      // Tri final par distance et limite à 25 résultats
-      results=results.sort((a,b)=>a.distance-b.distance).slice(0,25);
+      // ─── ÉTAPE 2 : NOMINATIM (toujours essayé, même si Overpass a marché) ───
+      // Nominatim trouve souvent des établissements moins bien taggés.
+      try {
+        const dLat = 0.45, dLng = 0.65;
+        const viewbox = `${lng-dLng},${lat+dLat},${lng+dLng},${lat-dLat}`;
+        const nurl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=30&viewbox=${viewbox}&bounded=1&countrycodes=fr,be,ch,lu`;
+        const nres = await fetchWithTimeout(nurl, {headers:{'Accept-Language':'fr'}}, 8000);
+        if(nres.ok){
+          const ndata = await nres.json();
+          ndata.forEach((e,idx)=>{
+            const nom = (e.display_name||'').split(',')[0].trim();
+            if(!nom) return;
+            const key = nom.toLowerCase();
+            if(seenNames.has(key)) return;
+            seenNames.add(key);
+            const elat = parseFloat(e.lat), elon = parseFloat(e.lon);
+            if(isNaN(elat)||isNaN(elon)) return;
+            const dist = haversine(lat,lng,elat,elon);
+            const a = e.address||{};
+            const adresse = [a.house_number,a.road,a.postcode,a.city||a.town||a.village]
+              .filter(Boolean).join(' ');
+            results.push({
+              id: 10000 + idx,
+              nom: nom,
+              categorie: cat,
+              description: adresse||e.display_name,
+              tel: '',
+              site: '',
+              distance: dist,
+              adresse: adresse,
+              lat: elat,
+              lng: elon
+            });
+          });
+        }
+      } catch(nomErr){
+        console.warn('[search] Nominatim geo failed:', nomErr.message);
+      }
+
+      results = results.sort((a,b)=>a.distance-b.distance).slice(0,25);
+
     } else {
-      // ─── PAS DE GÉOLOC : recherche TEXTUELLE via NOMINATIM ───
-      // Nominatim accepte un free-text search
-      const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query+' France')}&format=json&addressdetails=1&limit=15`;
-      const res=await fetch(url,{headers:{'Accept-Language':'fr'}});
-      if(!res.ok) throw new Error('Nominatim HTTP '+res.status);
-      const data=await res.json();
-      results=(data||[]).map((e,idx)=>{
-        const addr=e.address||{};
-        const adresse=[addr.house_number,addr.road,addr.postcode,addr.city||addr.town||addr.village]
-          .filter(Boolean).join(' ');
-        return {
-          id:idx,
-          nom:e.display_name.split(',')[0],
-          categorie:cat,
-          description:adresse||e.display_name,
-          tel:'',
-          site:'',
-          distance:null,
-          adresse:adresse,
-          lat:parseFloat(e.lat),
-          lng:parseFloat(e.lon)
-        };
-      });
+      // ─── PAS DE GÉOLOC : Nominatim sur la France entière ───
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query+' France')}&format=json&addressdetails=1&limit=15`;
+        const res = await fetchWithTimeout(url, {headers:{'Accept-Language':'fr'}}, 8000);
+        if(res.ok){
+          const data = await res.json();
+          results = (data||[]).map((e,idx)=>{
+            const addr = e.address||{};
+            const adresse = [addr.house_number,addr.road,addr.postcode,addr.city||addr.town||addr.village]
+              .filter(Boolean).join(' ');
+            return {
+              id: idx,
+              nom: e.display_name.split(',')[0],
+              categorie: cat,
+              description: adresse||e.display_name,
+              tel: '',
+              site: '',
+              distance: null,
+              adresse: adresse,
+              lat: parseFloat(e.lat),
+              lng: parseFloat(e.lon)
+            };
+          });
+        }
+      } catch(nomErr){
+        console.warn('[search] Nominatim text failed:', nomErr.message);
+      }
     }
-  }catch(e){
-    console.error('OSM search error:',e);
-    if(wrap)wrap.innerHTML=`<p style="color:${rd};text-align:center;padding:16px;font-size:13px;">Erreur lors de la recherche OpenStreetMap.<br><span style="font-size:11px;">${e.message||''}</span></p>`;
-    btn.textContent='Rechercher';btn.disabled=false;
-    return;
+  } finally {
+    // GARANTIT que le bouton se réactive, quoi qu'il arrive
+    btn.textContent='Rechercher'; btn.disabled=false;
   }
 
+  // Rendu des résultats (ou message si vide)
   if(!results.length){
-    if(wrap)wrap.innerHTML=`<p style="text-align:center;padding:16px;font-size:13px;color:${tl};">Aucun résultat trouvé pour "${query}".<br><span style="font-size:11px;">Essaie un autre mot-clé (traiteur, photographe, fleuriste, salle, ...) ou élargis ta zone.</span></p>`;
-    btn.textContent='Rechercher';btn.disabled=false;
+    // Aucun résultat OSM : on propose directement Google Maps
+    const lat0=lat, lng0=lng;
+    const googleUrl = (lat0&&lng0)
+      ? `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${lat0},${lng0},13z`
+      : `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
+    if(wrap)wrap.innerHTML=`
+      <div style="text-align:center;padding:16px;font-size:13px;color:${tl};">
+        <div style="margin-bottom:8px;">Aucun résultat trouvé pour "${h(query)}" sur OpenStreetMap.</div>
+        <div style="font-size:11px;font-style:italic;margin-bottom:14px;">OpenStreetMap est une base collaborative, certains commerces n'y sont pas répertoriés.</div>
+        <a href="${googleUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
+          🔎 Chercher sur Google Maps
+        </a>
+      </div>`;
     return;
   }
 
-  window._vndResults=results;
+  window._vndResults = results;
   renderVndResults(query);
-  btn.textContent='Rechercher';btn.disabled=false;
 }
 
 function renderVndResults(query){
