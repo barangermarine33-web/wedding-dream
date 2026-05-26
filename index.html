@@ -59,17 +59,26 @@ html{overscroll-behavior-y:none;}
 body{overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;background:var(--bg);font-family:Lora,serif;color:var(--text);min-height:100vh;padding-top:var(--sat);padding-left:var(--sal);padding-right:var(--sar);}
 body{background:#fff9fb;font-family:Lora,serif;color:#3e1828;min-height:100vh;}
 
-/* ── RESPONSIVE DESKTOP : limite la largeur du contenu sur grand écran ── */
+/* ── RESPONSIVE DESKTOP ── */
 /* Sur téléphone (≤900px) : tout prend 100% de la largeur, layout mobile natif */
-/* Sur PC (>900px) : on contraint la zone de contenu à 720px max, centrée */
+/* Sur PC (>900px) : la page reste PLEINE LARGEUR (comme un site normal),
+   mais le CONTENU des onglets et la barre d'onglets sont contraints à 900px
+   centrés horizontalement. Les éléments ne sont donc pas étirés. */
 @media (min-width: 900px) {
-  body { max-width: 720px; margin: 0 auto; box-shadow: 0 0 24px rgba(120,80,40,0.10); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
-  /* L'écran auth aussi doit s'adapter sur PC */
-  #auth-screen { max-width: 720px; margin: 0 auto; }
-  /* La barre d'onglets sticky reste dans le contenu */
-  #tabs-bar { max-width: 720px; }
+  /* Contenu principal : largeur limitée et centré */
+  #app, #auth-screen, #tabs-bar, header {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* Les pages des onglets sont à l'intérieur de #app, donc déjà centrées */
+  /* Mais on s'assure que les pages individuelles (page-0, page-1, etc.) le sont aussi */
+  [id^="page-"] {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
-/* Sur très grand écran (>1400px) : peu importe, le contenu reste à 720px centré */
 
 .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:11px;padding:11px 18px;cursor:pointer;font-weight:700;font-family:Lora,serif;font-size:14px;transition:opacity .15s,transform .1s;min-height:44px;}
 .btn:active{opacity:.82;transform:scale(.98);}
@@ -1973,49 +1982,73 @@ async function searchVendorsWithLocation(query,lat,lng){
 
   try{
     if(lat&&lng&&filters){
-      // ─── RECHERCHE GÉOLOCALISÉE via OVERPASS ───
-      // On élargit progressivement le rayon si pas assez de résultats.
-      // Les traiteurs/photographes sont moins denses qu'un restaurant.
+      // ─── RECHERCHE GÉOLOCALISÉE en 2 ÉTAPES ───
+      // 1) Overpass API : prestataires correctement taggés en OSM
+      // 2) Nominatim search avec bias géographique : élargit aux établissements
+      //    moins bien taggés mais identifiables par leur nom
+      // On combine les 2 sources et on déduplique par nom.
+
       const radii=[15000, 40000, 100000]; // 15km → 40km → 100km
       let rawResults=[];
       for(const radius of radii){
+        // Pour chaque filtre type tag=valeur, on cherche nodes ET ways ET relations
+        // On ajoute aussi une recherche par NAME qui contient le terme principal
+        // (utile pour les commerçants mal taggés mais avec "Traiteur" dans le nom)
         const filterParts=filters.map(f=>{
           const [k,v]=f.split('=');
           return `node["${k}"="${v}"](around:${radius},${lat},${lng});`+
-                 `way["${k}"="${v}"](around:${radius},${lat},${lng});`;
+                 `way["${k}"="${v}"](around:${radius},${lat},${lng});`+
+                 `relation["${k}"="${v}"](around:${radius},${lat},${lng});`;
         }).join('');
-        const overpassQ=`[out:json][timeout:25];(${filterParts});out center 50;`;
+
+        // Recherche supplémentaire par nom : si le nom contient le terme cherché
+        // Ex : "Traiteur Dupont" sera trouvé même s'il est taggé shop=convenience
+        // On utilise le premier mot significatif de la query (>4 lettres) comme regex
+        const mainWord=q.split(/\s+/).find(w=>w.length>=4&&!['mariage','wedding'].includes(w));
+        let nameSearch='';
+        if(mainWord){
+          // Échapper pour regex Overpass
+          const safeWord=mainWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+          nameSearch=`node["name"~"${safeWord}",i](around:${radius},${lat},${lng});`+
+                     `way["name"~"${safeWord}",i](around:${radius},${lat},${lng});`;
+        }
+
+        const overpassQ=`[out:json][timeout:25];(${filterParts}${nameSearch});out center 80;`;
         const url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(overpassQ);
         let res;
         try { res=await fetch(url); } catch(netErr){ throw new Error('Réseau : '+netErr.message); }
         if(!res.ok){
-          // Si Overpass est saturé (HTTP 429 ou 504), on tente le rayon suivant
           if(res.status===429||res.status===504){continue;}
           throw new Error('Overpass HTTP '+res.status);
         }
         const data=await res.json();
-        rawResults=data.elements||[];
-        // On filtre tout de suite les résultats avec un nom valide
-        const named=rawResults.filter(e=>(e.tags||{}).name);
-        // Si on a au moins 5 prestataires nommés, on garde ce rayon
-        if(named.length>=5){
+        const named=(data.elements||[]).filter(e=>(e.tags||{}).name);
+        // Si on a au moins 8 prestataires nommés, on garde ce rayon
+        if(named.length>=8){
           rawResults=named;
           break;
         }
-        // Sinon on essaie un rayon plus grand
         rawResults=named;
       }
+
+      // Mapping → objets vendor
+      const seenNames=new Set();
       results=rawResults.map((e,idx)=>{
         const tags=e.tags||{};
         const elat=e.lat||(e.center&&e.center.lat);
         const elon=e.lon||(e.center&&e.center.lon);
         if(!elat||!elon)return null;
+        const nom=tags.name;
+        // Dédupe par nom (insensible casse)
+        const key=nom.toLowerCase().trim();
+        if(seenNames.has(key))return null;
+        seenNames.add(key);
         const dist=haversine(lat,lng,elat,elon);
         const addr=[tags['addr:housenumber'],tags['addr:street'],tags['addr:postcode'],tags['addr:city']]
           .filter(Boolean).join(' ');
         return {
           id:idx,
-          nom:tags.name||'Sans nom',
+          nom:nom,
           categorie:cat,
           description:addr||tags['addr:city']||'Adresse non renseignée sur OpenStreetMap',
           tel:tags.phone||tags['contact:phone']||'',
@@ -2025,9 +2058,55 @@ async function searchVendorsWithLocation(query,lat,lng){
           lat:elat,
           lng:elon
         };
-      }).filter(v=>v&&v.nom!=='Sans nom')
-        .sort((a,b)=>a.distance-b.distance)
-        .slice(0,20);
+      }).filter(Boolean);
+
+      // ─── FALLBACK NOMINATIM GÉOLOCALISÉ ───
+      // Si on a moins de 10 résultats, on complète avec Nominatim (recherche par
+      // nom autour de la position). Nominatim trouve souvent des établissements
+      // moins bien taggés dans OSM.
+      if(results.length<10){
+        try{
+          // Bounding box ~50km autour de l'utilisateur
+          const dLat=0.45; // ≈ 50km en latitude
+          const dLng=0.65; // ≈ 50km en longitude (varie avec la latitude mais on prend large)
+          const viewbox=`${lng-dLng},${lat+dLat},${lng+dLng},${lat-dLat}`;
+          const nurl=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=30&viewbox=${viewbox}&bounded=1&countrycodes=fr,be,ch,lu`;
+          const nres=await fetch(nurl,{headers:{'Accept-Language':'fr'}});
+          if(nres.ok){
+            const ndata=await nres.json();
+            ndata.forEach((e,idx)=>{
+              const nom=(e.display_name||'').split(',')[0].trim();
+              if(!nom)return;
+              const key=nom.toLowerCase();
+              if(seenNames.has(key))return;
+              seenNames.add(key);
+              const elat=parseFloat(e.lat),elon=parseFloat(e.lon);
+              if(isNaN(elat)||isNaN(elon))return;
+              const dist=haversine(lat,lng,elat,elon);
+              const a=e.address||{};
+              const adresse=[a.house_number,a.road,a.postcode,a.city||a.town||a.village]
+                .filter(Boolean).join(' ');
+              results.push({
+                id: 10000 + idx,
+                nom:nom,
+                categorie:cat,
+                description:adresse||e.display_name,
+                tel:'',
+                site:'',
+                distance:dist,
+                adresse:adresse,
+                lat:elat,
+                lng:elon
+              });
+            });
+          }
+        }catch(nomErr){
+          console.warn('[search] Nominatim fallback failed:',nomErr.message);
+        }
+      }
+
+      // Tri final par distance et limite à 25 résultats
+      results=results.sort((a,b)=>a.distance-b.distance).slice(0,25);
     } else {
       // ─── PAS DE GÉOLOC : recherche TEXTUELLE via NOMINATIM ───
       // Nominatim accepte un free-text search
@@ -2073,11 +2152,19 @@ async function searchVendorsWithLocation(query,lat,lng){
 
 function renderVndResults(query){
   const r=window._vndResults||[];const wrap=el('vnd-results-wrap');if(!wrap||!r.length)return;
-  wrap.innerHTML=`<div style="font-family:Playfair Display,serif;font-size:15px;color:${tx};margin-bottom:6px;">Résultats pour "${query}"</div>`+
-  `<div style="font-size:11px;color:${tl};margin-bottom:10px;font-style:italic;">📍 Données OpenStreetMap — triées par distance</div>`+
+  // Construction d'une URL Google Maps de fallback pour la query complète
+  // (utile si OSM n'a pas tout — l'utilisateur peut compléter via Google)
+  const lat=window._userLat, lng=window._userLng;
+  const googleSearchUrl = (lat&&lng)
+    ? `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${lat},${lng},13z`
+    : `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
+
+  const fewResults = r.length < 8;
+
+  wrap.innerHTML=`<div style="font-family:Playfair Display,serif;font-size:15px;color:${tx};margin-bottom:6px;">${r.length} résultat${r.length>1?'s':''} pour "${h(query)}"</div>`+
+  `<div style="font-size:11px;color:${tl};margin-bottom:10px;font-style:italic;">📍 Données OpenStreetMap — triées par distance${fewResults?' · OSM est incomplet, voir Google Maps en bas pour plus de résultats':''}</div>`+
   r.map((v,i)=>{
     const c=VCOLS[v.categorie]||pk;
-    // Construction de l'URL Google Maps pour ce prestataire (pratique pour itinéraire)
     const mapsUrl=v.lat&&v.lng?`https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`:'';
     return`<div class="card" style="margin-bottom:8px;overflow:hidden;">
       <div onclick="toggleVndResult(${i})" style="padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;background:linear-gradient(135deg,${sf},#fff);">
@@ -2098,7 +2185,12 @@ function renderVndResults(query){
         </button>
       </div>
     </div>`;
-  }).join('');
+  }).join('')+
+  // Lien Google Maps en bas pour compléter (OSM est incomplet sur certains commerces)
+  `<a href="${googleSearchUrl}" target="_blank" rel="noopener" style="display:block;margin-top:14px;padding:12px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-align:center;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
+    🔎 Voir plus de résultats sur Google Maps
+    <div style="font-size:10px;color:${tl};font-weight:400;margin-top:3px;font-style:italic;">Google Maps a souvent plus de prestataires qu'OpenStreetMap</div>
+  </a>`;
 }
 
 function toggleVndResult(i){
@@ -2108,17 +2200,19 @@ function toggleVndResult(i){
 
 function vndMiniCard(v,zone){
   const c2=VCOLS[v.categorie]||pk;
+  // L'onclick de la croix doit appeler la bonne fonction selon la zone (fav ou cho).
+  // On résout ça AU MOMENT DE LA GÉNÉRATION du HTML (pas au runtime).
+  const removeFn = zone==='fav' ? 'removFav' : 'removCho';
   return `<div draggable="true" ondragstart="dragVnd(event,${v.id},'${zone}')" class="card" style="padding:12px 14px;margin-bottom:8px;cursor:grab;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
       <span style="background:${c2}20;color:${c2};font-size:10px;border-radius:20px;padding:2px 9px;font-weight:700;">${h(v.categorie)}</span>
       <span style="font-family:Playfair Display,serif;font-size:14px;font-weight:700;color:${tx};flex:1;">${h(v.nom)}</span>
-      <button onclick="(zone==='fav'?removFav:removCho)(${v.id})" style="background:none;border:none;cursor:pointer;color:${br};font-size:15px;">×</button>
+      <button onclick="${removeFn}(${v.id})" title="Supprimer" style="background:none;border:none;cursor:pointer;color:${tl};font-size:20px;line-height:1;padding:4px 8px;font-weight:700;">×</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
-      ${v.tel?`<a href="tel:${v.tel}" style="font-size:11px;color:${pk};font-weight:700;text-decoration:none;">📞 ${v.tel}</a>`:''}
-      ${v.site?`<a href="https://${v.site}" target="_blank" style="font-size:11px;color:${pk};font-weight:700;text-decoration:none;">🌐 Site</a>`:''}
-      <span style="font-size:11px;color:#e8a020;">${'★'.repeat(Math.round(v.note||4))} <span style="color:${tl};">(${v.avis||0} avis)</span></span>
-      ${v.distance?`<span style="font-size:11px;color:${gn};font-weight:600;">📍 ${v.distance} km</span>`:''}
+      ${v.tel?`<a href="tel:${v.tel}" style="font-size:11px;color:${pk};font-weight:700;text-decoration:none;">📞 ${h(v.tel)}</a>`:''}
+      ${v.site?`<a href="https://${v.site.replace(/^https?:\/\//,'')}" target="_blank" rel="noopener" style="font-size:11px;color:${pk};font-weight:700;text-decoration:none;">🌐 Site</a>`:''}
+      ${v.distance!=null?`<span style="font-size:11px;color:${gn};font-weight:600;">📍 ${v.distance} km</span>`:''}
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
       <span style="font-size:11px;color:${tl};font-weight:600;flex-shrink:0;">💰 Prix négocié :</span>
