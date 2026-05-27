@@ -213,6 +213,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
     <div class="page" id="page-7"></div>
     <div class="page" id="page-8"></div>
     <div class="page" id="page-9"></div>
+    <div class="page" id="page-10"></div>
   </div>
 </div>
 
@@ -575,6 +576,69 @@ function appPrompt(message, defaultValue, title, opts){
     ]
   });
 }
+
+// ── appPicker : modale de sélection dans une liste, aux couleurs de l'app ──
+// Remplace les <select> natifs (qui apparaissent en gris système sur mobile)
+// options: tableau de {value, label, color?} OU tableau de chaînes
+// currentValue: valeur actuellement sélectionnée (pour highlight)
+// title: titre de la modale
+// Retourne une Promise résolue avec la valeur choisie, ou null si annulé.
+function appPicker(options, currentValue, title, opts){
+  opts = opts || {};
+  // Normaliser : si options est un tableau de chaînes, le convertir
+  const opts2 = options.map(o => typeof o === 'string' ? {value:o, label:o} : o);
+  return new Promise((resolve)=>{
+    let root = document.getElementById('app-modal-root');
+    if(!root){
+      root = document.createElement('div');
+      root.id = 'app-modal-root';
+      root.style.cssText = 'position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(45,10,24,0.55);backdrop-filter:blur(6px);padding:18px;';
+      document.body.appendChild(root);
+    }
+    root.innerHTML = `
+      <div style="background:#fff;border-radius:18px;max-width:380px;width:100%;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(154,40,72,0.35);animation:appModalIn .22s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#b84060,#9a2848);padding:16px 18px;color:#fff;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">${opts.icon || '📋'}</span>
+          <div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:700;flex:1;">${title || 'Choisir une option'}</div>
+        </div>
+        <div style="overflow-y:auto;padding:10px;flex:1;">
+          ${opts2.map((o,i)=>{
+            const selected = o.value === currentValue;
+            const accentCol = o.color || '#b84060';
+            return `<button data-i="${i}" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;margin-bottom:6px;border-radius:11px;border:1.5px solid ${selected?accentCol:'#d8a0b8'};background:${selected?'#fbe6ee':'#fff'};color:#2d0a18;font-family:Lora,Georgia,serif;font-size:14px;font-weight:${selected?'700':'600'};cursor:pointer;text-align:left;transition:all .15s;">
+              ${o.icon?`<span style="font-size:16px;">${o.icon}</span>`:''}
+              <span style="flex:1;color:${selected?accentCol:'#2d0a18'};">${o.label}</span>
+              ${selected?`<span style="color:${accentCol};font-weight:700;">✓</span>`:''}
+            </button>`;
+          }).join('')}
+        </div>
+        <div style="padding:10px 14px;background:#fbe6ee;border-top:1px solid #d8a0b8;text-align:right;">
+          <button data-cancel style="background:none;border:1.5px solid #d8a0b8;color:#5a1a30;border-radius:9px;padding:8px 16px;font-family:Lora,serif;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>
+        </div>
+      </div>`;
+    root.style.display = 'flex';
+    const close = (val)=>{
+      root.style.display = 'none';
+      root.innerHTML = '';
+      document.removeEventListener('keydown', onKey);
+      resolve(val);
+    };
+    root.querySelectorAll('button[data-i]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i = parseInt(btn.dataset.i, 10);
+        close(opts2[i] ? opts2[i].value : null);
+      });
+    });
+    root.querySelector('button[data-cancel]').addEventListener('click', ()=>close(null));
+    // Clic sur le fond = annuler
+    root.addEventListener('click', e=>{ if(e.target===root) close(null); });
+    const onKey = (e)=>{
+      if(e.key==='Escape'){e.preventDefault();close(null);}
+    };
+    document.addEventListener('keydown', onKey);
+  });
+}
+window.appPicker = appPicker;
 // Expose globalement
 window.appAlert = appAlert;
 window.appConfirm = appConfirm;
@@ -585,7 +649,7 @@ window.appModal = appModal;
 let USER=null, cdInt=null, currentTab=0;
 let TASKS=[], BUDGET=[], GUESTS=[], TABLES=[], VENDORS_FAV=[], VENDORS_CHO=[], ALBUM=[], NOTES='', MENU=[];
 let seatPicker=null, lbPhotoId=null;
-const TABS=["Checklist","Budget","Invités","Plan de table","Prestataires","Menu & quantités","Décorations","Wedding cake","Album","Notes"];
+const TABS=["Checklist","Budget","Invités","Plan de table","Prestataires","Menu & quantités","Décorations","Wedding cake","Album","Notes","Assistant"];
 const ROLES=["Invité·e","Demoiselle d'honneur","Garçon d'honneur","Témoin"];
 const REGIMES=["Aucun","Végétarien","Vegan","Sans gluten","Sans lactose","Halal","Sans porc","Sans fruits à coque et arachides","Sans poisson","Sans alcool"];
 function editGuestRegimes(id){
@@ -1164,6 +1228,7 @@ function renderTab(i){
   else if(i===7)renderCake();
   else if(i===8)renderAlbum();
   else if(i===9)renderNotes();
+  else if(i===10)renderAssistant();
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
@@ -1408,9 +1473,7 @@ function guestRow(g){
       <span onclick="changeCote(${g.id})" style="background:${cc};color:${ct};border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;">${h(cn)}</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'role',this.value)" style="border:none;background:none;color:${rc[g.role]||tl};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:Lora,serif;">
-        ${ROLES.map(r=>`<option ${g.role===r?'selected':''}>${h(r)}</option>`).join('')}
-      </select>
+      <span onclick="pickGuestRole(${g.id})" style="color:${rc[g.role]||tl};font-size:11px;cursor:pointer;font-weight:700;padding:3px 9px;border-radius:20px;background:${sf};border:1px solid ${br};display:inline-block;">${h(g.role)} ▾</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
       <div onclick="editGuestRegimes(${g.id})" style="font-size:11px;color:${g.regime&&g.regime!=='Aucun'?am:tl};cursor:pointer;font-weight:700;max-width:110px;word-break:break-word;padding:4px;min-height:28px;display:flex;align-items:center;border-radius:6px;background:${sf};">${g.regime&&g.regime!=='Aucun'?h(g.regime):'+ Ajouter'}</div>
@@ -1419,23 +1482,13 @@ function guestRow(g){
       <span onclick="updGuest(${g.id},'vinHonneur',!${g.vinHonneur})" style="font-size:11px;font-weight:700;cursor:pointer;color:${g.vinHonneur?pk:br};border:1.5px solid ${g.vinHonneur?pk:br};border-radius:20px;padding:2px 9px;user-select:none;">${g.vinHonneur?'Uniquement':'-'}</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'age',this.value)" style="border:none;background:none;color:${g.age==='Enfant'?am:tl};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:Lora,serif;">
-        <option ${(!g.age||g.age==='Adulte')?'selected':''} value="Adulte">Adulte</option>
-        <option ${g.age==='Enfant'?'selected':''} value="Enfant">Enfant</option>
-      </select>
+      <span onclick="pickGuestAge(${g.id})" style="color:${g.age==='Enfant'?am:tl};font-size:11px;cursor:pointer;font-weight:700;padding:3px 9px;border-radius:20px;background:${sf};border:1px solid ${br};display:inline-block;">${g.age==='Enfant'?'Enfant':'Adulte'} ▾</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'invitation',this.value)" style="border:none;background:none;color:${g.invitation==='envoyée'?gn:rd};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:Lora,serif;">
-        <option ${g.invitation==='envoyée'?'selected':''} value="envoyée">✓ Envoyée</option>
-        <option ${g.invitation==='non envoyée'?'selected':''} value="non envoyée">✗ Non envoyée</option>
-      </select>
+      <span onclick="pickGuestInvitation(${g.id})" style="color:${g.invitation==='envoyée'?gn:rd};font-size:11px;cursor:pointer;font-weight:700;padding:3px 9px;border-radius:20px;background:${sf};border:1px solid ${br};display:inline-block;">${g.invitation==='envoyée'?'✓ Envoyée':'✗ Non envoyée'} ▾</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <select onchange="updGuest(${g.id},'presence',this.value)" style="border:none;background:none;color:${sc[g.presence]||'#888'};font-size:11px;cursor:pointer;font-weight:700;outline:none;font-family:Lora,serif;">
-        <option ${g.presence==='confirmée'?'selected':''} value="confirmée">✓ Confirmée</option>
-        <option ${g.presence==='en attente'?'selected':''} value="en attente">En attente</option>
-        <option ${g.presence==='déclinée'?'selected':''} value="déclinée">✗ Déclinée</option>
-      </select>
+      <span onclick="pickGuestPresence(${g.id})" style="color:${sc[g.presence]||'#888'};font-size:11px;cursor:pointer;font-weight:700;padding:3px 9px;border-radius:20px;background:${sf};border:1px solid ${br};display:inline-block;">${g.presence==='confirmée'?'✓ Confirmée':g.presence==='déclinée'?'✗ Déclinée':'En attente'} ▾</span>
     </td>
     <td style="padding:8px 10px;background:#fff;border-radius:0 10px 10px 0;border:1.5px solid ${br};border-left:none;">
       <button onclick="removeGuest(${g.id})" style="background:none;border:none;cursor:pointer;color:${br};font-size:15px;">×</button>
@@ -1450,6 +1503,39 @@ function addGuest(){
   showingAdd=false;saveGuests();renderGuests();
 }
 function updGuest(id,f,v){GUESTS=GUESTS.map(g=>g.id===id?{...g,[f]:v}:g);saveGuests();renderGuests();}
+
+// Pickers custom (aux couleurs de l'app) qui remplacent les <select> natifs gris
+async function pickGuestRole(id){
+  const g = GUESTS.find(x=>x.id===id); if(!g) return;
+  const opts = ROLES.map(r=>({value:r, label:r, icon: r==='Témoin'?'⭐':r.includes('Demoiselle')?'👰':r.includes('Garçon')?'🤵':'👤'}));
+  const v = await appPicker(opts, g.role, 'Rôle de '+g.nom, {icon:'👥'});
+  if(v!==null) updGuest(id,'role',v);
+}
+async function pickGuestAge(id){
+  const g = GUESTS.find(x=>x.id===id); if(!g) return;
+  const v = await appPicker([
+    {value:'Adulte', label:'Adulte', icon:'🧑'},
+    {value:'Enfant', label:'Enfant', icon:'🧒'}
+  ], g.age||'Adulte', 'Catégorie d\'âge', {icon:'🎂'});
+  if(v!==null) updGuest(id,'age',v);
+}
+async function pickGuestInvitation(id){
+  const g = GUESTS.find(x=>x.id===id); if(!g) return;
+  const v = await appPicker([
+    {value:'envoyée', label:'Envoyée', icon:'✓', color:'#5a8a6a'},
+    {value:'non envoyée', label:'Non envoyée', icon:'✗', color:'#c43a3a'}
+  ], g.invitation, 'État de l\'invitation', {icon:'✉️'});
+  if(v!==null) updGuest(id,'invitation',v);
+}
+async function pickGuestPresence(id){
+  const g = GUESTS.find(x=>x.id===id); if(!g) return;
+  const v = await appPicker([
+    {value:'confirmée', label:'Confirmée', icon:'✓', color:'#5a8a6a'},
+    {value:'en attente', label:'En attente', icon:'⏳', color:'#c47a2a'},
+    {value:'déclinée', label:'Déclinée', icon:'✗', color:'#c43a3a'}
+  ], g.presence, 'Présence', {icon:'📋'});
+  if(v!==null) updGuest(id,'presence',v);
+}
 function removeGuest(id){GUESTS=GUESTS.filter(g=>g.id!==id);saveGuests();renderGuests();}
 function renameGuest(id){
   const span=document.querySelector('[data-guest-nom="'+id+'"]');
@@ -1736,21 +1822,84 @@ function addTableEl(table){
 }
 function addTable(){TABLES.push({id:Date.now(),nom:`Table ${TABLES.length+1}`,shape:window.tpSelectedShape||'round',seats:8,x:80+Math.random()*150,y:80+Math.random()*80,hiddenSeats:[]});saveTables();renderTablePlan();}
 
-function openSeatModal(tid,si){
-  seatPicker={tid,si};
-  const tbl=TABLES.find(t=>t.id===tid);
-  const hidden=(tbl?.hiddenSeats||[]).includes(si);
-  const g=GUESTS.find(g=>g.seatTableId===tid&&g.seatIdx===si);
-  el('seat-remove-btn').style.display=g?'block':'none';
-  el('seat-hide-btn').textContent=hidden?'Afficher ce siège':'Masquer ce siège';
-  const conf=GUESTS.filter(g=>g.presence==='confirmée');
-  el('seat-guest-list').innerHTML=conf.length===0?`<div style="font-size:13px;color:${tl};text-align:center;padding:10px 0;">Aucun invité confirmé</div>`:
-    conf.map(g=>{const a=g.seatTableId===tid&&g.seatIdx===si;return`<div onclick="assignSeat(${g.id})" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;background:${a?sf:'#fff'};border:1.5px solid ${a?pk:br};">
-      <div style="width:26px;height:26px;border-radius:50%;background:${g.cote==='p1'?'#e8a0b0':'#a0b0e8'};display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:bold;">${g.nom.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>
-      <div><div style="font-size:13px;color:${tx};font-weight:600;">${g.nom}</div><div style="font-size:10px;color:${tl};">${g.seatTableId!=null&&!a?'Placé·e (T'+g.seatTableId+')':'Non placé·e'}</div></div>
-      ${a?`<span style="margin-left:auto;color:${pk};font-weight:700;">✓</span>`:''}
-    </div>`;}).join('');
-  el('seat-modal').classList.add('open');
+function openSeatModal(tid, si){
+  seatPicker = {tid, si};
+  const tbl = TABLES.find(t => t.id === tid);
+  const hidden = (tbl?.hiddenSeats || []).includes(si);
+  const currentG = GUESTS.find(g => g.seatTableId === tid && g.seatIdx === si);
+  const conf = GUESTS.filter(g => g.presence === 'confirmée');
+
+  // Construction du HTML interne de la modale
+  let bodyHtml = '';
+  if(conf.length === 0){
+    bodyHtml = `<div style="font-size:13px;color:${tl};text-align:center;padding:14px 0;">Aucun invité confirmé. Ajoute des invités avec présence "Confirmée" pour les placer.</div>`;
+  } else {
+    bodyHtml = `<div style="font-size:12px;color:${tl};margin-bottom:10px;">Choisis un invité à placer sur cette chaise :</div>`;
+    bodyHtml += `<div style="max-height:280px;overflow-y:auto;">`;
+    bodyHtml += conf.map(g => {
+      const a = g.seatTableId === tid && g.seatIdx === si;
+      const initials = g.nom.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+      const cote = g.cote === 'p1' ? '#e8a0b0' : '#a0b0e8';
+      const status = g.seatTableId != null && !a ? 'Placé·e (T'+g.seatTableId+')' : 'Non placé·e';
+      return `<button data-guest-id="${g.id}" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;margin-bottom:6px;border-radius:10px;border:1.5px solid ${a?pk:br};background:${a?sf:'#fff'};color:${tx};font-family:Lora,Georgia,serif;font-size:13px;cursor:pointer;text-align:left;">
+        <div style="width:28px;height:28px;border-radius:50%;background:${cote};display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold;flex-shrink:0;">${initials}</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;">${h(g.nom)}</div>
+          <div style="font-size:10px;color:${tl};">${status}</div>
+        </div>
+        ${a?`<span style="color:${pk};font-weight:700;font-size:16px;">✓</span>`:''}
+      </button>`;
+    }).join('');
+    bodyHtml += `</div>`;
+  }
+
+  // Actions supplémentaires
+  let actionsHtml = `<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">`;
+  if(currentG){
+    actionsHtml += `<button data-action="remove" style="flex:1;min-width:130px;background:#fff5f5;color:${rd};border:1.5px solid ${rd}40;border-radius:9px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Lora,serif;">🚫 Retirer l'invité</button>`;
+  }
+  actionsHtml += `<button data-action="hide" style="flex:1;min-width:130px;background:#fff;color:${tm};border:1.5px solid ${br};border-radius:9px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Lora,serif;">${hidden?'👁️ Afficher chaise':'🙈 Masquer chaise'}</button>`;
+  actionsHtml += `</div>`;
+
+  // Ouvre la modale via le système appModal existant (couleurs de l'app)
+  let root = document.getElementById('app-modal-root');
+  if(!root){
+    root = document.createElement('div');
+    root.id = 'app-modal-root';
+    root.style.cssText = 'position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(45,10,24,0.55);backdrop-filter:blur(6px);padding:18px;';
+    document.body.appendChild(root);
+  }
+  root.innerHTML = `
+    <div style="background:#fff;border-radius:18px;max-width:420px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(154,40,72,0.35);animation:appModalIn .22s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
+      <div style="background:linear-gradient(135deg,${pk},${tm});padding:14px 18px;color:#fff;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">🪑</span>
+        <div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:700;flex:1;">Chaise ${si+1} — ${h(tbl?.nom||'Table')}</div>
+      </div>
+      <div style="overflow-y:auto;padding:14px;flex:1;">
+        ${bodyHtml}
+        ${actionsHtml}
+      </div>
+      <div style="padding:10px 14px;background:${sf};border-top:1px solid ${br};text-align:right;">
+        <button data-cancel style="background:none;border:1.5px solid ${br};color:${tm};border-radius:9px;padding:8px 16px;font-family:Lora,serif;font-size:13px;font-weight:700;cursor:pointer;">Fermer</button>
+      </div>
+    </div>`;
+  root.style.display = 'flex';
+
+  // Event handlers
+  const closeM = ()=>{ root.style.display='none'; root.innerHTML=''; seatPicker=null; };
+  root.querySelectorAll('button[data-guest-id]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const gid = parseInt(btn.dataset.guestId, 10);
+      assignSeat(gid);
+      closeM();
+    });
+  });
+  const removeBtn = root.querySelector('button[data-action="remove"]');
+  if(removeBtn) removeBtn.addEventListener('click', ()=>{ removeSeat(); closeM(); });
+  const hideBtn = root.querySelector('button[data-action="hide"]');
+  if(hideBtn) hideBtn.addEventListener('click', ()=>{ toggleHideSeat(); closeM(); });
+  root.querySelector('button[data-cancel]').addEventListener('click', closeM);
+  root.addEventListener('click', e=>{ if(e.target===root) closeM(); });
 }
 function assignSeat(gid){
   if(!seatPicker)return;
@@ -1759,17 +1908,21 @@ function assignSeat(gid){
     if(g.seatTableId===seatPicker.tid&&g.seatIdx===seatPicker.si)return{...g,seatTableId:null,seatIdx:null};
     return g;
   });
-  saveTables();closeSeatModal();renderTablePlan();
+  saveTables();renderTablePlan();
 }
-function removeSeat(){if(!seatPicker)return;GUESTS=GUESTS.map(g=>g.seatTableId===seatPicker.tid&&g.seatIdx===seatPicker.si?{...g,seatTableId:null,seatIdx:null}:g);saveTables();closeSeatModal();renderTablePlan();}
+function removeSeat(){if(!seatPicker)return;GUESTS=GUESTS.map(g=>g.seatTableId===seatPicker.tid&&g.seatIdx===seatPicker.si?{...g,seatTableId:null,seatIdx:null}:g);saveTables();renderTablePlan();}
 function toggleHideSeat(){
   if(!seatPicker)return;
   const i=TABLES.findIndex(t=>t.id===seatPicker.tid);if(i<0)return;
   const hs=TABLES[i].hiddenSeats||[];const si=seatPicker.si;
   TABLES[i].hiddenSeats=hs.includes(si)?hs.filter(x=>x!==si):[...hs,si];
-  saveTables();closeSeatModal();renderTablePlan();
+  saveTables();renderTablePlan();
 }
-function closeSeatModal(){el('seat-modal').classList.remove('open');seatPicker=null;}
+function closeSeatModal(){
+  const root=document.getElementById('app-modal-root');
+  if(root){root.style.display='none';root.innerHTML='';}
+  seatPicker=null;
+}
 
 // ── VENDORS ───────────────────────────────────────────────────────────────────
 let sortFav='alpha',sortCho='alpha';
@@ -2518,7 +2671,7 @@ function renderMenu(){
     </div>
     <div style="text-align:center;margin-top:10px;font-size:12px;color:${tl};">Total : <strong style="color:${tx};">${total}</strong> invités</div>
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button onclick="saveMenuQty(true,true)" class="btn" style="flex:1;font-size:14px;padding:12px;">🧮 Calculer les quantités</button>
+      <button onclick="saveMenuQty(true,true)" class="btn" style="flex:1;font-size:14px;padding:12px;">Calculer les quantités</button>
       <button onclick="resetMenuQty()" class="btn-sec" style="font-size:12px;padding:12px;white-space:nowrap;">↺ Réinitialiser</button>
     </div>
   </div>
@@ -2911,6 +3064,614 @@ async function copyCurrentDriveUrl(){
     document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);
     await appAlert('Lien copié !');
   }catch(e){await appPrompt('Copiez ce lien :',url);}
+}
+
+// ── ASSISTANT INTELLIGENT (réponses pré-générées par catégorie) ────────────
+// L'Assistant offre 6 services. Chaque service combine les réponses appropriées
+// en fonction des paramètres choisis par l'utilisateur (style, saison, budget,
+// nombre d'invités, etc.). Les réponses sont rédigées d'avance pour garantir
+// une qualité constante et un fonctionnement 100% offline et gratuit.
+
+const ASSIST_KB = {
+  // ─── 1. SUGGESTIONS DE MENU ─────────────────────────────────────────────
+  menus: {
+    'romantique-printemps': {
+      title: 'Menu Romantique de Printemps',
+      cocktail: ['Crémant rosé fraise-basilic', 'Bouchées de chèvre frais aux herbes', 'Asperges vertes enrobées de jambon cru', 'Verrines de petits pois à la menthe'],
+      entree: 'Carpaccio de Saint-Jacques aux agrumes et huile vierge',
+      plat: 'Filet d\'agneau de printemps en croûte d\'herbes, jus court et écrasée de pommes de terre nouvelles',
+      fromage: 'Sélection de fromages frais (brillat-savarin, crottin de Chavignol, chaource)',
+      dessert: 'Pavlova aux fruits rouges et fleurs comestibles',
+      vins: 'Sancerre blanc en entrée, Côtes-du-Rhône rouge sur le plat, Champagne rosé sur le dessert'
+    },
+    'romantique-ete': {
+      title: 'Menu Romantique Estival',
+      cocktail: ['Spritz à la pêche blanche', 'Gaspacho d\'été en verrines', 'Brochettes melon-jambon-figue', 'Tartelettes tomate-burrata'],
+      entree: 'Tartare de daurade royale, mangue et citron vert',
+      plat: 'Loup de mer rôti aux herbes, légumes de soleil confits et pesto léger',
+      fromage: 'Plateau de fromages frais (mozzarella di bufala, ricotta, fromage de chèvre cendré)',
+      dessert: 'Fraisier revisité avec biscuit pistache et crème mousseline vanille',
+      vins: 'Provence rosé tout le repas, ou Bordeaux blanc sec en entrée'
+    },
+    'romantique-automne': {
+      title: 'Menu Romantique d\'Automne',
+      cocktail: ['Champagne brut nature aux mirabelles', 'Velouté de courge en verrines', 'Mini-feuilletés aux champignons des bois', 'Tartines figue-roquefort'],
+      entree: 'Foie gras mi-cuit au pain d\'épices, chutney de figues',
+      plat: 'Suprême de pintade fermière au cidre, purée de céleri rave truffée',
+      fromage: 'Sélection automnale (saint-marcellin, comté 24 mois, fourme d\'Ambert)',
+      dessert: 'Royal chocolat-noisette et son cœur praliné coulant',
+      vins: 'Pouilly-Fumé en entrée, Saint-Émilion en plat, Sauternes sur le foie gras'
+    },
+    'romantique-hiver': {
+      title: 'Menu Romantique d\'Hiver',
+      cocktail: ['Champagne blanc de blancs', 'Cuillères de Saint-Jacques poêlées', 'Toasts au tarama de saumon fumé', 'Soupe de châtaignes en mini-bols'],
+      entree: 'Tartare de Saint-Jacques au caviar et écume de yuzu',
+      plat: 'Filet de bœuf Rossini, sauce périgueux et gratin dauphinois',
+      fromage: 'Plateau d\'hiver (vacherin Mont d\'Or, comté vieux, beaufort, époisses)',
+      dessert: 'Vacherin glacé vanille-marrons confits-meringue',
+      vins: 'Chassagne-Montrachet en entrée, Pomerol en plat, Champagne sur le dessert'
+    },
+    'boheme-printemps': {
+      title: 'Menu Bohème de Printemps',
+      cocktail: ['Kir royal à la violette', 'Brochettes de légumes croquants', 'Houmous betterave et crackers', 'Mini-bagels au saumon fumé'],
+      entree: 'Salade de roquette, fèves, parmesan et copeaux de truffe',
+      plat: 'Pavé de cabillaud rôti, risotto d\'orge perlé et asperges vertes',
+      fromage: 'Plateau campagnard sur planche de bois (chèvre frais, brebis, comté)',
+      dessert: 'Tarte aux fraises rustique et chantilly à la vanille de Madagascar',
+      vins: 'Bandol rosé tout le repas pour une ambiance décontractée'
+    },
+    'boheme-ete': {
+      title: 'Menu Bohème Estival',
+      cocktail: ['Limonade artisanale au gingembre', 'Wraps colorés végétariens', 'Brochettes tomate-mozzarella', 'Cônes apéritif aux légumes'],
+      entree: 'Buddha bowl aux légumes grillés, quinoa et tahini',
+      plat: 'Cochon de lait rôti à la broche, ratatouille confite et gratin de pommes de terre',
+      fromage: 'Buffet de fromages à thème provençal',
+      dessert: 'Tarte aux abricots et romarin, glace au lait d\'amande',
+      vins: 'Tavel rosé en plat principal, Muscat Beaumes-de-Venise sur le dessert'
+    },
+    'chic-toute-saison': {
+      title: 'Menu Chic & Élégant',
+      cocktail: ['Champagne Ruinart Blanc de Blancs', 'Tartelettes au caviar', 'Cuillères de homard mayonnaise truffée', 'Macarons foie gras-figue'],
+      entree: 'Carpaccio de langoustines au caviar Osciètre',
+      plat: 'Filet de turbot aux morilles et beurre Champagne, ris de veau croustillant',
+      fromage: 'Plateau de fromages affinés (Saint-Marcellin, époisses, beaufort, brie de Meaux)',
+      dessert: 'Pièce montée chocolat-vanille avec macarons et fruits de la passion',
+      vins: 'Meursault en entrée, Chambertin en plat, Champagne millésimé tout le repas'
+    },
+    'nature-toute-saison': {
+      title: 'Menu Nature & Local',
+      cocktail: ['Cocktail bio aux herbes du jardin', 'Tartines de fromages fermiers', 'Verrines de légumes oubliés', 'Crackers maison et tapenades'],
+      entree: 'Salade du potager avec œuf parfait et lardons croustillants',
+      plat: 'Volaille fermière rôtie aux herbes, légumes anciens du marché',
+      fromage: 'Sélection de producteurs locaux (3 fromages selon la région)',
+      dessert: 'Tarte rustique aux fruits du verger et glace au lait fermier',
+      vins: 'Vins biodynamiques du vigneron local du couple'
+    }
+  },
+
+  // ─── 2. RÉDACTION DE FAIRE-PART ─────────────────────────────────────────
+  fairepart: {
+    'romantique': [
+      'Nous avons décidé de croire à l\'amour, à la vie, à l\'éternité. Nous avons surtout décidé de nous unir et nous serions infiniment heureux de partager ce moment avec vous.\n\n[Prénom 1] et [Prénom 2] auront la joie de s\'unir le [date] à [lieu].\n\nLa cérémonie aura lieu à [heure].',
+      'C\'est parce qu\'on a quelqu\'un que la vie a un sens. Nous tenions à vous annoncer notre union prochaine et serions ravis de vous compter parmi nous.\n\n[Prénom 1] & [Prénom 2]\nLe [date] — [lieu]\nUn cocktail suivra à partir de [heure]',
+      'Deux cœurs, une promesse. Nous vous invitons à célébrer notre amour le [date] à [lieu]. Votre présence sera notre plus beau cadeau.\n\nAvec amour,\n[Prénom 1] & [Prénom 2]'
+    ],
+    'classique': [
+      'M. et Mme [Parents] ont l\'honneur de vous faire part du mariage de leurs enfants [Prénom 1] et [Prénom 2].\n\nLa cérémonie sera célébrée le [date] à [heure] en l\'église/mairie de [lieu], suivie d\'un vin d\'honneur et d\'un dîner à [lieu réception].\n\nMerci de bien vouloir confirmer votre présence avant le [date limite].',
+      '[Prénom 1] et [Prénom 2] sont heureux de vous annoncer leur mariage qui sera célébré le [date] à [heure] à [lieu].\n\nUn cocktail dînatoire suivra à [lieu réception] à partir de [heure cocktail].\n\nRSVP avant le [date].'
+    ],
+    'boheme': [
+      'Sous le grand ciel, parmi les fleurs sauvages, nous voulons vous dire OUI. Rejoignez-nous le [date] à [lieu] pour célébrer notre amour, partager un verre, danser jusqu\'au bout de la nuit.\n\n[Prénom 1] ♡ [Prénom 2]',
+      'On a choisi un endroit qu\'on aime, des gens qu\'on aime, et un jour à ne pas oublier. Le [date], on se dit oui à [lieu]. Venez les pieds dans l\'herbe, le cœur léger.\n\n[Prénom 1] & [Prénom 2]'
+    ],
+    'humoristique': [
+      'Après [X] années de fiançailles, [Prénom 2] a enfin décidé de me supporter pour la vie. Aidez-moi à célébrer ce miracle le [date] à [lieu]. Open bar garanti.\n\nVotre future Madame/Monsieur [Nom]',
+      'Avis aux célibataires : il vous reste jusqu\'au [date] pour nous arrêter. Sinon, rendez-vous le [date] à [lieu] pour la fête de notre vie.\n\n[Prénom 1] & [Prénom 2]'
+    ],
+    'court': [
+      '[Prénom 1] & [Prénom 2]\nse marient\nle [date] à [lieu]\n[Heure]',
+      'Save the date\n[Prénom 1] ♡ [Prénom 2]\n[Date] — [Lieu]'
+    ]
+  },
+
+  // ─── 3. DISCOURS TÉMOIN ─────────────────────────────────────────────────
+  discours: {
+    'temoin-marie': [
+      'INTRODUCTION (1 min) :\nBonsoir à tous. Pour ceux qui ne me connaissent pas, je suis [Votre nom], témoin et ami(e) de [Prénom marié]. C\'est un immense honneur d\'être ici ce soir, même si je dois avouer que ma main tremble un peu plus que d\'habitude.\n\nUNE ANECDOTE (2 min) :\nPour vous donner une idée du genre de personne qu\'est [Prénom marié], laissez-moi vous raconter [insérez une anecdote drôle ou touchante : une bêtise d\'adolescence, un moment où il/elle a montré son grand cœur, une situation cocasse].\n\nLA RENCONTRE (2 min) :\nJe me souviens parfaitement du jour où [Prénom marié] m\'a parlé de [Prénom conjoint] pour la première fois. [Décrivez : l\'étincelle dans les yeux, la phrase exacte, votre première réaction]. Ce jour-là, j\'ai su que quelque chose avait changé.\n\nLE COUPLE (1 min) :\nCe que j\'aime chez [Prénom 1] et [Prénom 2] ensemble, c\'est [qualité du couple : leur complicité / leur rire commun / leur façon de se compléter]. Ils sont la preuve que [un trait positif observé].\n\nCONCLUSION (30 sec) :\nAlors levons nos verres aux mariés. À votre amour, à vos rires futurs, à vos projets, et à toutes les belles années qui vous attendent. Que votre mariage soit aussi beau que vous l\'êtes.\n\nÀ [Prénom 1] et [Prénom 2] !',
+      'OUVERTURE :\nMesdames, messieurs, [Prénom marié], j\'ai longtemps cherché comment commencer ce discours. Et puis je me suis dit : commence par la vérité. La vérité, c\'est que je n\'aurais jamais imaginé qu\'on en arriverait là.\n\nPORTRAIT (humour) :\n[Prénom marié], c\'est cette personne qui [trait humoristique : arrive toujours en retard / oublie systématiquement les clés / chante faux mais avec conviction]. Mais c\'est aussi celle qui [trait positif : sera toujours là pour vous, qui ferait n\'importe quoi pour un ami].\n\nL\'AMOUR :\nQuand [Prénom marié] a rencontré [Prénom conjoint], j\'ai vu quelque chose de nouveau. [Personnalisez avec un détail observé]. Ce n\'était pas juste de l\'amour, c\'était la bonne personne au bon moment.\n\nCONSEIL :\n[Prénom 1] et [Prénom 2], un seul conseil : continuez à rire ensemble. Quand vous riez, le monde s\'arrête, et c\'est ça qui fait que vous êtes magiques.\n\nFINAL :\nLevons nos verres au plus beau couple de la soirée. Santé !'
+    ],
+    'parents': [
+      'Mes chers enfants,\n\nIl y a [X] années, [Prénom enfant] arrivait dans nos vies. Aujourd\'hui, vous arrivez ensemble dans une nouvelle vie.\n\n[Prénom 1], tu as toujours été [trait de caractère : passionné, généreux, drôle...]. Te voir grandir, te tromper, recommencer, et trouver ta voie a été le plus beau cadeau qu\'on pouvait avoir.\n\n[Prénom 2], merci. Merci d\'avoir vu chez [Prénom 1] tout ce qu\'on a toujours vu nous-mêmes. Merci de l\'aimer pour ses qualités et de l\'accepter avec ses petits défauts (on en a connus quelques-uns !).\n\nLe mariage, ce n\'est pas un point d\'arrivée, c\'est un point de départ. Vous allez construire ensemble, vous tromper ensemble, vous relever ensemble. C\'est ça, l\'aventure.\n\nNotre seul conseil : prenez soin l\'un de l\'autre, même dans les jours gris. Surtout dans les jours gris.\n\nAvec tout notre amour,\nVos parents'
+    ]
+  },
+
+  // ─── 4. CONSEILS BUDGET ─────────────────────────────────────────────────
+  budget: {
+    'general': (budget, invites) => {
+      const parInv = budget / invites;
+      return {
+        title: `Répartition budget pour ${budget}€ et ${invites} invités`,
+        parInvite: `Coût moyen par invité : ${Math.round(parInv)}€`,
+        repartition: [
+          {poste:'Lieu de réception', pct:25, montant: Math.round(budget*0.25), tip:'Inclut location de salle, mise en place, vaisselle. Comparez 3 lieux minimum.'},
+          {poste:'Traiteur', pct:30, montant: Math.round(budget*0.30), tip:'Poste le plus important. Demandez le prix incluant les boissons.'},
+          {poste:'Tenues (robe + costume)', pct:8, montant: Math.round(budget*0.08), tip:'Pensez aux retouches et accessoires (chaussures, bijoux).'},
+          {poste:'Photographe / Vidéaste', pct:10, montant: Math.round(budget*0.10), tip:'Le seul souvenir vraiment durable. Ne lésinez pas.'},
+          {poste:'DJ / Musique', pct:5, montant: Math.round(budget*0.05), tip:'Compter ~800-2000€ pour un DJ pro de qualité.'},
+          {poste:'Fleurs / Décoration', pct:7, montant: Math.round(budget*0.07), tip:'Concentrez sur 2-3 points forts (bouquets de mariée, centres de table, arche).'},
+          {poste:'Faire-parts / Papeterie', pct:2, montant: Math.round(budget*0.02), tip:'Faire en ligne (canva, etc.) divise par 3 le coût.'},
+          {poste:'Coiffure / Maquillage', pct:2, montant: Math.round(budget*0.02), tip:'Prévoir un essai un mois avant le mariage.'},
+          {poste:'Wedding cake', pct:3, montant: Math.round(budget*0.03), tip:'Compter 5-12€ par part selon complexité.'},
+          {poste:'Alliances', pct:3, montant: Math.round(budget*0.03), tip:'Vérifier que les bagues incluent la gravure.'},
+          {poste:'Animation / Surprises', pct:2, montant: Math.round(budget*0.02), tip:'Photobooth, magicien, dégustation : à voir selon envie.'},
+          {poste:'Transport / Logement', pct:2, montant: Math.round(budget*0.02), tip:'Voiture des mariés, navettes invités si éloignés.'},
+          {poste:'Imprévus (marge)', pct:1, montant: Math.round(budget*0.01), tip:'Toujours garder une marge pour les surprises de dernière minute.'}
+        ]
+      };
+    },
+    'astuces': [
+      'Mariez-vous hors saison (octobre-avril) : économies de 20-30 % chez le traiteur et le lieu',
+      'Choisissez un mariage en semaine (vendredi ou dimanche) : tarifs souvent réduits de 15 à 25 %',
+      'Limitez le nombre d\'invités au vin d\'honneur uniquement pour les éloignés (compte 50 % du budget traiteur)',
+      'Empruntez ou louez la robe / le costume : la location coûte 3 à 5 fois moins',
+      'Faites vos propres faire-parts (Canva est gratuit), vos centres de table et votre déco',
+      'Achetez vos boissons vous-même chez un caviste qui reprend les invendus',
+      'Choisissez un buffet plutôt qu\'un service à l\'assiette : 20 à 30 % moins cher',
+      'Réservez tôt (12-18 mois avant) : les prestataires haute saison négocient mieux',
+      'Demandez 3 devis minimum pour chaque poste et négociez : 5-10 % de remise est presque toujours possible',
+      'Mutualisez les déplacements avec d\'autres mariages dans la région du fleuriste ou DJ'
+    ]
+  },
+
+  // ─── 5. TIMELINE JOUR J ─────────────────────────────────────────────────
+  timeline: {
+    // Générée dynamiquement en fonction de l'heure de la cérémonie
+    generate: (heureCer, lieuCer, lieuRecep) => {
+      // heureCer ex: "15:00"
+      const [h, m] = heureCer.split(':').map(n=>parseInt(n,10));
+      const minMatin = (h * 60 + m) - 60*5; // début 5h avant la cérémonie
+      function tt(min){
+        const hh = Math.floor(min/60), mm = min%60;
+        return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+      }
+      const cer = h*60+m;
+      return [
+        {time:tt(cer-300), action:'Réveil tranquille avec un petit déjeuner copieux. Hydratez-vous.'},
+        {time:tt(cer-240), action:'Douche, soins et début de la coiffure de la mariée.'},
+        {time:tt(cer-180), action:'Maquillage de la mariée. Marié(e) commence à se préparer en parallèle.'},
+        {time:tt(cer-150), action:'Photos des préparatifs avec photographe (robe, accessoires, ambiance).'},
+        {time:tt(cer-90), action:'Habillage de la mariée. Témoins et famille proche présents.'},
+        {time:tt(cer-60), action:'First look (si prévu) — moment intime entre les futurs mariés avant la cérémonie.'},
+        {time:tt(cer-30), action:'Départ vers le lieu de cérémonie ('+lieuCer+'). Prévoir 15 min de marge.'},
+        {time:tt(cer-15), action:'Arrivée sur place. Cocktail de bienvenue pour les invités.'},
+        {time:tt(cer), action:'🎵 CÉRÉMONIE — entrée de la mariée, échange des vœux, alliances.'},
+        {time:tt(cer+45), action:'Photos de groupe sur le parvis. Lancer de pétales / riz.'},
+        {time:tt(cer+75), action:'Départ vers '+lieuRecep+' pour le vin d\'honneur.'},
+        {time:tt(cer+90), action:'🥂 Vin d\'honneur (1h30 environ). Animation, photos, échanges.'},
+        {time:tt(cer+180), action:'Entrée en salle. Annonce des mariés. Verre de bienvenue.'},
+        {time:tt(cer+210), action:'🍽️ Dîner — entrée. Discours du papa de la mariée traditionnellement.'},
+        {time:tt(cer+270), action:'Plat principal. Discours des témoins (10-15 min total max).'},
+        {time:tt(cer+330), action:'Fromages et animations (jeux, surprises, vidéos).'},
+        {time:tt(cer+390), action:'Découpe du wedding cake. Première danse des mariés.'},
+        {time:tt(cer+420), action:'🎶 Ouverture du bal. Ambiance dansante.'},
+        {time:tt(cer+480), action:'Service du brunch / nuit blanche / cocktails de fin.'},
+        {time:tt(cer+600), action:'🌙 Fin officielle. Photos avec les derniers invités.'}
+      ];
+    }
+  },
+
+  // ─── 6. DÉCORATION ─────────────────────────────────────────────────────
+  decoration: {
+    'romantique-printemps': {
+      title: 'Décoration Romantique Printanière',
+      couleurs: ['Rose poudré', 'Blanc cassé', 'Vert sauge', 'Touches dorées'],
+      fleurs: 'Pivoines, roses David Austin, lisianthus, eucalyptus, gypsophile',
+      tables: 'Nappes en lin écru, chemins de table en lin rose poudré, bougies blanches dans des photophores en verre, vaisselle blanche avec liseré doré',
+      vaisselle: 'Assiettes en porcelaine blanche, couverts dorés mat, verres en cristal fin',
+      ambiance: 'Guirlandes lumineuses chaudes, photophores partout, fleurs suspendues',
+      arche: 'Arche en bois clair recouverte de mousse, pivoines blanches et roses, eucalyptus en cascade'
+    },
+    'romantique-ete': {
+      title: 'Décoration Romantique d\'Été',
+      couleurs: ['Blanc', 'Pêche', 'Vert clair', 'Or rose'],
+      fleurs: 'Roses pêche, hortensias blancs, fleurs des champs, oliviers',
+      tables: 'Nappes blanches, chemins de table verts feuillage, vaisselle artisanale',
+      vaisselle: 'Service en céramique blanche mate, verrerie ambrée, couverts en or rose',
+      ambiance: 'Lampions, mariage en plein air, ombrelles colorées pour les invités',
+      arche: 'Pergola en bois flotté, hortensias blancs, voilage léger qui flotte au vent'
+    },
+    'romantique-automne': {
+      title: 'Décoration Romantique d\'Automne',
+      couleurs: ['Bordeaux', 'Terracotta', 'Or vieilli', 'Crème'],
+      fleurs: 'Dahlias bordeaux, roses terracotta, eucalyptus argenté, feuilles d\'automne',
+      tables: 'Nappes crème, chemins de table en velours bordeaux, candélabres dorés',
+      vaisselle: 'Assiettes en grès terracotta, verres ambrés, couverts en cuivre',
+      ambiance: 'Lustres en plumes, beaucoup de bougies à la cire, foyer / cheminée',
+      arche: 'Arche en branches sèches, dahlias et physalis, drapé de velours'
+    },
+    'boheme-printemps': {
+      title: 'Décoration Bohème Printanière',
+      couleurs: ['Blanc cassé', 'Vert tendre', 'Pampa beige', 'Touches dorées'],
+      fleurs: 'Pampa, eucalyptus, gypsophile, fleurs séchées, roses blanches',
+      tables: 'Tables en bois brut sans nappe, chemins en macramé, vaisselle dépareillée vintage',
+      vaisselle: 'Assiettes vintage chinées, verres en pied dorés, couverts en bois',
+      ambiance: 'Tapis berbères, coussins au sol, attrape-rêves, ampoules guinguettes',
+      arche: 'Arche triangulaire en bois, pampa, dentelle blanche, plumes'
+    },
+    'boheme-ete': {
+      title: 'Décoration Bohème Estivale',
+      couleurs: ['Beige', 'Terre cuite', 'Ocre', 'Blanc cassé'],
+      fleurs: 'Tournesols, marguerites, lavande, herbes de la pampa, oliviers',
+      tables: 'Tables en bois flotté, chemins en lin sable, paniers tressés',
+      vaisselle: 'Vaisselle en argile, verres colorés style méditerranéen, couverts dépareillés',
+      ambiance: 'Tapis berbères au sol, hamacs, lampions, ambiance "désert"',
+      arche: 'Arche en macramé géant, fleurs séchées, voilage écru'
+    },
+    'chic-toute-saison': {
+      title: 'Décoration Chic & Élégante',
+      couleurs: ['Blanc', 'Or', 'Marbre', 'Touches noires'],
+      fleurs: 'Roses blanches, orchidées, lys, calla, feuillage vert foncé',
+      tables: 'Nappes blanches en lin épais, chemins de table dorés, candélabres hauts argentés',
+      vaisselle: 'Service en porcelaine fine avec filet doré, verres cristal Baccarat, couverts plaqués or',
+      ambiance: 'Grands chandeliers, lustre en cristal, marbre, touches noires',
+      arche: 'Arche en marbre / colonnes blanches, cascade de roses blanches et lierre'
+    },
+    'nature-toute-saison': {
+      title: 'Décoration Nature & Champêtre',
+      couleurs: ['Vert sapin', 'Beige', 'Bois clair', 'Touches dorées'],
+      fleurs: 'Fleurs de saison du fleuriste local, mousse, fougère, brindilles',
+      tables: 'Tables en bois brut, chemins de table en mousse, bougies dans des bocaux',
+      vaisselle: 'Vaisselle artisanale céramique, verrerie simple, serviettes en lin',
+      ambiance: 'Cabane en bois, lanternes, chemin en pierres, ambiance forêt',
+      arche: 'Arche en branches naturelles, feuillage abondant, sans fleurs'
+    }
+  }
+};
+
+function renderAssistant(){
+  el('page-10').innerHTML = `
+    <div class="card" style="padding:18px 16px;margin-bottom:16px;background:linear-gradient(135deg,${sf},#fff);">
+      <h2 style="font-family:Playfair Display,Georgia,serif;font-size:22px;color:${tm};margin:0 0 6px;text-align:center;font-weight:700;">✨ Assistant Wedding Dream</h2>
+      <p style="text-align:center;font-size:12px;color:${tl};margin:0;font-style:italic;line-height:1.5;">Des conseils personnalisés pour ton mariage, instantanément et sans connexion internet.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;">
+      ${[
+        {key:'menu', label:'Suggestions de menu', icon:'🍽️', desc:'Menu adapté au style et à la saison'},
+        {key:'fairepart', label:'Faire-part', icon:'✉️', desc:'Textes de faire-part prêts à utiliser'},
+        {key:'discours', label:'Discours témoin', icon:'🎤', desc:'Trame de discours personnalisable'},
+        {key:'budget', label:'Conseils budget', icon:'💰', desc:'Répartition optimisée du budget'},
+        {key:'timeline', label:'Timeline du jour J', icon:'⏰', desc:'Planning détaillé heure par heure'},
+        {key:'decoration', label:'Idées déco', icon:'🎀', desc:'Inspiration selon style et saison'}
+      ].map(s=>`<button onclick="assistOpen('${s.key}')" class="card" style="padding:14px 12px;border:1.5px solid ${br};text-align:left;cursor:pointer;background:#fff;font-family:Lora,serif;transition:all .15s;">
+        <div style="font-size:28px;margin-bottom:6px;">${s.icon}</div>
+        <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:3px;">${s.label}</div>
+        <div style="font-size:10px;color:${tl};line-height:1.4;">${s.desc}</div>
+      </button>`).join('')}
+    </div>
+
+    <div id="assist-content" style="margin-top:8px;"></div>
+
+    <p style="text-align:center;font-size:11px;color:${tl};font-style:italic;margin-top:18px;">💡 Tous les conseils sont basés sur les meilleures pratiques des planners mariage. Adapte-les à ton histoire.</p>
+  `;
+}
+
+// ─── Ouverture d'un service ───
+function assistOpen(service){
+  const cont = el('assist-content');
+  if(!cont) return;
+  if(service === 'menu') return assistMenu(cont);
+  if(service === 'fairepart') return assistFairepart(cont);
+  if(service === 'discours') return assistDiscours(cont);
+  if(service === 'budget') return assistBudget(cont);
+  if(service === 'timeline') return assistTimeline(cont);
+  if(service === 'decoration') return assistDecoration(cont);
+}
+
+// ─── SERVICE 1 : MENU ───
+function assistMenu(cont){
+  const savedStyle = ld('assist_menu_style', 'romantique');
+  const savedSaison = ld('assist_menu_saison', 'printemps');
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🍽️ Suggestions de menu</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
+          <select id="menu-style" class="inp" style="margin-top:4px;">
+            <option value="romantique" ${savedStyle==='romantique'?'selected':''}>Romantique</option>
+            <option value="boheme" ${savedStyle==='boheme'?'selected':''}>Bohème</option>
+            <option value="chic" ${savedStyle==='chic'?'selected':''}>Chic & élégant</option>
+            <option value="nature" ${savedStyle==='nature'?'selected':''}>Nature</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Saison</label>
+          <select id="menu-saison" class="inp" style="margin-top:4px;">
+            <option value="printemps" ${savedSaison==='printemps'?'selected':''}>Printemps</option>
+            <option value="ete" ${savedSaison==='ete'?'selected':''}>Été</option>
+            <option value="automne" ${savedSaison==='automne'?'selected':''}>Automne</option>
+            <option value="hiver" ${savedSaison==='hiver'?'selected':''}>Hiver</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" onclick="assistGenerateMenu()" style="width:100%;">Générer mon menu</button>
+      <div id="menu-result" style="margin-top:16px;"></div>
+    </div>
+  `;
+}
+
+function assistGenerateMenu(){
+  const style = el('menu-style').value;
+  const saison = el('menu-saison').value;
+  sv('assist_menu_style', style);
+  sv('assist_menu_saison', saison);
+  // Trouver la meilleure clé disponible
+  let key = `${style}-${saison}`;
+  if(!ASSIST_KB.menus[key]) key = `${style}-toute-saison`;
+  if(!ASSIST_KB.menus[key]){
+    // Fallback : prendre la première dispo
+    key = Object.keys(ASSIST_KB.menus)[0];
+  }
+  const menu = ASSIST_KB.menus[key];
+  const r = el('menu-result');
+  r.innerHTML = `
+    <div style="border-top:1.5px solid ${br};padding-top:14px;">
+      <div style="font-family:Playfair Display,serif;font-style:italic;font-size:17px;color:${tm};margin-bottom:12px;text-align:center;">${menu.title}</div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Cocktail / Vin d'honneur</div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.6;">${menu.cocktail.map(c=>`<li>${h(c)}</li>`).join('')}</ul>
+      </div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Entrée</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.entree)}</div></div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Plat</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.plat)}</div></div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Fromage</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.fromage)}</div></div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Dessert</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.dessert)}</div></div>
+      <div style="margin-bottom:14px;background:${sf};padding:10px;border-radius:8px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">🍷 Suggestions de vins</span><div style="font-size:12px;color:${tm};margin-top:4px;font-style:italic;">${h(menu.vins)}</div></div>
+
+      <button onclick="assistCopyMenu()" class="btn" style="width:100%;font-size:12px;">📋 Copier le menu</button>
+    </div>
+  `;
+  window._lastMenu = menu;
+}
+
+async function assistCopyMenu(){
+  const m = window._lastMenu;
+  if(!m) return;
+  const text = `${m.title}\n\nCocktail:\n${m.cocktail.map(c=>'- '+c).join('\n')}\n\nEntrée: ${m.entree}\nPlat: ${m.plat}\nFromage: ${m.fromage}\nDessert: ${m.dessert}\n\nVins: ${m.vins}`;
+  try { await navigator.clipboard.writeText(text); appAlert('Menu copié dans le presse-papier !', 'Copié'); }
+  catch{ appAlert(text, 'Menu (copie manuelle)'); }
+}
+
+// ─── SERVICE 2 : FAIRE-PART ───
+function assistFairepart(cont){
+  const savedStyle = ld('assist_fp_style', 'romantique');
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">✉️ Faire-part de mariage</div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
+        <select id="fp-style" class="inp" style="margin-top:4px;">
+          <option value="romantique" ${savedStyle==='romantique'?'selected':''}>Romantique & poétique</option>
+          <option value="classique" ${savedStyle==='classique'?'selected':''}>Classique & formel</option>
+          <option value="boheme" ${savedStyle==='boheme'?'selected':''}>Bohème & décontracté</option>
+          <option value="humoristique" ${savedStyle==='humoristique'?'selected':''}>Humoristique</option>
+          <option value="court" ${savedStyle==='court'?'selected':''}>Court (save the date)</option>
+        </select>
+      </div>
+      <button class="btn" onclick="assistGenerateFairepart()" style="width:100%;">Voir les modèles</button>
+      <div id="fp-result" style="margin-top:16px;"></div>
+    </div>
+  `;
+}
+
+function assistGenerateFairepart(){
+  const style = el('fp-style').value;
+  sv('assist_fp_style', style);
+  const modeles = ASSIST_KB.fairepart[style] || [];
+  const r = el('fp-result');
+  if(!modeles.length){ r.innerHTML = `<p style="color:${tl};font-size:12px;">Aucun modèle disponible.</p>`; return; }
+  r.innerHTML = `<div style="border-top:1.5px solid ${br};padding-top:14px;font-size:11px;color:${tl};margin-bottom:10px;">Remplace les [crochets] par tes propres informations.</div>` +
+    modeles.map((t, i) => `<div class="card" style="padding:14px;margin-bottom:10px;background:${sf};">
+      <div style="font-size:11px;font-weight:700;color:${pk};margin-bottom:8px;">Modèle ${i+1}</div>
+      <div style="font-size:13px;color:${tx};line-height:1.7;white-space:pre-line;font-family:Playfair Display,Georgia,serif;font-style:italic;">${h(t)}</div>
+      <button onclick="assistCopyText(${JSON.stringify(t).replace(/"/g,'&quot;')})" class="btn-sec" style="margin-top:10px;font-size:11px;padding:6px 12px;">📋 Copier ce modèle</button>
+    </div>`).join('');
+}
+
+async function assistCopyText(text){
+  try { await navigator.clipboard.writeText(text); appAlert('Texte copié dans le presse-papier !', 'Copié'); }
+  catch{ appAlert(text, 'Texte (copie manuelle)'); }
+}
+
+// ─── SERVICE 3 : DISCOURS ───
+function assistDiscours(cont){
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎤 Discours de mariage</div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Type de discours</label>
+        <select id="disc-type" class="inp" style="margin-top:4px;">
+          <option value="temoin-marie">Témoin du marié / de la mariée</option>
+          <option value="parents">Parents des mariés</option>
+        </select>
+      </div>
+      <button class="btn" onclick="assistGenerateDiscours()" style="width:100%;">Voir les trames</button>
+      <div id="disc-result" style="margin-top:16px;"></div>
+    </div>
+  `;
+}
+
+function assistGenerateDiscours(){
+  const type = el('disc-type').value;
+  const trames = ASSIST_KB.discours[type] || [];
+  const r = el('disc-result');
+  if(!trames.length){ r.innerHTML = `<p style="color:${tl};font-size:12px;">Aucune trame disponible.</p>`; return; }
+  r.innerHTML = `<div style="border-top:1.5px solid ${br};padding-top:14px;font-size:11px;color:${tl};margin-bottom:10px;">Remplace les [crochets] par tes propres souvenirs et anecdotes. Vise 4-6 minutes maximum.</div>` +
+    trames.map((t, i) => `<div class="card" style="padding:14px;margin-bottom:10px;background:${sf};">
+      <div style="font-size:11px;font-weight:700;color:${pk};margin-bottom:8px;">Trame ${i+1}</div>
+      <div style="font-size:13px;color:${tx};line-height:1.7;white-space:pre-line;">${h(t)}</div>
+      <button onclick="assistCopyText(${JSON.stringify(t).replace(/"/g,'&quot;')})" class="btn-sec" style="margin-top:10px;font-size:11px;padding:6px 12px;">📋 Copier cette trame</button>
+    </div>`).join('');
+}
+
+// ─── SERVICE 4 : BUDGET ───
+function assistBudget(cont){
+  const savedBudget = ld('assist_budget', 15000);
+  const savedInvites = ld('assist_invites', 80);
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">💰 Conseils budget</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Budget total (€)</label>
+          <input id="bud-total" type="number" class="inp" value="${savedBudget}" min="1000" step="500" style="margin-top:4px;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Nombre d'invités</label>
+          <input id="bud-invites" type="number" class="inp" value="${savedInvites}" min="5" step="5" style="margin-top:4px;">
+        </div>
+      </div>
+      <button class="btn" onclick="assistGenerateBudget()" style="width:100%;">Calculer la répartition</button>
+      <div id="bud-result" style="margin-top:16px;"></div>
+    </div>
+  `;
+}
+
+function assistGenerateBudget(){
+  const budget = parseInt(el('bud-total').value, 10) || 15000;
+  const invites = parseInt(el('bud-invites').value, 10) || 80;
+  sv('assist_budget', budget);
+  sv('assist_invites', invites);
+  const data = ASSIST_KB.budget.general(budget, invites);
+  const r = el('bud-result');
+  r.innerHTML = `
+    <div style="border-top:1.5px solid ${br};padding-top:14px;">
+      <div style="font-family:Playfair Display,serif;font-style:italic;font-size:16px;color:${tm};margin-bottom:4px;text-align:center;">${h(data.title)}</div>
+      <div style="font-size:12px;color:${tl};text-align:center;margin-bottom:14px;font-style:italic;">${h(data.parInvite)}</div>
+      ${data.repartition.map(item => `<div style="background:${sf};border-radius:8px;padding:10px 12px;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-weight:700;font-size:13px;color:${tx};">${h(item.poste)}</span>
+          <span style="font-weight:700;color:${pk};font-size:14px;">${item.montant}€<span style="color:${tl};font-size:10px;font-weight:400;margin-left:4px;">(${item.pct}%)</span></span>
+        </div>
+        <div style="font-size:11px;color:${tm};font-style:italic;line-height:1.4;">${h(item.tip)}</div>
+      </div>`).join('')}
+
+      <div style="margin-top:16px;padding:14px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border-radius:12px;border:1px solid ${gd}40;">
+        <div style="font-family:Playfair Display,serif;font-size:14px;color:${tm};margin-bottom:10px;font-weight:700;">💡 10 astuces pour économiser</div>
+        <ul style="margin:0;padding-left:18px;font-size:12px;color:${tx};line-height:1.7;">
+          ${ASSIST_KB.budget.astuces.map(a => `<li>${h(a)}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+// ─── SERVICE 5 : TIMELINE ───
+function assistTimeline(cont){
+  const savedHeure = ld('assist_tl_heure', '15:00');
+  const savedCer = ld('assist_tl_cer', 'Mairie de [ville]');
+  const savedRec = ld('assist_tl_rec', 'Domaine de [nom]');
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">⏰ Timeline du jour J</div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Heure de la cérémonie</label>
+        <input id="tl-heure" type="time" class="inp" value="${savedHeure}" style="margin-top:4px;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Lieu de cérémonie</label>
+        <input id="tl-cer" type="text" class="inp" value="${h(savedCer)}" style="margin-top:4px;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Lieu de réception</label>
+        <input id="tl-rec" type="text" class="inp" value="${h(savedRec)}" style="margin-top:4px;">
+      </div>
+      <button class="btn" onclick="assistGenerateTimeline()" style="width:100%;">Générer ma timeline</button>
+      <div id="tl-result" style="margin-top:16px;"></div>
+    </div>
+  `;
+}
+
+function assistGenerateTimeline(){
+  const heure = el('tl-heure').value || '15:00';
+  const cer = el('tl-cer').value || 'Mairie';
+  const rec = el('tl-rec').value || 'Domaine';
+  sv('assist_tl_heure', heure);
+  sv('assist_tl_cer', cer);
+  sv('assist_tl_rec', rec);
+  const tl = ASSIST_KB.timeline.generate(heure, cer, rec);
+  const r = el('tl-result');
+  r.innerHTML = `<div style="border-top:1.5px solid ${br};padding-top:14px;">
+    <div style="font-family:Playfair Display,serif;font-style:italic;font-size:16px;color:${tm};margin-bottom:14px;text-align:center;">Planning du jour J</div>
+    ${tl.map(item => `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid ${br};">
+      <div style="flex-shrink:0;width:55px;font-family:Playfair Display,serif;font-weight:700;color:${pk};font-size:14px;">${item.time}</div>
+      <div style="flex:1;font-size:13px;color:${tx};line-height:1.5;">${h(item.action)}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ─── SERVICE 6 : DÉCORATION ───
+function assistDecoration(cont){
+  const savedStyle = ld('assist_deco_style', 'romantique');
+  const savedSaison = ld('assist_deco_saison', 'printemps');
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎀 Idées de décoration</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
+          <select id="deco-style" class="inp" style="margin-top:4px;">
+            <option value="romantique" ${savedStyle==='romantique'?'selected':''}>Romantique</option>
+            <option value="boheme" ${savedStyle==='boheme'?'selected':''}>Bohème</option>
+            <option value="chic" ${savedStyle==='chic'?'selected':''}>Chic & élégant</option>
+            <option value="nature" ${savedStyle==='nature'?'selected':''}>Nature</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Saison</label>
+          <select id="deco-saison" class="inp" style="margin-top:4px;">
+            <option value="printemps" ${savedSaison==='printemps'?'selected':''}>Printemps</option>
+            <option value="ete" ${savedSaison==='ete'?'selected':''}>Été</option>
+            <option value="automne" ${savedSaison==='automne'?'selected':''}>Automne</option>
+            <option value="hiver" ${savedSaison==='hiver'?'selected':''}>Hiver</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" onclick="assistGenerateDeco()" style="width:100%;">Voir l'inspiration</button>
+      <div id="deco-result" style="margin-top:16px;"></div>
+    </div>
+  `;
+}
+
+function assistGenerateDeco(){
+  const style = el('deco-style').value;
+  const saison = el('deco-saison').value;
+  sv('assist_deco_style', style);
+  sv('assist_deco_saison', saison);
+  let key = `${style}-${saison}`;
+  if(!ASSIST_KB.decoration[key]) key = `${style}-toute-saison`;
+  if(!ASSIST_KB.decoration[key]) key = Object.keys(ASSIST_KB.decoration)[0];
+  const d = ASSIST_KB.decoration[key];
+  const r = el('deco-result');
+  r.innerHTML = `<div style="border-top:1.5px solid ${br};padding-top:14px;">
+    <div style="font-family:Playfair Display,serif;font-style:italic;font-size:16px;color:${tm};margin-bottom:14px;text-align:center;">${h(d.title)}</div>
+
+    <div style="background:${sf};padding:12px;border-radius:10px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🎨 Palette de couleurs</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${d.couleurs.map(c=>`<span style="background:#fff;padding:4px 10px;border-radius:14px;font-size:11px;color:${tx};border:1px solid ${br};font-weight:600;">${h(c)}</span>`).join('')}</div>
+    </div>
+
+    <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;">💐 Fleurs recommandées</span><div style="font-size:13px;color:${tx};margin-top:4px;line-height:1.6;">${h(d.fleurs)}</div></div>
+
+    <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;">🪑 Tables</span><div style="font-size:13px;color:${tx};margin-top:4px;line-height:1.6;">${h(d.tables)}</div></div>
+
+    <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;">🍽️ Vaisselle</span><div style="font-size:13px;color:${tx};margin-top:4px;line-height:1.6;">${h(d.vaisselle)}</div></div>
+
+    <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;">✨ Ambiance générale</span><div style="font-size:13px;color:${tx};margin-top:4px;line-height:1.6;">${h(d.ambiance)}</div></div>
+
+    <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;">🌿 Arche de cérémonie</span><div style="font-size:13px;color:${tx};margin-top:4px;line-height:1.6;">${h(d.arche)}</div></div>
+  </div>`;
 }
 
 // ── NOTES ─────────────────────────────────────────────────────────────────────
