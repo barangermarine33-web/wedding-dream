@@ -3073,79 +3073,274 @@ async function copyCurrentDriveUrl(){
 // une qualité constante et un fonctionnement 100% offline et gratuit.
 
 const ASSIST_KB = {
-  // ─── 1. SUGGESTIONS DE MENU ─────────────────────────────────────────────
+  // ─── 1. MENUS — base étoffée par style × saison + adaptations ──────────
+  // Chaque menu contient UNIQUEMENT de la nourriture pour le cocktail (pas de boissons).
+  // Les boissons sont gérées séparément dans 'boissons'.
+  // Le générateur adapte au format (assiette/buffet), au budget par personne,
+  // et aux restrictions alimentaires.
   menus: {
     'romantique-printemps': {
       title: 'Menu Romantique de Printemps',
-      cocktail: ['Crémant rosé fraise-basilic', 'Bouchées de chèvre frais aux herbes', 'Asperges vertes enrobées de jambon cru', 'Verrines de petits pois à la menthe'],
-      entree: 'Carpaccio de Saint-Jacques aux agrumes et huile vierge',
-      plat: 'Filet d\'agneau de printemps en croûte d\'herbes, jus court et écrasée de pommes de terre nouvelles',
-      fromage: 'Sélection de fromages frais (brillat-savarin, crottin de Chavignol, chaource)',
-      dessert: 'Pavlova aux fruits rouges et fleurs comestibles',
+      cocktail: ['Verrines de petits pois frais à la menthe et chèvre', 'Cuillères d\'asperges vertes au jambon cru croustillant', 'Mini-tartelettes au saumon fumé et aneth', 'Brochettes de mozzarella, tomate cerise et basilic', 'Mini-quiches aux poireaux et chèvre frais', 'Bouchées de radis croquants au beurre demi-sel'],
+      entree: 'Carpaccio de Saint-Jacques aux agrumes, huile vierge et fleurs comestibles',
+      plat: 'Filet d\'agneau de printemps en croûte d\'herbes, jus court et écrasée de pommes de terre nouvelles aux herbes fraîches',
+      fromage: 'Sélection de fromages frais (brillat-savarin truffé, crottin de Chavignol, chaource AOP)',
+      dessert: 'Pavlova aux fruits rouges, crème vanille et fleurs comestibles',
       vins: 'Sancerre blanc en entrée, Côtes-du-Rhône rouge sur le plat, Champagne rosé sur le dessert'
     },
     'romantique-ete': {
       title: 'Menu Romantique Estival',
-      cocktail: ['Spritz à la pêche blanche', 'Gaspacho d\'été en verrines', 'Brochettes melon-jambon-figue', 'Tartelettes tomate-burrata'],
-      entree: 'Tartare de daurade royale, mangue et citron vert',
-      plat: 'Loup de mer rôti aux herbes, légumes de soleil confits et pesto léger',
+      cocktail: ['Verrines de gaspacho d\'été aux billes de melon', 'Brochettes melon-jambon de Parme-figue fraîche', 'Mini-tartelettes tomate-burrata-pesto', 'Bouchées de courgettes farcies au fromage frais', 'Cuillères de tartare de daurade au yuzu', 'Mini-cônes au tarama maison et œufs de saumon'],
+      entree: 'Tartare de daurade royale, mangue, citron vert et avocat',
+      plat: 'Loup de mer rôti aux herbes de Provence, légumes de soleil confits et pesto léger',
       fromage: 'Plateau de fromages frais (mozzarella di bufala, ricotta, fromage de chèvre cendré)',
       dessert: 'Fraisier revisité avec biscuit pistache et crème mousseline vanille',
       vins: 'Provence rosé tout le repas, ou Bordeaux blanc sec en entrée'
     },
     'romantique-automne': {
       title: 'Menu Romantique d\'Automne',
-      cocktail: ['Champagne brut nature aux mirabelles', 'Velouté de courge en verrines', 'Mini-feuilletés aux champignons des bois', 'Tartines figue-roquefort'],
-      entree: 'Foie gras mi-cuit au pain d\'épices, chutney de figues',
-      plat: 'Suprême de pintade fermière au cidre, purée de céleri rave truffée',
+      cocktail: ['Verrines de velouté de courge butternut au foie gras', 'Mini-feuilletés aux champignons des bois et persillade', 'Tartines toastées figue-roquefort-noix', 'Cuillères de canard fumé au pain d\'épices', 'Mini-tartes fines tatin oignons rouges et chèvre', 'Bouchées potimarron-marron-noisette'],
+      entree: 'Foie gras mi-cuit au pain d\'épices, chutney de figues et fleur de sel',
+      plat: 'Suprême de pintade fermière au cidre, purée de céleri rave truffée et girolles poêlées',
       fromage: 'Sélection automnale (saint-marcellin, comté 24 mois, fourme d\'Ambert)',
       dessert: 'Royal chocolat-noisette et son cœur praliné coulant',
       vins: 'Pouilly-Fumé en entrée, Saint-Émilion en plat, Sauternes sur le foie gras'
     },
     'romantique-hiver': {
       title: 'Menu Romantique d\'Hiver',
-      cocktail: ['Champagne blanc de blancs', 'Cuillères de Saint-Jacques poêlées', 'Toasts au tarama de saumon fumé', 'Soupe de châtaignes en mini-bols'],
-      entree: 'Tartare de Saint-Jacques au caviar et écume de yuzu',
-      plat: 'Filet de bœuf Rossini, sauce périgueux et gratin dauphinois',
-      fromage: 'Plateau d\'hiver (vacherin Mont d\'Or, comté vieux, beaufort, époisses)',
+      cocktail: ['Cuillères de Saint-Jacques poêlées au beurre noisette', 'Toasts au tarama de saumon fumé et blinis', 'Verrines de soupe de châtaignes et lardons', 'Mini-croque-monsieur à la truffe', 'Bouchées de tartare de bœuf au caviar', 'Mini-vols-au-vent aux fruits de mer'],
+      entree: 'Tartare de Saint-Jacques au caviar, écume de yuzu et tuile noire',
+      plat: 'Filet de bœuf Rossini, sauce périgueux et gratin dauphinois aux truffes',
+      fromage: 'Plateau d\'hiver (vacherin Mont d\'Or, comté vieux, beaufort d\'alpage, époisses)',
       dessert: 'Vacherin glacé vanille-marrons confits-meringue',
       vins: 'Chassagne-Montrachet en entrée, Pomerol en plat, Champagne sur le dessert'
     },
     'boheme-printemps': {
       title: 'Menu Bohème de Printemps',
-      cocktail: ['Kir royal à la violette', 'Brochettes de légumes croquants', 'Houmous betterave et crackers', 'Mini-bagels au saumon fumé'],
-      entree: 'Salade de roquette, fèves, parmesan et copeaux de truffe',
-      plat: 'Pavé de cabillaud rôti, risotto d\'orge perlé et asperges vertes',
+      cocktail: ['Houmous de betterave et crackers maison', 'Brochettes de légumes croquants au pesto', 'Mini-bagels au saumon fumé et concombre', 'Cuillères de tabboulé aux herbes fraîches', 'Wraps végétariens chèvre-roquette-tomates séchées', 'Bouchées de feta marinée aux olives'],
+      entree: 'Salade de roquette, fèves nouvelles, parmesan et copeaux de truffe',
+      plat: 'Pavé de cabillaud rôti, risotto d\'orge perlé aux herbes et asperges vertes',
       fromage: 'Plateau campagnard sur planche de bois (chèvre frais, brebis, comté)',
       dessert: 'Tarte aux fraises rustique et chantilly à la vanille de Madagascar',
       vins: 'Bandol rosé tout le repas pour une ambiance décontractée'
     },
     'boheme-ete': {
       title: 'Menu Bohème Estival',
-      cocktail: ['Limonade artisanale au gingembre', 'Wraps colorés végétariens', 'Brochettes tomate-mozzarella', 'Cônes apéritif aux légumes'],
-      entree: 'Buddha bowl aux légumes grillés, quinoa et tahini',
+      cocktail: ['Wraps colorés végétariens au falafel', 'Brochettes tomate-mozzarella-basilic', 'Cônes apéritif aux légumes croquants', 'Cuillères de poke bowl saumon-avocat', 'Houmous trio (classique, betterave, courgette) et pains pita', 'Bouchées de pastèque-feta-menthe'],
+      entree: 'Buddha bowl aux légumes grillés, quinoa, pousses et sauce tahini',
       plat: 'Cochon de lait rôti à la broche, ratatouille confite et gratin de pommes de terre',
       fromage: 'Buffet de fromages à thème provençal',
       dessert: 'Tarte aux abricots et romarin, glace au lait d\'amande',
       vins: 'Tavel rosé en plat principal, Muscat Beaumes-de-Venise sur le dessert'
     },
-    'chic-toute-saison': {
-      title: 'Menu Chic & Élégant',
-      cocktail: ['Champagne Ruinart Blanc de Blancs', 'Tartelettes au caviar', 'Cuillères de homard mayonnaise truffée', 'Macarons foie gras-figue'],
-      entree: 'Carpaccio de langoustines au caviar Osciètre',
+    'boheme-automne': {
+      title: 'Menu Bohème d\'Automne',
+      cocktail: ['Tartines de pain de campagne au potiron rôti', 'Brochettes champignons-magret séché', 'Bouchées de fromage de chèvre aux figues fraîches', 'Verrines de crème de courge et noisettes torréfiées', 'Mini-pizzas blanches aux cèpes', 'Cuillères de salade automnale (mâche, betterave, pomme)'],
+      entree: 'Salade tiède de châtaignes, magret fumé et roquette',
+      plat: 'Cocotte de poulet fermier aux champignons des bois et purée maison',
+      fromage: 'Plateau campagnard automnal',
+      dessert: 'Tarte rustique aux pommes et caramel beurre salé',
+      vins: 'Bourgogne pinot noir tout le repas'
+    },
+    'boheme-hiver': {
+      title: 'Menu Bohème d\'Hiver',
+      cocktail: ['Mini-croques au camembert et noix', 'Verrines de soupe de potimarron', 'Brochettes de magret fumé et figue confite', 'Bouchées de pain perdu au foie gras', 'Tartines de chèvre chaud miel-thym', 'Cuillères de tartare de bœuf relevé'],
+      entree: 'Velouté de châtaignes et lardons croustillants',
+      plat: 'Daube de bœuf aux pruneaux et pommes de terre fondantes',
+      fromage: 'Sélection régionale dans un plateau en bois',
+      dessert: 'Pain perdu brioché aux poires et glace caramel',
+      vins: 'Côtes du Rhône rouge en plat, Champagne sur le dessert'
+    },
+    'chic-printemps': {
+      title: 'Menu Chic de Printemps',
+      cocktail: ['Cuillères de homard mayonnaise truffée', 'Macarons foie gras-figue', 'Tartelettes au caviar Osciètre', 'Mini-blinis au saumon fumé Balik', 'Bouchées de Saint-Jacques aux agrumes', 'Cuillères d\'asperges blanches mousseline'],
+      entree: 'Carpaccio de langoustines au caviar Osciètre et fleur de sel',
       plat: 'Filet de turbot aux morilles et beurre Champagne, ris de veau croustillant',
       fromage: 'Plateau de fromages affinés (Saint-Marcellin, époisses, beaufort, brie de Meaux)',
       dessert: 'Pièce montée chocolat-vanille avec macarons et fruits de la passion',
       vins: 'Meursault en entrée, Chambertin en plat, Champagne millésimé tout le repas'
     },
-    'nature-toute-saison': {
-      title: 'Menu Nature & Local',
-      cocktail: ['Cocktail bio aux herbes du jardin', 'Tartines de fromages fermiers', 'Verrines de légumes oubliés', 'Crackers maison et tapenades'],
+    'chic-ete': {
+      title: 'Menu Chic Estival',
+      cocktail: ['Mini-cônes au caviar et crème fraîche', 'Brochettes de gambas grillées au sésame', 'Tartelettes à la tomate ancienne et burrata', 'Bouchées de melon-jambon ibérique', 'Cuillères de céviche de Saint-Jacques', 'Verrines de gaspacho au homard'],
+      entree: 'Homard breton, vinaigrette aux agrumes et émulsion d\'avocat',
+      plat: 'Sole meunière, asperges blanches et beurre noisette aux herbes',
+      fromage: 'Sélection raffinée (brie de Meaux, comté, chèvre frais aux truffes)',
+      dessert: 'Tarte au citron méringuée revisitée et sorbet basilic',
+      vins: 'Chablis premier cru en entrée, Pessac-Léognan blanc en plat'
+    },
+    'chic-automne': {
+      title: 'Menu Chic d\'Automne',
+      cocktail: ['Macarons foie gras-figue', 'Tartelettes au confit de canard', 'Cuillères de Saint-Jacques aux truffes', 'Mini-feuilletés au homard', 'Bouchées de chevreuil fumé', 'Verrines de velouté de cèpes au foie gras'],
+      entree: 'Foie gras mi-cuit aux figues, gelée de Sauternes et brioche tiède',
+      plat: 'Pavé de chevreuil sauce grand veneur, purée de céleri truffée et cèpes',
+      fromage: 'Plateau d\'exception (brie aux truffes, comté 36 mois, époisses)',
+      dessert: 'Soufflé chaud aux poires Williams et glace au caramel beurre salé',
+      vins: 'Sauternes sur le foie gras, Pomerol en plat, Champagne sur le dessert'
+    },
+    'chic-hiver': {
+      title: 'Menu Chic d\'Hiver',
+      cocktail: ['Bouchées de Saint-Jacques au caviar', 'Tartelettes aux truffes noires', 'Macarons foie gras-truffe', 'Cuillères de homard aux agrumes', 'Mini-blinis au caviar', 'Cuillères de tartare de bœuf Wagyu'],
+      entree: 'Œuf parfait à la truffe noire du Périgord et mouillettes briochées',
+      plat: 'Filet de bœuf Wellington aux truffes, gratin dauphinois et légumes glacés',
+      fromage: 'Plateau d\'exception hivernal',
+      dessert: 'Dôme chocolat-marrons confits, cœur coulant praliné',
+      vins: 'Meursault premier cru, Pétrus en plat, Yquem sur le dessert'
+    },
+    'nature-printemps': {
+      title: 'Menu Nature de Printemps',
+      cocktail: ['Tartines de pain au levain et fromage fermier', 'Verrines de légumes oubliés du potager', 'Bouchées de radis nouveaux au beurre fermier', 'Brochettes de tomates anciennes', 'Cuillères de salade printanière du jardin', 'Mini-quiches aux herbes du potager'],
       entree: 'Salade du potager avec œuf parfait et lardons croustillants',
       plat: 'Volaille fermière rôtie aux herbes, légumes anciens du marché',
       fromage: 'Sélection de producteurs locaux (3 fromages selon la région)',
       dessert: 'Tarte rustique aux fruits du verger et glace au lait fermier',
       vins: 'Vins biodynamiques du vigneron local du couple'
+    },
+    'nature-ete': {
+      title: 'Menu Nature Estival',
+      cocktail: ['Brochettes de légumes du marché', 'Verrines de gaspacho de tomates anciennes', 'Cuillères de tabboulé du jardin', 'Tartines aux herbes fraîches', 'Mini-tartelettes aux courgettes-chèvre', 'Bouchées de fromage frais aux fleurs'],
+      entree: 'Salade fraîcheur du jour, légumes croquants et fleurs comestibles',
+      plat: 'Poisson du jour grillé, légumes du potager et huile d\'olive du pays',
+      fromage: 'Fromages locaux et pain au levain',
+      dessert: 'Sorbet artisanal aux fruits de saison',
+      vins: 'Vins locaux biologiques'
+    }
+  },
+
+  // ─── BOISSONS (à présenter SÉPARÉMENT du cocktail nourriture) ──────────
+  boissons: {
+    'classique': {
+      title: 'Boissons Classiques',
+      vinHonneur: ['Champagne brut traditionnel', 'Crémant rosé', 'Kir royal', 'Eau plate et pétillante aromatisée (citron, concombre, menthe)', 'Jus de fruits frais pressés'],
+      repas: 'Vins en accord avec chaque plat (1 bouteille pour 3 personnes), eau plate et pétillante illimitée',
+      digestif: 'Champagne, vieux marc, calvados, eau-de-vie de prune'
+    },
+    'estival': {
+      title: 'Boissons Estivales',
+      vinHonneur: ['Spritz à la pêche', 'Champagne rosé', 'Limonade artisanale au gingembre', 'Eaux infusées (concombre-menthe, citron-basilic, fraise)', 'Mocktails fruits exotiques (sans alcool)'],
+      repas: 'Vins rosés frais, vin blanc en apéritif, rouge léger en plat',
+      digestif: 'Champagne rosé, limoncello, gin tonic'
+    },
+    'sansalcool': {
+      title: 'Boissons Sans Alcool',
+      vinHonneur: ['Mocktails créatifs (Virgin Mojito, Spritz sans alcool, Mule sans alcool)', 'Eaux pétillantes aromatisées maison', 'Jus de fruits pressés (orange, pamplemousse, fruits rouges)', 'Thés glacés artisanaux', 'Kombuchas natures et fruités'],
+      repas: 'Eaux fines plates et pétillantes, jus de raisin, jus de pomme pétillant',
+      digestif: 'Infusions chaudes, thés rares, chocolat chaud (mariage d\'hiver)'
+    }
+  },
+
+  // ─── ADAPTATIONS PAR RESTRICTION ALIMENTAIRE ────────────────────────────
+  restrictions: {
+    'vegetarien': {
+      label: 'Végétarien',
+      cocktail: 'Remplacer les bouchées avec viande/poisson par des bouchées végétariennes (mini-quiches légumes, brochettes mozza-tomate, falafels)',
+      entree: 'Alternative : Risotto aux asperges et truffe, ou tarte fine aux légumes du potager',
+      plat: 'Alternative : Risotto aux cèpes et parmesan, ou wellington de légumes en croûte feuilletée',
+      tip: 'Préciser au traiteur le nombre exact de menus végétariens 15 jours avant'
+    },
+    'vegan': {
+      label: 'Vegan',
+      cocktail: 'Bouchées 100% végétales : guacamole, houmous, falafels, légumes croquants, bruschettas tomate-basilic',
+      entree: 'Alternative : Carpaccio de betterave et avocat, ou tartare de légumes au tofu fumé',
+      plat: 'Alternative : Wellington de légumes, risotto de légumes, ou curry de légumes au lait de coco',
+      tip: 'Vérifier que les sauces et vinaigrettes sont sans œuf, beurre, miel ni produit laitier'
+    },
+    'sansgluten': {
+      label: 'Sans gluten',
+      cocktail: 'Privilégier les verrines, cuillères, brochettes (éviter pains, feuilletés, tartelettes)',
+      entree: 'La plupart des entrées proposées sont naturellement sans gluten — vérifier les chapelures et farines',
+      plat: 'Demander une sauce sans farine de blé (préférer l\'arrow-root ou fécule de maïs)',
+      tip: 'Demander au traiteur une attention particulière aux contaminations croisées en cuisine'
+    },
+    'sanslactose': {
+      label: 'Sans lactose',
+      cocktail: 'Éviter fromages, mozzarella, crème ; privilégier saumon, charcuterie, légumes, houmous',
+      entree: 'Demander une vinaigrette à l\'huile (pas de crème) et omettre les fromages',
+      plat: 'Remplacer le beurre par de l\'huile d\'olive ou margarine végétale',
+      tip: 'Beaucoup de plats traditionnels contiennent du beurre caché — prévenir précisément'
+    },
+    'halal': {
+      label: 'Halal',
+      cocktail: 'Éviter charcuteries (jambon, lardons, magret fumé) ; privilégier poisson, légumes, fromages',
+      entree: 'Adapté tel quel pour les entrées poisson/végétariennes',
+      plat: 'Demander viande halal certifiée auprès du traiteur (agneau, volaille, bœuf)',
+      tip: 'Préciser également l\'absence d\'alcool dans les sauces (vin blanc, cognac)'
+    },
+    'casher': {
+      label: 'Casher',
+      cocktail: 'Pas de mélange viande-lait ; pas de fruits de mer ; charcuteries casher uniquement',
+      entree: 'Soit lait, soit viande — pas les deux. Adapter selon le menu du plat principal',
+      plat: 'Faire appel à un traiteur casher certifié. Pas de viande de porc ni fruits de mer',
+      tip: 'Le mariage casher demande un traiteur spécialisé — anticiper 6 mois à l\'avance'
+    },
+    'allergie-noix': {
+      label: 'Allergie noix / fruits à coque',
+      cocktail: 'Vérifier l\'absence de pesto (pignons), de pralinés, et de chocolats avec noix',
+      entree: 'Éviter les salades aux noix/noisettes ; vérifier les huiles aromatisées',
+      plat: 'Pas de sauce au beurre de cacahuète, pas de granola, pas de praliné',
+      tip: 'Allergie potentiellement grave : prévenir le traiteur formellement par écrit'
+    }
+  },
+
+  // ─── ADAPTATIONS SELON BUDGET PAR PERSONNE ──────────────────────────────
+  budgetMenu: {
+    'eco': {
+      label: 'Budget économique (45-70 €/pers)',
+      conseils: [
+        'Privilégier le format buffet (économise 25 à 35 % par rapport au service à l\'assiette)',
+        'Choisir un menu unique pour tous (les choix multiplient les coûts)',
+        'Vin de la région à la place des grands crus (économies importantes sur les vins)',
+        'Limiter le vin d\'honneur à 4-5 bouchées par personne (au lieu de 8)',
+        'Demander un buffet de fromages-charcuteries pour remplacer le plateau de fromages servi',
+        'Pâtisserie locale plutôt que pièce montée 5 étages',
+        'Pas de servire de café/digestif inclus (proposer en option payante au bar)'
+      ],
+      cocktailSize: 5,
+      noteSpeciale: 'Le format buffet est tout aussi élégant et économise beaucoup. Beaucoup d\'invités préfèrent.'
+    },
+    'standard': {
+      label: 'Budget standard (70-110 €/pers)',
+      conseils: [
+        'Service à l\'assiette pour le repas, buffet pour vin d\'honneur et dessert',
+        'Un choix viande/poisson sur le plat principal',
+        'Vins en accord avec chaque plat (1 bouteille pour 3 personnes)',
+        '6-7 bouchées par personne au vin d\'honneur',
+        'Plateau de fromages affinés en plat séparé',
+        'Pièce montée classique 2-3 niveaux',
+        'Café et digestif inclus en fin de repas'
+      ],
+      cocktailSize: 7,
+      noteSpeciale: 'Bon compromis qualité-prix. Format apprécié par tous types d\'invités.'
+    },
+    'premium': {
+      label: 'Budget premium (110-180 €/pers)',
+      conseils: [
+        'Service à l\'assiette intégral avec menu unique fixe',
+        'Vin d\'honneur prolongé (1h30 à 2h) avec 8-10 bouchées par personne',
+        'Vins d\'appellation (Bordeaux, Bourgogne) en accord avec chaque plat',
+        'Plateau de fromages affinés AOP servi en plat',
+        'Pièce montée multi-étages personnalisée',
+        'Service de boissons illimitées (champagne, eaux fines)',
+        'Café gourmand et mignardises en fin de repas',
+        'Brunch ou continuation possible pour le lendemain'
+      ],
+      cocktailSize: 9,
+      noteSpeciale: 'Niveau attendu pour un mariage chic et raffiné. Le service à l\'assiette est essentiel.'
+    },
+    'luxe': {
+      label: 'Budget luxe (180+ €/pers)',
+      conseils: [
+        'Menu gastronomique élaboré par un chef étoilé',
+        'Produits d\'exception : caviar, truffe, homard, foie gras, Saint-Jacques fraîches',
+        'Grands crus classés (Champagne millésimé, Bordeaux Grand Cru, Bourgogne)',
+        'Vin d\'honneur sur 2h avec 10-12 bouchées dont produits nobles',
+        '2 entrées différentes au choix',
+        'Plateau de fromages d\'exception (truffe, vieilles AOP)',
+        'Dessert composé : pièce montée + assiette de mignardises + café gourmand',
+        'Open bar premium pendant toute la soirée'
+      ],
+      cocktailSize: 11,
+      noteSpeciale: 'Niveau gastronomique haute couture. Réservé aux grands événements.'
     }
   },
 
@@ -3790,7 +3985,311 @@ const ASSIST_KB = {
       'Pouvez-vous me montrer un échantillon ou maquette avant ?',
       'Acompte et modalités de paiement ?'
     ]
-  }
+  },
+
+  // ─── 19. VŒUX PERSONNALISÉS ────────────────────────────────────────────
+  voeux: {
+    'romantique': [
+      '[Prénom], il y a [X] années, je ne savais pas que mon univers basculerait en te rencontrant. Aujourd\'hui, devant tous ceux qu\'on aime, je te promets de chérir chaque jour à tes côtés.\n\nJe te promets de continuer à te faire rire, même quand la vie sera dure.\nJe te promets d\'être ton meilleur ami, ton plus grand soutien et ton plus grand fan.\nJe te promets de te choisir, encore et encore, chaque jour de ma vie.\n\nJe t\'aime, [Prénom]. Pour toujours.',
+      'Mon amour,\n\nQuand je t\'ai rencontré(e), je n\'ai pas su tout de suite que tu étais celui/celle avec qui je passerais ma vie. Mais peu à peu, jour après jour, tu es devenu(e) mon évidence.\n\nTu es ma maison, mon refuge, ma plus belle aventure.\n\nAujourd\'hui, devant nos familles et nos amis, je te promets de t\'aimer dans la simplicité comme dans les grands moments, dans la joie comme dans les épreuves, dans la santé comme dans la maladie.\n\nJe te choisis, [Prénom], et je continuerai à te choisir tous les jours de ma vie.',
+      '[Prénom],\n\nIl y a [X] ans, on se croisait pour la première fois [lieu de rencontre]. Aujourd\'hui, on s\'engage l\'un envers l\'autre pour le restant de nos jours.\n\nJe te promets :\n— D\'être ton complice dans le rire et tes plus folles aventures\n— D\'être ton épaule dans les moments difficiles\n— De ne jamais cesser d\'apprendre à te connaître\n— De respecter ta personnalité et tes rêves\n— De construire avec toi une vie qui nous ressemble\n\nJe t\'aime de tout mon cœur.'
+    ],
+    'humoristique': [
+      '[Prénom],\n\nJe te promets solennellement :\n— De ne plus laisser traîner mes chaussettes sales dans le salon... la plupart du temps.\n— De faire la vaisselle un dimanche sur deux. Tu choisiras lequel.\n— De ne plus regarder Game of Thrones sans toi (même si ça me coûte beaucoup).\n— De te rappeler que tu as toujours raison, sauf quand tu as tort (ce qui n\'arrive jamais, paraît-il).\n— De t\'aimer absolument, terriblement, follement... et de te le montrer chaque jour.\n\nPour le meilleur, et pour le pire (donc surtout pour le meilleur, on est d\'accord ?).',
+      'Mon amour,\n\nJ\'ai promis à mes témoins que je ne pleurerais pas. Visiblement, je tiens mal mes promesses. Mais celle-là, je vais la tenir :\n\nJe promets de continuer à t\'embêter, de te faire rire (et de rire de mes propres blagues quand toi tu ne ris plus), de te voler la couette au milieu de la nuit, et de t\'aimer comme un fou.\n\nMerci de m\'avoir dit oui. Tu vas pas le regretter. Enfin, j\'espère.'
+    ],
+    'court': [
+      '[Prénom], je te choisis aujourd\'hui, je te choisirai demain, et je te choisirai chaque jour de notre vie. Pour le meilleur et pour le pire, je t\'aime.',
+      'Toi, moi. Pour toujours.\nJe t\'aime, [Prénom].',
+      '[Prénom],\nJe te promets ma main pour traverser la vie, mon épaule pour reposer ta tête, et mon cœur pour toujours.'
+    ],
+    'religieux': [
+      'Devant Dieu et devant les hommes, je te prends, [Prénom], pour époux/épouse.\n\nJe promets de t\'aimer, de te respecter, de t\'être fidèle dans le bonheur et dans les épreuves, dans la santé et dans la maladie, et de chérir notre union tous les jours de ma vie.\n\nQue Dieu nous bénisse et bénisse notre union.'
+    ]
+  },
+
+  // ─── 20. REMERCIEMENTS POST-MARIAGE ────────────────────────────────────
+  remerciements: {
+    'classique': [
+      'Cher(e) [Prénom],\n\n[Prénom 1] et [Prénom 2] souhaitent te remercier de tout cœur pour ta présence à leur mariage le [date]. Ta venue, ta joie et ton cadeau ont rendu ce jour inoubliable.\n\nAvec toute notre affection,\n[Prénom 1] & [Prénom 2]',
+      'Merci d\'avoir partagé avec nous l\'un des plus beaux jours de notre vie. Votre présence, votre rire et votre affection ont contribué à faire de ce mariage un souvenir précieux.\n\nAvec toute notre reconnaissance,\n[Prénom 1] & [Prénom 2]'
+    ],
+    'cadeau': [
+      'Cher(e) [Prénom],\n\nUn immense merci pour [type de cadeau] que tu nous as offert. C\'est une attention qui nous touche profondément et que nous chérirons longtemps.\n\nNous garderons un merveilleux souvenir de ce jour, et de toi à nos côtés.\n\nAvec toute notre affection,\n[Prénom 1] & [Prénom 2]'
+    ],
+    'aide-jour-j': [
+      'Cher(e) [Prénom],\n\nSans toi, ce jour n\'aurait pas eu la même saveur. Tu as été [rôle : témoin / demoiselle / organisateur]... mais surtout, tu as été là.\n\nMerci pour ton temps, ton énergie, ton soutien sans faille avant et pendant le mariage. Nous ne saurons jamais comment te remercier suffisamment.\n\nAvec toute notre tendresse,\n[Prénom 1] & [Prénom 2]'
+    ]
+  },
+
+  // ─── 21. INVITÉS VENANT DE LOIN ───────────────────────────────────────
+  invitesLoin: {
+    'logement': [
+      'Réservez un bloc de chambres dans un hôtel proche du lieu de réception, à des tarifs négociés. Compter ~10-15 % de remise en mentionnant le mariage.',
+      'Communiquer 3 options : un hôtel chic, un hôtel standard, un Airbnb / gîte (avec photos et tarifs). Chaque budget trouve son option.',
+      'Pour les amis très proches : prévoir 1-2 chambres dans votre propre logement, ou louer un grand gîte avec eux.',
+      'Si lieu de réception isolé : penser à un système de navettes avec horaires précis (cocktail-réception et retour soirée).',
+      'Pour les enfants : prévoir un babysitting (au sein du lieu ou en amont), ou indiquer les hôtels acceptant les enfants.'
+    ],
+    'invitations': [
+      'Envoyer le save-the-date 6 mois minimum à l\'avance pour qu\'ils puissent organiser leur voyage et hébergement.',
+      'Dans le faire-part, inclure : adresse exacte du lieu, parking, transports, hôtels recommandés (3 options), planning détaillé du week-end (si plusieurs jours).',
+      'Créer un site mariage simple (sur Joy ou Wedshoots gratuits) avec toutes les infos pratiques : horaires, lieux, code vestimentaire, FAQ.',
+      'Pour les invités étrangers : envoyer aussi une version anglaise du faire-part et des infos pratiques.'
+    ],
+    'attentions': [
+      'Préparer un kit de bienvenue dans chaque chambre : eau, snack, programme du week-end, plan, numéro de téléphone d\'urgence.',
+      'Organiser un dîner décontracté la veille du mariage (rehearsal dinner) pour les invités venus de loin — c\'est leur dire "Merci d\'être venus".',
+      'Le lendemain : prévoir un brunch ou un café-croissants tranquille avant leur départ.',
+      'Recommander des activités touristiques dans la région : balades, restaurants, monuments — utile s\'ils restent un peu plus.',
+      'Si invités étrangers : prévoir un point d\'accueil avec quelqu\'un de bilingue pour répondre à leurs questions.'
+    ]
+  },
+
+  // ─── 22. LISTE DE MARIAGE / CAGNOTTE ──────────────────────────────────
+  listeCadeaux: {
+    'cagnotte-en-ligne': [
+      {nom: 'Mille-et-une-listes', desc: 'La plus complète : mix produits + voyage + projets. Gratuit pour le créateur, 3 % sur les contributions. Très utilisée en France.'},
+      {nom: 'Zankyou', desc: 'Site mariage + liste mariage tout-en-un. Gratuit. Pratique si vous voulez aussi un site mariage.'},
+      {nom: 'Joy', desc: 'Le plus tendance et moderne. Belle interface. Gratuit pour le couple, frais sur les contributions ~3 %.'},
+      {nom: 'Galeries Lafayette', desc: 'Liste traditionnelle de produits. Pas de frais, choix de cadeaux concrets. Pratique pour électroménager et arts de la table.'},
+      {nom: 'Habitat / IKEA / Maisons du Monde', desc: 'Listes mariage en magasin avec scanette. Très simple. Pratique pour aménagement et déco.'}
+    ],
+    'idees': [
+      'Voyage de noces : la plus populaire. Précisez une destination ou laissez libre.',
+      'Projet précis : "Notre future maison", "Notre futur enfant" (avec photos pour donner vie).',
+      'Liste mixte produits + voyage : 60 % d\'invités l\'apprécient car ils choisissent ce qui leur parle.',
+      'Cagnotte libre : utile mais perçue comme moins personnelle. Préférable de cibler.',
+      'Don à une association : pour les couples qui ont déjà tout. Très apprécié et touchant.'
+    ],
+    'tips': [
+      'Privilégier 30 cadeaux à 50€ qu\'un seul cadeau à 1500€ — les invités préfèrent diversité',
+      'Bien équilibrer les prix : 30 % en petit budget (20-50€), 40 % moyen (50-150€), 30 % gros (150€+)',
+      'Renouveler la liste pendant le compte à rebours (les invités achètent en plusieurs vagues)',
+      'Mentionner la liste dans le faire-part de façon élégante : "Pour ceux qui souhaitent nous offrir un cadeau, notre liste est ici : [lien]"',
+      'Préparer dans le mois qui suit des remerciements personnalisés (cf. service "Remerciements")'
+    ]
+  },
+
+  // ─── 23. PRÉPARATION CIVILE (mairie) ──────────────────────────────────
+  prepCivile: {
+    'documents': [
+      'Acte de naissance de chaque futur époux (moins de 3 mois)',
+      'Pièce d\'identité valide (carte d\'identité ou passeport)',
+      'Justificatif de domicile (moins de 3 mois) : facture EDF/eau/téléphone',
+      'Liste des témoins (1 ou 2 par marié(e), majeurs)',
+      'Pièce d\'identité de chaque témoin (photocopie)',
+      'Si remariage : copie intégrale de l\'acte de mariage précédent et jugement de divorce',
+      'Si veuvage : acte de décès du conjoint précédent',
+      'Si étranger : certificat de coutume + acte de naissance traduit'
+    ],
+    'etapes': [
+      'J-12 mois : choisir la mairie (lieu d\'habitation d\'un des deux ou des parents)',
+      'J-6 mois : rendez-vous à la mairie pour retirer le dossier',
+      'J-3 mois : déposer le dossier complet avec toutes les pièces',
+      'J-2 mois : publication des bans (10 jours obligatoires)',
+      'J-1 mois : audition par l\'officier d\'état civil (parfois conjointe, parfois individuelle)',
+      'Jour J : cérémonie civile devant l\'officier d\'état civil et les témoins',
+      'J+0 : signature des registres, livret de famille remis'
+    ],
+    'questions-officier': [
+      'L\'officier va vous demander si vous consentez librement au mariage',
+      'Vérifier votre identité, votre adresse, vos professions',
+      'Vous demander si vous avez fait un contrat de mariage (si oui, l\'apporter)',
+      'Vous lire les articles 212 à 215 du Code civil (devoirs des époux)',
+      'L\'audition obligatoire vérifie l\'absence de mariage forcé ou de complaisance'
+    ]
+  },
+
+  // ─── 24. PRÉPARATION RELIGIEUSE ───────────────────────────────────────
+  prepReligieuse: {
+    'catholique': [
+      'J-12 mois minimum : prendre contact avec le prêtre de la paroisse (lieu d\'habitation ou du mariage)',
+      'Participer aux séances de préparation au mariage (CPM) : 5 à 7 séances sur 6 mois en moyenne',
+      'Fournir l\'acte de baptême de chaque futur époux (moins de 6 mois)',
+      'Acte de confirmation (si vous l\'avez)',
+      'Pour mariage mixte (avec non-baptisé) ou mariage de chrétiens d\'autres confessions : dispense à demander',
+      'Audition pastorale (entretien avec le prêtre, parfois plusieurs)',
+      'Choisir les textes, les lectures, les chants avec le prêtre et la chorale',
+      'Possibilité de demander des engagements personnalisés en plus des vœux traditionnels'
+    ],
+    'protestant': [
+      'Prendre contact avec le pasteur du lieu de cérémonie 6-12 mois avant',
+      'Cérémonie souvent plus simple et personnalisable (textes libres possibles)',
+      'Pas de séances de préparation aussi strictes (mais entretiens recommandés)',
+      'Acceptation des mariages mixtes (avec catholique ou non-baptisé) plus large'
+    ],
+    'juif': [
+      'Prendre contact avec le rabbin de la synagogue 12 mois minimum avant',
+      'Cours de mariage juif (sur tradition, Halakha, vie de couple) : ~3-6 mois',
+      'Demander la "Ketouba" (contrat de mariage juif) avec le rabbin',
+      'Mariage civil obligatoire AVANT le mariage religieux',
+      'Choix du jour : pas de Shabbat, fêtes ou jours de jeûne'
+    ],
+    'musulman': [
+      'Prendre contact avec l\'imam de la mosquée du lieu',
+      'Acte de Nikah (contrat) en présence de 2 témoins musulmans (Walis)',
+      'Préparer le Mahr (dot symbolique offerte à l\'épouse)',
+      'Mariage civil obligatoire AVANT le Nikah pour reconnaissance légale en France'
+    ],
+    'orthodoxe': [
+      'Prendre contact avec le prêtre orthodoxe 6 mois avant',
+      'Acte de baptême orthodoxe des deux époux',
+      'Mariage civil obligatoire AVANT le mariage religieux',
+      'Cérémonie traditionnelle avec couronnes et danse autour de l\'autel'
+    ]
+  },
+
+  // ─── 25. CONSEILS WEDDING DAY (le jour J pas-à-pas) ───────────────────
+  weddingDay: {
+    'reveil': [
+      'Réveil tranquille avec petit-déjeuner copieux (œufs, fruits, eau)',
+      'Pas d\'alcool au petit-déjeuner même s\'il y a la tentation',
+      'Boire au moins 1 L d\'eau le matin pour éviter la déshydratation',
+      'Bain ou douche relaxant avec huile essentielle (lavande, ylang-ylang)',
+      'Yoga doux ou étirements (10 minutes) pour relâcher les tensions',
+      'Écouter une playlist apaisante choisie en amont',
+      'Éviter les écrans (téléphone, réseaux sociaux) avant la cérémonie'
+    ],
+    'preparatifs': [
+      'Coiffure : prévoir 1h30 à 2h (mariée) — apporter inspirations photos',
+      'Maquillage : 1h en moyenne — faire un essai 1 mois avant !',
+      'Habillage : 30-45 min (robe lacée ou complexe peut être plus long)',
+      'Prévoir un déjeuner léger entre maquillage et habillage (salade légère, fruits)',
+      'Photos des préparatifs : 30-45 min réservées pour le photographe',
+      'Avoir une amie ou témoin "dédiée" pour gérer les imprévus',
+      'Ne pas oublier : trousse de secours, le carnet de vœux, les alliances'
+    ],
+    'arrivee': [
+      'Prévoir 15 minutes de marge avant la cérémonie',
+      'Arrivée avec véhicule de cérémonie : 5-10 minutes avant',
+      'Briefing rapide avec le maître de cérémonie',
+      'Photos avant l\'entrée (mariée avec père, témoins prêts)',
+      'Hydratation discrète juste avant l\'entrée',
+      'Respiration carrée : inspirer 4s, retenir 4s, expirer 4s, retenir 4s'
+    ],
+    'apres': [
+      'Photos officielles : 30-45 minutes immédiatement après la sortie',
+      'Pots de fleurs, brunch lendemain, sleep-in généreux',
+      'Ne pas ouvrir tous les cadeaux le soir (épuisant) : étaler sur quelques jours',
+      'Boire beaucoup d\'eau (l\'alcool de la soirée déshydrate énormément)',
+      'Garder votre robe : faire un nettoyage spécialisé dans la semaine (taches sèchent)',
+      'Première chose à faire : récupérer photos/vidéos auprès du photographe',
+      'Profitez du calme du lendemain : juste vous deux, sans organisation'
+    ]
+  },
+
+  // ─── 26. ENFANTS AU MARIAGE ───────────────────────────────────────────
+  enfants: {
+    'roles': [
+      {nom: 'Porteur d\'alliances', desc: 'Pour enfants 4-8 ans. Porte les anneaux sur un coussin. Préparer un coussin en amont, faire un test 30 min avant.'},
+      {nom: 'Demoiselle d\'honneur enfant', desc: 'Pour fillettes 4-10 ans. Robe assortie au cortège, marche devant la mariée avec un panier de pétales.'},
+      {nom: 'Petit page d\'honneur', desc: 'Pour garçons 4-8 ans. Petit costume assorti, marche avec la demoiselle d\'honneur.'},
+      {nom: 'Lecteur(rice)', desc: 'Pour enfants 10-15 ans. Lit un texte court à la cérémonie (poème, citation). Choisir un texte adapté à leur âge.'},
+      {nom: 'Photographe junior', desc: 'Donner un appareil photo jetable / numérique simple à chaque enfant : ils prennent leurs propres photos, souvent géniales.'},
+      {nom: 'Animateur d\'animations', desc: 'Demander à un enfant plus grand de gérer une animation (quiz, gâteau).'}
+    ],
+    'occuper': [
+      'Coin enfants dédié : couvertures au sol, jouets, livres, peluches. Coût : 0-100 €.',
+      'Animateur professionnel : prend en charge les enfants pendant le cocktail et le repas. Coût : 200-450 €/jour.',
+      'Kit d\'activités sur chaque table enfant : crayons, cahier de coloriage personnalisé, autocollants, mini-jouet. Coût : 5-8 €/enfant.',
+      'Vidéos / films dans une salle dédiée (le soir tard surtout).',
+      'Pinata, lâcher de bonbons, chasse au trésor : animations courtes pour briser la routine du dîner.',
+      'Table dédiée "kids" avec menu enfant (poulet/frites/pâtes) servi en premier pour éviter l\'attente.'
+    ],
+    'tips': [
+      'Annoncer le nombre exact d\'enfants au lieu et au traiteur 1 mois avant',
+      'Prévoir des sièges adaptés (chaises hautes pour les bébés, rehausseurs pour les petits)',
+      'Demander aux parents de prévoir un sac de change / pyjama pour la fin de soirée',
+      'Si bébés : pièce calme avec lit pliant pour la sieste',
+      'Pour mariage long (12h+) : penser au babysitting (avec carte d\'identité des parents)',
+      'Privilégier menu enfant plus simple, servi plus tôt qu\'aux adultes'
+    ]
+  },
+
+  // ─── 27. TRADITIONS RÉGIONALES FRANÇAISES ─────────────────────────────
+  traditions: {
+    'sud-ouest': [
+      'Vin d\'honneur très long (2h+) avec spécialités gasconnes : foie gras, magret séché, croquignoles',
+      'Le "Tour de table" : chaque table accueille les mariés pour un verre, parcours dansant',
+      'Plat d\'honneur : confit de canard ou cassoulet de Castelnaudary',
+      'Galette des rois revisitée (mariage en hiver), pièce montée croquembouche en été',
+      'Bandas (orchestre de cuivres) en soirée pour danse traditionnelle'
+    ],
+    'bretagne': [
+      'Galettes / crêpes proposées en milieu de nuit (~minuit) — tradition de "soupe à l\'oignon" remplacée',
+      'Far breton et kouign-amann en buffet de desserts',
+      'Bigouden (coiffe traditionnelle) pour mariage très traditionnel',
+      'Danse breton (gavotte) en début de soirée',
+      'Cidre en remplacement du champagne pour cocktail'
+    ],
+    'provence': [
+      '"Treize desserts" symboliques : nougats, fruits secs, mendiants — apportés en fin de repas',
+      'Mariage en plein air sous une tonnelle d\'oliviers',
+      'Aïoli géant en plat de partage',
+      'Lavande tressée dans les bouquets et cheveux',
+      'Pétanque organisée en cocktail (mini-tournoi avec récompenses)'
+    ],
+    'alsace': [
+      'Vin d\'Alsace au lieu du champagne (Riesling, Gewürztraminer)',
+      'Kougelhof en pièce montée',
+      'Choucroute mariage en hiver, baeckeoffe pour mariage rural',
+      'Lampions colorés et couronne de fleurs pour la mariée',
+      'Polka et valse en début de soirée (orchestre traditionnel)'
+    ],
+    'corse': [
+      'Mariage à l\'église village + grand rassemblement familial',
+      'Polyphonies corses pendant la cérémonie (extrêmement émouvant)',
+      'Charcuterie corse (figatellu, lonzu, coppa) en cocktail',
+      'Veau corse en plat principal',
+      'Fiadone (gâteau au brocciu) en dessert',
+      'Marche des mariés dans le village au son des instruments'
+    ]
+  },
+
+  // ─── 28. INSTANTS-ÉMOTION (moments à ne pas manquer) ──────────────────
+  emotion: [
+    {nom: 'L\'entrée de la mariée', desc: 'C\'est l\'instant où le marié découvre la mariée. Préparer le marié à ce moment : pas de selfie, pas de regard au sol. Juste vivre.'},
+    {nom: 'Le "first look"', desc: 'Tradition moderne : mariés se voient en privé avant la cérémonie. Bouleversant. Prévoir 15-20 min avec le photographe.'},
+    {nom: 'Les vœux personnalisés', desc: 'Si vous ne les avez pas écrits, prenez 1h tranquille la semaine d\'avant. C\'est l\'âme de la cérémonie.'},
+    {nom: 'L\'échange des alliances', desc: 'Faire ce geste en silence, sans précipitation. Le photographe doit capter le détail des mains.'},
+    {nom: 'Le baiser de mariage', desc: 'Un seul vrai baiser long et tendre, regard dans le regard avant et après. Pas un "becquette" gêné !'},
+    {nom: 'La sortie sous les pétales', desc: 'Garder pétales/riz/bulles pour ce moment précis. Photo iconique.'},
+    {nom: 'Le coucher de soleil', desc: 'Réserver 15 min avec le photographe pour des photos couple à la "golden hour" (1h avant coucher du soleil).'},
+    {nom: 'La première danse', desc: 'Le moment intime au milieu de la fête. Choisir une chanson qui vous parle. Possible de prendre des cours.'},
+    {nom: 'Le discours du père / parents', desc: 'Souvent très émouvant. Préparer un mouchoir et accepter de pleurer.'},
+    {nom: 'Le dernier moment seuls', desc: 'À la fin de la soirée, prendre 10 minutes seuls quelque part dans le lieu pour respirer ensemble.'}
+  ],
+
+  // ─── 29. PROBLÈMES FRÉQUENTS & SOLUTIONS ──────────────────────────────
+  problemes: [
+    {pb: 'Pluie le jour J', sol: 'Avoir un plan B en intérieur prêt. Acheter des parapluies blancs/transparents (jolies photos sous la pluie). Tente extérieure de secours. La pluie le jour du mariage porte bonheur !'},
+    {pb: 'Témoin malade ou absent', sol: 'Identifier un remplaçant possible (ami proche). Pas grave si pas de discours préparé : un témoignage spontané est touchant.'},
+    {pb: 'Robe tachée juste avant la cérémonie', sol: 'Trousse de secours : lingettes nettoyantes textile (Vanish), bicarbonate, talc pour absorber graisses. Si grosse tache : voile/châle pour camoufler.'},
+    {pb: 'Retard d\'un prestataire', sol: 'Avoir contact du prestataire et d\'un backup (DJ amateur ami, photographe ami). Réorganiser horaires (vin d\'honneur prolongé).'},
+    {pb: 'Invité ivre / problématique', sol: 'Avoir 1-2 personnes "veilleuses" (témoin discret). Discrètement faire raccompagner. Ne pas en faire un drame le jour J.'},
+    {pb: 'Bagarre familiale', sol: 'Préparer en amont : ne pas asseoir les conflits à la même table. Un témoin neutre arbitre en cas de tension.'},
+    {pb: 'Allergie / malaise d\'invité', sol: 'Trousse premiers secours (pansements, ibuprofène, antihistaminiques). Numéro du SAMU local (15) à connaître.'},
+    {pb: 'Panne sono / lumière', sol: 'Vérifier que le DJ a un backup matériel. Sinon : playlist Spotify sur téléphone + enceinte Bluetooth de secours.'},
+    {pb: 'Mariée stressée / pleure', sol: 'Une amie ou témoin "dédiée" la rassure dans une pièce calme 5 minutes. Eau fraîche, respiration, paroles douces.'},
+    {pb: 'Discours interminable', sol: 'Avoir un signal discret avec le DJ (musique douce en fond) pour suggérer la fin.'}
+  ],
+
+  // ─── 30. CHECKLIST 10 MINUTES AVANT CÉRÉMONIE ─────────────────────────
+  checklistAvant: [
+    'Alliances : qui les a ? Les voir physiquement.',
+    'Vos vœux écrits : dans votre poche ou avec un témoin.',
+    'Stylo et papier : pour la signature des registres.',
+    'Mouchoirs (pour les larmes).',
+    'Maquillage retouché (rouge à lèvres, fond de teint).',
+    'Coiffure vérifiée (pas un cheveu rebelle).',
+    'Voile/diadème bien fixé.',
+    'Téléphone éteint ou en silencieux.',
+    'Photo de groupe famille proche : organisée et annoncée.',
+    'Personne en charge de demander aux invités d\'éteindre leur téléphone pendant la cérémonie.',
+    'Numéro du DJ / photographe / lieu en cas d\'urgence.',
+    'Respiration profonde 3 fois. Sourire. Profiter.'
+  ]
 };
 
 // Helper : génère une URL Pinterest pour ouvrir une recherche dans le navigateur.
@@ -3825,7 +4324,19 @@ function renderAssistant(){
         {key:'photos',        label:'Photos à prévoir',     icon:'📸', desc:'Checklist photographe'},
         {key:'stress',        label:'Gestion du stress',    icon:'🧘', desc:'Avant, pendant, après'},
         {key:'belleFamille',  label:'Belle-famille',        icon:'👨‍👩‍👧', desc:'Gérer les situations délicates'},
-        {key:'questions',     label:'Questions prestataires',icon:'❓', desc:'Que demander à chacun'}
+        {key:'questions',     label:'Questions prestataires',icon:'❓', desc:'Que demander à chacun'},
+        {key:'voeux',         label:'Vœux personnalisés',   icon:'💞', desc:'Modèles de vœux à adapter'},
+        {key:'remerciements', label:'Remerciements',         icon:'💌', desc:'Cartes post-mariage'},
+        {key:'invitesLoin',   label:'Invités de loin',       icon:'🧳', desc:'Logement, attentions, infos'},
+        {key:'listeCadeaux',  label:'Liste / Cagnotte',      icon:'🎀', desc:'Sites, idées, conseils'},
+        {key:'prepCivile',    label:'Préparation civile',    icon:'🏛️', desc:'Documents, étapes mairie'},
+        {key:'prepReligieuse',label:'Préparation religieuse',icon:'⛪', desc:'Selon la religion'},
+        {key:'weddingDay',    label:'Conseils jour J',       icon:'⭐', desc:'Pas-à-pas du jour J'},
+        {key:'enfants',       label:'Enfants au mariage',    icon:'🧒', desc:'Rôles et animations'},
+        {key:'traditions',    label:'Traditions régionales', icon:'🗺️', desc:'France par région'},
+        {key:'emotion',       label:'Moments-émotion',       icon:'💖', desc:'Instants à ne pas manquer'},
+        {key:'problemes',     label:'Imprévus & solutions',  icon:'🆘', desc:'Comment réagir'},
+        {key:'checklistAvant',label:'Check 10min avant',     icon:'✅', desc:'Tout vérifier avant cérémonie'}
       ].map(s=>`<button onclick="assistOpen('${s.key}')" class="card" style="padding:14px 12px;border:1.5px solid ${br};text-align:left;cursor:pointer;background:#fff;font-family:Lora,serif;transition:all .15s;">
         <div style="font-size:26px;margin-bottom:6px;">${s.icon}</div>
         <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:3px;">${s.label}</div>
@@ -3863,16 +4374,35 @@ function assistOpen(service){
   if(service === 'stress')         return assistStress(cont);
   if(service === 'belleFamille')   return assistBelleFamille(cont);
   if(service === 'questions')      return assistQuestions(cont);
+  if(service === 'voeux')          return assistVoeux(cont);
+  if(service === 'remerciements')  return assistRemerciements(cont);
+  if(service === 'invitesLoin')    return assistInvitesLoin(cont);
+  if(service === 'listeCadeaux')   return assistListeCadeaux(cont);
+  if(service === 'prepCivile')     return assistPrepCivile(cont);
+  if(service === 'prepReligieuse') return assistPrepReligieuse(cont);
+  if(service === 'weddingDay')     return assistWeddingDay(cont);
+  if(service === 'enfants')        return assistEnfants(cont);
+  if(service === 'traditions')     return assistTraditions(cont);
+  if(service === 'emotion')        return assistEmotion(cont);
+  if(service === 'problemes')      return assistProblemes(cont);
+  if(service === 'checklistAvant') return assistChecklistAvant(cont);
 }
 
 // ─── SERVICE 1 : MENU ───
 function assistMenu(cont){
   const savedStyle = ld('assist_menu_style', 'romantique');
   const savedSaison = ld('assist_menu_saison', 'printemps');
+  const savedBudget = ld('assist_menu_budget', 'standard');
+  const savedFormat = ld('assist_menu_format', 'assiette');
+  const savedInvites = ld('assist_menu_invites', 80);
+  const savedBoissons = ld('assist_menu_boissons', 'classique');
+  const savedRestric = ld('assist_menu_restric', []);
+  const RESTRIC_OPTS = ['vegetarien','vegan','sansgluten','sanslactose','halal','casher','allergie-noix'];
   cont.innerHTML = `
     <div class="card" style="padding:16px;">
-      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🍽️ Suggestions de menu</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🍽️ Menu personnalisé</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
           <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
           <select id="menu-style" class="inp" style="margin-top:4px;">
@@ -3892,7 +4422,56 @@ function assistMenu(cont){
           </select>
         </div>
       </div>
-      <button class="btn" onclick="assistGenerateMenu()" style="width:100%;">Générer mon menu</button>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Budget / personne</label>
+          <select id="menu-budget" class="inp" style="margin-top:4px;">
+            <option value="eco" ${savedBudget==='eco'?'selected':''}>Économique (45-70 €)</option>
+            <option value="standard" ${savedBudget==='standard'?'selected':''}>Standard (70-110 €)</option>
+            <option value="premium" ${savedBudget==='premium'?'selected':''}>Premium (110-180 €)</option>
+            <option value="luxe" ${savedBudget==='luxe'?'selected':''}>Luxe (180+ €)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Format</label>
+          <select id="menu-format" class="inp" style="margin-top:4px;">
+            <option value="assiette" ${savedFormat==='assiette'?'selected':''}>Service à l'assiette</option>
+            <option value="buffet" ${savedFormat==='buffet'?'selected':''}>Buffet</option>
+            <option value="mixte" ${savedFormat==='mixte'?'selected':''}>Mixte (buffet vin d'honneur + assiette repas)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Nombre d'invités</label>
+          <input id="menu-invites" type="number" class="inp" value="${savedInvites}" min="10" step="5" style="margin-top:4px;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Boissons</label>
+          <select id="menu-boissons" class="inp" style="margin-top:4px;">
+            <option value="classique" ${savedBoissons==='classique'?'selected':''}>Classiques (champagne, vins)</option>
+            <option value="estival" ${savedBoissons==='estival'?'selected':''}>Estivales (spritz, rosés)</option>
+            <option value="sansalcool" ${savedBoissons==='sansalcool'?'selected':''}>Sans alcool (mocktails, jus)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Restrictions alimentaires des invités</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${RESTRIC_OPTS.map(r=>{
+            const checked = savedRestric.includes(r);
+            const label = ASSIST_KB.restrictions[r].label;
+            return `<label style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:14px;border:1.5px solid ${checked?pk:br};background:${checked?sf:'#fff'};cursor:pointer;font-size:11px;color:${tx};font-weight:600;">
+              <input type="checkbox" value="${r}" class="menu-restric-cb" ${checked?'checked':''} style="margin:0;accent-color:${pk};"> ${label}
+            </label>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <button class="btn" onclick="assistGenerateMenu()" style="width:100%;">Générer mon menu personnalisé</button>
       <div id="menu-result" style="margin-top:16px;"></div>
     </div>
   `;
@@ -3901,41 +4480,127 @@ function assistMenu(cont){
 function assistGenerateMenu(){
   const style = el('menu-style').value;
   const saison = el('menu-saison').value;
+  const budget = el('menu-budget').value;
+  const format = el('menu-format').value;
+  const invites = parseInt(el('menu-invites').value, 10) || 80;
+  const boissons = el('menu-boissons').value;
+  const restrictions = Array.from(document.querySelectorAll('.menu-restric-cb:checked')).map(c=>c.value);
+
   sv('assist_menu_style', style);
   sv('assist_menu_saison', saison);
-  // Trouver la meilleure clé disponible
+  sv('assist_menu_budget', budget);
+  sv('assist_menu_format', format);
+  sv('assist_menu_invites', invites);
+  sv('assist_menu_boissons', boissons);
+  sv('assist_menu_restric', restrictions);
+
+  // Trouver le menu de base
   let key = `${style}-${saison}`;
-  if(!ASSIST_KB.menus[key]) key = `${style}-toute-saison`;
-  if(!ASSIST_KB.menus[key]){
-    // Fallback : prendre la première dispo
-    key = Object.keys(ASSIST_KB.menus)[0];
-  }
+  if(!ASSIST_KB.menus[key]) key = Object.keys(ASSIST_KB.menus).find(k=>k.startsWith(style)) || Object.keys(ASSIST_KB.menus)[0];
   const menu = ASSIST_KB.menus[key];
+  const budgetInfo = ASSIST_KB.budgetMenu[budget];
+  const boissonsInfo = ASSIST_KB.boissons[boissons];
+  const nbBouchees = budgetInfo.cocktailSize;
+
+  // Adapter le cocktail au nombre de bouchées selon budget
+  const cocktailList = menu.cocktail.slice(0, nbBouchees);
+
+  // Calcul des quantités totales en bouchées au vin d'honneur
+  const totalBouchees = nbBouchees * invites;
+
+  // Construire les adaptations restrictions
+  const adaptations = restrictions.map(r => ASSIST_KB.restrictions[r]);
+
+  // Format-specific notes
+  const formatNotes = {
+    'assiette': 'Service à l\'assiette : repas servi à chaque convive par les serveurs. Format chic et élégant. Compter 4-5 serveurs pour 50 invités.',
+    'buffet': 'Format buffet : convives se servent. Format convivial et économique (-25 à -35 %). Idéal pour ambiance décontractée. Compter 2-3 serveurs pour 50 invités (réapprovisionnement, débarrassage).',
+    'mixte': 'Format mixte : buffet pour le vin d\'honneur et le dessert, service à l\'assiette pour le repas. Bon compromis qualité-coût-convivialité.'
+  };
+
   const r = el('menu-result');
   r.innerHTML = `
     <div style="border-top:1.5px solid ${br};padding-top:14px;">
-      <div style="font-family:Playfair Display,serif;font-style:italic;font-size:17px;color:${tm};margin-bottom:12px;text-align:center;">${menu.title}</div>
+      <div style="font-family:Playfair Display,serif;font-style:italic;font-size:17px;color:${tm};margin-bottom:6px;text-align:center;">${menu.title}</div>
+      <div style="text-align:center;font-size:11px;color:${tl};margin-bottom:14px;font-style:italic;">${budgetInfo.label} · ${invites} invités · ${format==='assiette'?'Service à l\'assiette':format==='buffet'?'Buffet':'Format mixte'}</div>
+
+      <div style="background:${sf};padding:12px;border-radius:10px;margin-bottom:14px;font-size:12px;color:${tm};line-height:1.5;">
+        ${h(formatNotes[format])}
+      </div>
 
       <div style="margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Cocktail / Vin d'honneur</div>
-        <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.6;">${menu.cocktail.map(c=>`<li>${h(c)}</li>`).join('')}</ul>
+        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">🥂 Vin d'honneur — ${nbBouchees} bouchées par personne</div>
+        <div style="font-size:11px;color:${tl};margin-bottom:6px;font-style:italic;">Total à prévoir : ${totalBouchees} bouchées pour ${invites} invités</div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.7;">${cocktailList.map(c=>`<li>${h(c)}</li>`).join('')}</ul>
       </div>
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Entrée</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.entree)}</div></div>
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Plat</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.plat)}</div></div>
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Fromage</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.fromage)}</div></div>
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Dessert</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.dessert)}</div></div>
-      <div style="margin-bottom:14px;background:${sf};padding:10px;border-radius:8px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">🍷 Suggestions de vins</span><div style="font-size:12px;color:${tm};margin-top:4px;font-style:italic;">${h(menu.vins)}</div></div>
 
-      <button onclick="assistCopyMenu()" class="btn" style="width:100%;font-size:12px;">📋 Copier le menu</button>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Entrée</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.entree)}</div></div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Plat principal</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.plat)}</div></div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Fromage</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.fromage)}</div></div>
+      <div style="margin-bottom:14px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Dessert</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.dessert)}</div></div>
+
+      <div style="background:linear-gradient(135deg,#fff8ec,#fef5e0);padding:12px;border-radius:10px;margin-bottom:12px;border:1px solid ${gd}40;">
+        <div style="font-size:11px;font-weight:700;color:${gd};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🍷 ${h(boissonsInfo.title)}</div>
+        <div style="font-size:12px;color:${tx};margin-bottom:4px;"><strong>Vin d'honneur :</strong> ${boissonsInfo.vinHonneur.join(', ')}</div>
+        <div style="font-size:12px;color:${tx};margin-bottom:4px;"><strong>Repas :</strong> ${h(boissonsInfo.repas)}</div>
+        <div style="font-size:12px;color:${tx};"><strong>Digestif :</strong> ${h(boissonsInfo.digestif)}</div>
+      </div>
+
+      ${adaptations.length>0 ? `
+        <div style="background:#fff5f8;padding:12px;border-radius:10px;margin-bottom:12px;border:1px solid ${br};">
+          <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">🥗 Adaptations restrictions alimentaires</div>
+          ${adaptations.map(a => `<div style="margin-bottom:10px;">
+            <div style="font-size:12px;color:${tx};font-weight:700;margin-bottom:3px;">${h(a.label)}</div>
+            <div style="font-size:11px;color:${tm};line-height:1.5;margin-bottom:2px;"><strong>Vin d'honneur :</strong> ${h(a.cocktail)}</div>
+            <div style="font-size:11px;color:${tm};line-height:1.5;margin-bottom:2px;"><strong>Entrée :</strong> ${h(a.entree)}</div>
+            <div style="font-size:11px;color:${tm};line-height:1.5;margin-bottom:2px;"><strong>Plat :</strong> ${h(a.plat)}</div>
+            <div style="font-size:11px;color:${pk};line-height:1.5;font-style:italic;">⚠️ ${h(a.tip)}</div>
+          </div>`).join('')}
+        </div>
+      ` : ''}
+
+      <div style="background:${sf};padding:12px;border-radius:10px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">💡 Conseils pour ce budget</div>
+        <ul style="margin:0;padding-left:18px;font-size:12px;color:${tm};line-height:1.7;">
+          ${budgetInfo.conseils.map(c=>`<li>${h(c)}</li>`).join('')}
+        </ul>
+        <div style="margin-top:8px;font-size:11px;color:${gd};font-style:italic;">📌 ${h(budgetInfo.noteSpeciale)}</div>
+      </div>
+
+      <div style="background:linear-gradient(135deg,${sf},#fff);padding:10px 12px;border-radius:10px;margin-bottom:14px;font-size:12px;color:${tm};">
+        <strong>💰 Estimation totale :</strong>
+        Repas+cocktail+boissons : ${invites*parseInt(budget==='eco'?55:budget==='standard'?90:budget==='premium'?145:200,10)} € à ${invites*parseInt(budget==='eco'?70:budget==='standard'?110:budget==='premium'?180:280,10)} € selon le traiteur
+      </div>
+
+      <button onclick="assistCopyMenu()" class="btn" style="width:100%;font-size:12px;">📋 Copier le menu complet</button>
     </div>
   `;
-  window._lastMenu = menu;
+  // Mise à jour de la version copiable
+  window._lastMenu = {
+    title: menu.title,
+    cocktail: cocktailList,
+    entree: menu.entree,
+    plat: menu.plat,
+    fromage: menu.fromage,
+    dessert: menu.dessert,
+    boissonsTitle: boissonsInfo.title,
+    boissonsCocktail: boissonsInfo.vinHonneur.join(', '),
+    boissonsRepas: boissonsInfo.repas,
+    boissonsDigestif: boissonsInfo.digestif,
+    invites: invites,
+    nbBouchees: nbBouchees,
+    format: formatNotes[format],
+    restrictions: adaptations
+  };
 }
 
 async function assistCopyMenu(){
   const m = window._lastMenu;
   if(!m) return;
-  const text = `${m.title}\n\nCocktail:\n${m.cocktail.map(c=>'- '+c).join('\n')}\n\nEntrée: ${m.entree}\nPlat: ${m.plat}\nFromage: ${m.fromage}\nDessert: ${m.dessert}\n\nVins: ${m.vins}`;
+  let text = `${m.title}\n${m.format}\n\nVin d'honneur (${m.nbBouchees} bouchées × ${m.invites} invités) :\n${m.cocktail.map(c=>'- '+c).join('\n')}\n\nEntrée : ${m.entree}\nPlat : ${m.plat}\nFromage : ${m.fromage}\nDessert : ${m.dessert}\n\nBoissons (${m.boissonsTitle}) :\n- Vin d'honneur : ${m.boissonsCocktail}\n- Repas : ${m.boissonsRepas}\n- Digestif : ${m.boissonsDigestif}`;
+  if(m.restrictions && m.restrictions.length){
+    text += `\n\nAdaptations restrictions :\n` + m.restrictions.map(a=>`- ${a.label} : ${a.tip}`).join('\n');
+  }
   try { await navigator.clipboard.writeText(text); appAlert('Menu copié dans le presse-papier !', 'Copié'); }
   catch{ appAlert(text, 'Menu (copie manuelle)'); }
 }
@@ -4542,6 +5207,289 @@ function assistRenderQuestions(){
       <span style="color:${pk};font-weight:700;flex-shrink:0;">${i+1}.</span>
       <span style="font-size:13px;color:${tx};line-height:1.5;">${h(q)}</span>
     </div>`).join('')}`;
+}
+
+// ─── SERVICE : VŒUX PERSONNALISÉS ───
+function assistVoeux(cont){
+  const saved = ld('assist_voeux_style','romantique');
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">💞 Vœux personnalisés</div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
+      <select id="voeux-style" class="inp" style="margin-top:4px;" onchange="sv('assist_voeux_style',this.value);assistRenderVoeux();">
+        <option value="romantique" ${saved==='romantique'?'selected':''}>Romantique</option>
+        <option value="humoristique" ${saved==='humoristique'?'selected':''}>Humoristique</option>
+        <option value="court" ${saved==='court'?'selected':''}>Courts & marquants</option>
+        <option value="religieux" ${saved==='religieux'?'selected':''}>Religieux</option>
+      </select>
+    </div>
+    <div id="voeux-result"></div>
+  </div>`;
+  assistRenderVoeux();
+}
+function assistRenderVoeux(){
+  const style = el('voeux-style').value;
+  const list = ASSIST_KB.voeux[style] || [];
+  el('voeux-result').innerHTML = `<div style="font-size:11px;color:${tl};font-style:italic;margin-bottom:10px;">Remplace les [crochets] par tes propres mots et anecdotes.</div>` +
+    list.map((t,i)=>`<div class="card" style="padding:14px;margin-bottom:10px;background:${sf};">
+      <div style="font-size:11px;font-weight:700;color:${pk};margin-bottom:8px;">Modèle ${i+1}</div>
+      <div style="font-size:13px;color:${tx};line-height:1.7;white-space:pre-line;font-family:Playfair Display,Georgia,serif;font-style:italic;">${h(t)}</div>
+      <button onclick="assistCopyText(${JSON.stringify(t).replace(/"/g,'&quot;')})" class="btn-sec" style="margin-top:10px;font-size:11px;padding:6px 12px;">📋 Copier</button>
+    </div>`).join('');
+}
+
+// ─── SERVICE : REMERCIEMENTS ───
+function assistRemerciements(cont){
+  const saved = ld('assist_remerciement_type','classique');
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">💌 Cartes de remerciement</div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Type</label>
+      <select id="remerc-type" class="inp" style="margin-top:4px;" onchange="sv('assist_remerciement_type',this.value);assistRenderRemerc();">
+        <option value="classique" ${saved==='classique'?'selected':''}>Classique (présence)</option>
+        <option value="cadeau" ${saved==='cadeau'?'selected':''}>Pour un cadeau</option>
+        <option value="aide-jour-j" ${saved==='aide-jour-j'?'selected':''}>Pour de l'aide (témoin, organisateur)</option>
+      </select>
+    </div>
+    <div id="remerc-result"></div>
+  </div>`;
+  assistRenderRemerc();
+}
+function assistRenderRemerc(){
+  const type = el('remerc-type').value;
+  const list = ASSIST_KB.remerciements[type] || [];
+  el('remerc-result').innerHTML = list.map((t,i)=>`<div class="card" style="padding:14px;margin-bottom:10px;background:${sf};">
+    <div style="font-size:11px;font-weight:700;color:${pk};margin-bottom:8px;">Modèle ${i+1}</div>
+    <div style="font-size:13px;color:${tx};line-height:1.7;white-space:pre-line;">${h(t)}</div>
+    <button onclick="assistCopyText(${JSON.stringify(t).replace(/"/g,'&quot;')})" class="btn-sec" style="margin-top:10px;font-size:11px;padding:6px 12px;">📋 Copier</button>
+  </div>`).join('');
+}
+
+// ─── SERVICE : INVITÉS VENANT DE LOIN ───
+function assistInvitesLoin(cont){
+  const d = ASSIST_KB.invitesLoin;
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🧳 Invités venant de loin</div>
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">🏨 Logement</div>
+    <ul style="margin:0 0 16px;padding-left:18px;font-size:13px;color:${tx};line-height:1.8;">
+      ${d.logement.map(x=>`<li>${h(x)}</li>`).join('')}
+    </ul>
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">✉️ Communication</div>
+    <ul style="margin:0 0 16px;padding-left:18px;font-size:13px;color:${tx};line-height:1.8;">
+      ${d.invitations.map(x=>`<li>${h(x)}</li>`).join('')}
+    </ul>
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">💝 Petites attentions</div>
+    <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.8;">
+      ${d.attentions.map(x=>`<li>${h(x)}</li>`).join('')}
+    </ul>
+  </div>`;
+}
+
+// ─── SERVICE : LISTE DE MARIAGE ───
+function assistListeCadeaux(cont){
+  const d = ASSIST_KB.listeCadeaux;
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎀 Liste de mariage / Cagnotte</div>
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">🌐 Plateformes recommandées</div>
+    ${d['cagnotte-en-ligne'].map(p=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+      <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${h(p.nom)}</div>
+      <div style="font-size:12px;color:${tm};line-height:1.6;">${h(p.desc)}</div>
+    </div>`).join('')}
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">💡 Idées de listes</div>
+    <ul style="margin:0 0 16px;padding-left:18px;font-size:13px;color:${tx};line-height:1.8;">
+      ${d.idees.map(x=>`<li>${h(x)}</li>`).join('')}
+    </ul>
+
+    <div style="background:linear-gradient(135deg,#fff8ec,#fef5e0);padding:14px;border-radius:12px;border:1px solid ${gd}40;">
+      <div style="font-family:Playfair Display,serif;font-size:14px;color:${tm};margin-bottom:10px;font-weight:700;">💎 Conseils pratiques</div>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:${tx};line-height:1.7;">
+        ${d.tips.map(x=>`<li>${h(x)}</li>`).join('')}
+      </ul>
+    </div>
+  </div>`;
+}
+
+// ─── SERVICE : PRÉPARATION CIVILE ───
+function assistPrepCivile(cont){
+  const d = ASSIST_KB.prepCivile;
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🏛️ Préparation civile (mairie)</div>
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">📄 Documents à fournir</div>
+    <ul style="margin:0 0 16px;padding-left:18px;font-size:13px;color:${tx};line-height:1.8;">
+      ${d.documents.map(x=>`<li>${h(x)}</li>`).join('')}
+    </ul>
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">📅 Étapes & calendrier</div>
+    ${d.etapes.map((e,i)=>`<div class="card" style="padding:10px 12px;margin-bottom:6px;background:${sf};display:flex;align-items:flex-start;gap:10px;">
+      <span style="color:${pk};font-weight:700;flex-shrink:0;font-family:Playfair Display,serif;font-size:14px;">${i+1}.</span>
+      <span style="font-size:13px;color:${tx};line-height:1.5;">${h(e)}</span>
+    </div>`).join('')}
+
+    <div style="background:linear-gradient(135deg,#fff8ec,#fef5e0);padding:14px;border-radius:12px;border:1px solid ${gd}40;margin-top:14px;">
+      <div style="font-family:Playfair Display,serif;font-size:14px;color:${tm};margin-bottom:10px;font-weight:700;">🎤 L'audition à la mairie</div>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:${tx};line-height:1.7;">
+        ${d['questions-officier'].map(x=>`<li>${h(x)}</li>`).join('')}
+      </ul>
+    </div>
+  </div>`;
+}
+
+// ─── SERVICE : PRÉPARATION RELIGIEUSE ───
+function assistPrepReligieuse(cont){
+  const saved = ld('assist_religion','catholique');
+  const types = [
+    {k:'catholique',l:'⛪ Catholique'},
+    {k:'protestant',l:'✝️ Protestant'},
+    {k:'juif',l:'✡️ Juif'},
+    {k:'musulman',l:'☪️ Musulman'},
+    {k:'orthodoxe',l:'☦️ Orthodoxe'}
+  ];
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">⛪ Préparation religieuse</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+      ${types.map(t=>`<button onclick="sv('assist_religion','${t.k}');assistRenderReligion();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===t.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${t.l}</button>`).join('')}
+    </div>
+    <div id="religion-result"></div>
+  </div>`;
+  assistRenderReligion();
+}
+function assistRenderReligion(){
+  const r = ld('assist_religion','catholique');
+  const list = ASSIST_KB.prepReligieuse[r] || [];
+  el('religion-result').innerHTML = `<ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.9;">
+    ${list.map(s=>`<li>${h(s)}</li>`).join('')}
+  </ul>`;
+}
+
+// ─── SERVICE : CONSEILS JOUR J ───
+function assistWeddingDay(cont){
+  const d = ASSIST_KB.weddingDay;
+  const saved = ld('assist_wday_phase','reveil');
+  const phases = [
+    {k:'reveil',l:'☀️ Réveil & matin'},
+    {k:'preparatifs',l:'💄 Préparatifs'},
+    {k:'arrivee',l:'🚗 Arrivée cérémonie'},
+    {k:'apres',l:'🌅 Après le mariage'}
+  ];
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">⭐ Conseils du jour J</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+      ${phases.map(p=>`<button onclick="sv('assist_wday_phase','${p.k}');assistRenderWday();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===p.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${p.l}</button>`).join('')}
+    </div>
+    <div id="wday-result"></div>
+  </div>`;
+  assistRenderWday();
+}
+function assistRenderWday(){
+  const p = ld('assist_wday_phase','reveil');
+  const list = ASSIST_KB.weddingDay[p] || [];
+  el('wday-result').innerHTML = `<ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.9;">
+    ${list.map(s=>`<li>${h(s)}</li>`).join('')}
+  </ul>`;
+}
+
+// ─── SERVICE : ENFANTS AU MARIAGE ───
+function assistEnfants(cont){
+  const d = ASSIST_KB.enfants;
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🧒 Enfants au mariage</div>
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">🎭 Rôles à leur confier</div>
+    ${d.roles.map(r=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+      <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${h(r.nom)}</div>
+      <div style="font-size:12px;color:${tm};line-height:1.6;">${h(r.desc)}</div>
+    </div>`).join('')}
+
+    <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">🎨 Comment les occuper</div>
+    <ul style="margin:0 0 16px;padding-left:18px;font-size:13px;color:${tx};line-height:1.8;">
+      ${d.occuper.map(x=>`<li>${h(x)}</li>`).join('')}
+    </ul>
+
+    <div style="background:linear-gradient(135deg,#fff8ec,#fef5e0);padding:14px;border-radius:12px;border:1px solid ${gd}40;">
+      <div style="font-family:Playfair Display,serif;font-size:14px;color:${tm};margin-bottom:10px;font-weight:700;">💡 Conseils pratiques</div>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:${tx};line-height:1.7;">
+        ${d.tips.map(x=>`<li>${h(x)}</li>`).join('')}
+      </ul>
+    </div>
+  </div>`;
+}
+
+// ─── SERVICE : TRADITIONS RÉGIONALES ───
+function assistTraditions(cont){
+  const saved = ld('assist_region','sud-ouest');
+  const regions = [
+    {k:'sud-ouest',l:'🦆 Sud-Ouest'},
+    {k:'bretagne',l:'🦀 Bretagne'},
+    {k:'provence',l:'🌿 Provence'},
+    {k:'alsace',l:'🍷 Alsace'},
+    {k:'corse',l:'🌊 Corse'}
+  ];
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🗺️ Traditions régionales</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+      ${regions.map(r=>`<button onclick="sv('assist_region','${r.k}');assistRenderRegion();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===r.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${r.l}</button>`).join('')}
+    </div>
+    <div id="region-result"></div>
+  </div>`;
+  assistRenderRegion();
+}
+function assistRenderRegion(){
+  const r = ld('assist_region','sud-ouest');
+  const list = ASSIST_KB.traditions[r] || [];
+  el('region-result').innerHTML = `<ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.9;">
+    ${list.map(s=>`<li>${h(s)}</li>`).join('')}
+  </ul>`;
+}
+
+// ─── SERVICE : MOMENTS-ÉMOTION ───
+function assistEmotion(cont){
+  const list = ASSIST_KB.emotion;
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:6px;font-weight:700;">💖 Moments-émotion</div>
+    <div style="font-size:11px;color:${tl};font-style:italic;margin-bottom:14px;">10 instants à savourer pleinement pour graver le souvenir.</div>
+    ${list.map((m,i)=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};display:flex;align-items:flex-start;gap:10px;">
+      <span style="color:${pk};font-weight:700;flex-shrink:0;font-family:Playfair Display,serif;font-size:14px;">${i+1}.</span>
+      <div>
+        <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:3px;">${h(m.nom)}</div>
+        <div style="font-size:12px;color:${tm};line-height:1.6;">${h(m.desc)}</div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ─── SERVICE : PROBLÈMES & SOLUTIONS ───
+function assistProblemes(cont){
+  const list = ASSIST_KB.problemes;
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:6px;font-weight:700;">🆘 Imprévus du jour J</div>
+    <div style="font-size:11px;color:${tl};font-style:italic;margin-bottom:14px;">Anticiper les problèmes courants pour mieux les gérer.</div>
+    ${list.map(p=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+      <div style="font-weight:700;color:${rd};font-size:13px;margin-bottom:5px;">❌ ${h(p.pb)}</div>
+      <div style="font-size:12px;color:${tx};line-height:1.6;"><strong style="color:${gn};">✓ Solution :</strong> ${h(p.sol)}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ─── SERVICE : CHECK 10 MIN AVANT CÉRÉMONIE ───
+function assistChecklistAvant(cont){
+  const list = ASSIST_KB.checklistAvant;
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:6px;font-weight:700;">✅ Check-list 10 min avant cérémonie</div>
+    <div style="font-size:11px;color:${tl};font-style:italic;margin-bottom:14px;">La dernière vérification avant le grand moment. Coche au fur et à mesure.</div>
+    ${list.map((item,i)=>`<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:6px;background:${sf};border-radius:10px;cursor:pointer;">
+      <input type="checkbox" style="margin:3px 0 0;accent-color:${pk};width:16px;height:16px;flex-shrink:0;">
+      <span style="font-size:13px;color:${tx};line-height:1.6;">${h(item)}</span>
+    </label>`).join('')}
+    <div style="margin-top:16px;text-align:center;padding:14px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border-radius:12px;border:1px solid ${gd}40;font-family:Playfair Display,serif;font-style:italic;color:${tm};font-size:14px;">
+      ✨ Profite de cet instant. Tout est prêt.
+    </div>
+  </div>`;
 }
 
 // ── NOTES ─────────────────────────────────────────────────────────────────────
