@@ -3325,26 +3325,509 @@ const ASSIST_KB = {
       ambiance: 'Cabane en bois, lanternes, chemin en pierres, ambiance forêt',
       arche: 'Arche en branches naturelles, feuillage abondant, sans fleurs'
     }
+  },
+
+  // ─── 7. WEDDING CAKE — STYLES DE DÉCORATION ───────────────────────────────
+  weddingCake: {
+    'romantique': {
+      title: 'Wedding cake romantique',
+      description: 'Pièce montée à plusieurs étages, glaçage blanc satiné, décoré de roses fraîches et de pétales. Effet vintage chic.',
+      details: ['Glaçage : crème au beurre lisse blanc cassé', 'Étages : 3 à 4 niveaux superposés', 'Fleurs : roses David Austin, pivoines blanches/poudrées', 'Touches : feuilles de gypsophile, perles de sucre', 'Topper : initiales en bois doré ou couronne de fleurs miniature'],
+      saveurs: 'Vanille bourbon, framboise, citron yuzu',
+      pinterest: 'romantic wedding cake roses'
+    },
+    'boheme': {
+      title: 'Wedding cake bohème',
+      description: 'Naked cake ou semi-naked, étages apparents, décoré de fleurs séchées et feuillage. Très tendance.',
+      details: ['Glaçage : semi-naked, crème entre les étages visible', 'Étages : 2 à 3 niveaux rustiques', 'Fleurs : pampas, eucalyptus, fleurs séchées', 'Touches : copeaux de bois, blé séché, ruban en lin', 'Topper : "Mr & Mrs" en bois découpé'],
+      saveurs: 'Carrot cake épicé, vanille amande, miel orange',
+      pinterest: 'boho wedding cake dried flowers'
+    },
+    'chic': {
+      title: 'Wedding cake chic',
+      description: 'Pièce élégante avec finitions métalliques (or, argent), motifs géométriques ou marbrures.',
+      details: ['Glaçage : pâte à sucre lissée parfaite, blanc immaculé', 'Étages : 4 à 5 niveaux', 'Décoration : feuilles d\'or comestible, motifs géométriques peints', 'Fleurs : orchidées blanches, calla', 'Topper : monogramme métallique ou cristal'],
+      saveurs: 'Chocolat noir grand cru, praliné noisette, vanille tahitienne',
+      pinterest: 'luxury elegant wedding cake gold'
+    },
+    'champetre': {
+      title: 'Wedding cake champêtre',
+      description: 'Aspect "fait maison", buttercream texturé, fruits frais et fleurs des champs.',
+      details: ['Glaçage : crème au beurre vanille texturée à la spatule', 'Étages : 2 à 3 niveaux', 'Fruits : framboises, mûres, figues, raisins', 'Fleurs : marguerites, lavande, fleurs de cerisier', 'Topper : couple en bois découpé ou bouquet champêtre'],
+      saveurs: 'Fraise basilic, vanille fruits rouges, citron fleur de sureau',
+      pinterest: 'rustic country wedding cake berries'
+    },
+    'moderne': {
+      title: 'Wedding cake moderne',
+      description: 'Lignes épurées, formes géométriques, palettes monochromes, parfois aspect "drip cake".',
+      details: ['Glaçage : pâte à sucre nette ou drip cake coloré', 'Étages : 2 à 4 niveaux contemporains', 'Style : monochrome, terracotta, sage green, marbré', 'Touches : macarons assortis, chocolats artisanaux', 'Topper : néon LED ou typographie graphique'],
+      saveurs: 'Matcha framboise, chocolat blanc passion, café Tonka',
+      pinterest: 'modern minimalist wedding cake'
+    },
+    'vintage': {
+      title: 'Wedding cake vintage',
+      description: 'Inspiration années 50-60, glaçage à motifs dentelle, perles de sucre, couleurs pastels.',
+      details: ['Glaçage : pâte à sucre avec motifs dentelle ou broderie', 'Étages : 3 niveaux étagés type rétro', 'Couleurs : rose poudré, ivoire, bleu pastel', 'Touches : perles de sucre, rubans en satin', 'Topper : figurines vintage ou bouquet de fleurs en sucre'],
+      saveurs: 'Vanille Madagascar, framboise rose, fruits exotiques',
+      pinterest: 'vintage wedding cake lace pearls'
+    },
+    'tropical': {
+      title: 'Wedding cake tropical',
+      description: 'Idéal mariage destination ou été. Feuilles de palmier, fleurs exotiques, fruits.',
+      details: ['Glaçage : crème blanche ou colorée corail/turquoise', 'Étages : 2 à 3 niveaux', 'Fleurs : orchidées, bird of paradise, hibiscus', 'Fruits : ananas, mangue, fruits de la passion', 'Touches : feuilles de monstera, sable comestible'],
+      saveurs: 'Coco passion, mangue lime, ananas vanille',
+      pinterest: 'tropical wedding cake palm leaves'
+    },
+    'fruite': {
+      title: 'Wedding cake aux fruits frais',
+      description: 'Décoration luxuriante de fruits frais empilés, semi-naked, look gourmand et naturel.',
+      details: ['Glaçage : semi-naked, crème entre étages', 'Fruits : figues, raisins, framboises, mûres, kumquats, fraises', 'Étages : 2 à 4 niveaux', 'Touches : feuilles de menthe, romarin, fleurs comestibles', 'Topper : minimaliste (initiales en bois)'],
+      saveurs: 'Fruits rouges vanille, citron mascarpone, pêche basilic',
+      pinterest: 'fresh fruit wedding cake'
+    },
+    'chocolat': {
+      title: 'Wedding cake chocolat',
+      description: 'Pour les amateurs, glaçage chocolat brillant ou ganache, copeaux et décorations cacao.',
+      details: ['Glaçage : ganache chocolat noir ou drip cake chocolat', 'Étages : 2 à 3 niveaux', 'Décor : copeaux de chocolat, truffes, perles dorées', 'Fleurs : peu (roses rouges/foncées pour contraste)', 'Topper : feuilles d\'or comestible ou cœur en chocolat'],
+      saveurs: 'Chocolat noir 70%, praliné, chocolat blanc framboise, café',
+      pinterest: 'chocolate wedding cake ganache'
+    }
+  },
+
+  // ─── 8. ANIMATIONS POUR LA SOIRÉE ─────────────────────────────────────────
+  animations: {
+    'classique': [
+      {nom: 'Photobooth', desc: 'Cabine photo avec accessoires (chapeaux, lunettes, pancartes). Livre d\'or photographique. Prix : 350-800€ pour la soirée.'},
+      {nom: 'Live music acoustique pendant le cocktail', desc: 'Guitariste / pianiste / chanteur live pour le vin d\'honneur. Crée une ambiance raffinée. Prix : 400-900€.'},
+      {nom: 'Lancer de pétales / riz / bulles', desc: 'À la sortie de la cérémonie. Achat des bulles ou pétales : 50-150€. Effet photo garanti.'},
+      {nom: 'Jeu du marié vs la mariée', desc: 'Quiz "qui connaît mieux qui ?" projeté sur écran. Aucun coût, à organiser par un témoin.'},
+      {nom: 'Photos de groupe avec polaroid', desc: 'Polaroids partagés sur un mur, les invités écrivent un message. Prix : 200-400€ (pack appareil + films).'}
+    ],
+    'fun': [
+      {nom: 'Magicien close-up pendant le cocktail', desc: 'Va de table en table pendant le vin d\'honneur. Effet "wow" garanti. Prix : 500-1200€.'},
+      {nom: 'Caricaturiste', desc: 'Dessine en direct des portraits des invités. Souvenir personnalisé. Prix : 400-700€.'},
+      {nom: 'Karaoké géant', desc: 'Système karaoké avec catalogue de chansons. Idéal après minuit. Prix : 200-500€.'},
+      {nom: 'Battle de danse', desc: 'Concours de danse entre invités avec jury (parents + témoins). Aucun coût, à animer par le DJ.'},
+      {nom: 'Mur d\'embrassades', desc: 'Mur peint avec quote romantique où les couples viennent s\'embrasser. Photographe immortalise. Prix : matériel ~100€.'},
+      {nom: 'Mini-jeux d\'apéritif', desc: 'Boîtes de jeux (cartes, dés, qui suis-je) sur les tables du vin d\'honneur. Aucun coût, à préparer soi-même.'}
+    ],
+    'surprise': [
+      {nom: 'Flashmob des mariés', desc: 'Mariés et témoins dansent ensemble sur une chorégraphie surprise. Effet émotion garanti.'},
+      {nom: 'Vidéo souvenirs', desc: 'Montage des amis et famille (messages, photos d\'enfance). Projeté pendant le dessert. À préparer 2 mois avant.'},
+      {nom: 'Feu d\'artifice', desc: 'Pour la fin de soirée. Vérifier autorisation lieu. Prix : 800-3000€.'},
+      {nom: 'Lâcher de lanternes / colombes', desc: 'Lanternes (vérifier réglementation) : 200-400€. Colombes via pro : 200-500€.'},
+      {nom: 'Première danse chorégraphiée', desc: 'Cours de danse en couple avant le mariage (3-5 séances). Effet wow. Prix : 200-500€ pour les cours.'},
+      {nom: 'Concert surprise d\'un proche', desc: 'Un ami chanteur / musicien interprète "votre" chanson en live. Gratuit, émotion garantie.'}
+    ],
+    'enfants': [
+      {nom: 'Animateur enfants', desc: 'Pour s\'occuper des enfants pendant le cocktail et le repas. Activités, contes, maquillage. Prix : 200-450€.'},
+      {nom: 'Coin enfants', desc: 'Salle dédiée avec jouets, jeux, coloriages, films. À aménager (~100€ matériel).'},
+      {nom: 'Mini quiz mariage pour enfants', desc: 'Quiz personnalisé sur les mariés, avec petits cadeaux à gagner. À faire soi-même.'},
+      {nom: 'Pinata personnalisée', desc: 'Piñata aux couleurs du mariage, remplie de bonbons. Prix : 30-80€.'},
+      {nom: 'Lâcher de ballons', desc: 'À organiser en fin d\'après-midi avec messages écrits par les enfants. Privilégier ballons biodégradables.'}
+    ]
+  },
+
+  // ─── 9. VOYAGE DE NOCES ──────────────────────────────────────────────────
+  voyageNoces: {
+    'plage': [
+      {dest: 'Maldives', desc: 'L\'archipel romantique par excellence. Villas sur pilotis, eaux turquoise, snorkeling. Idéal 7-10 jours. Budget : 4000-10000€/couple.'},
+      {dest: 'Seychelles', desc: 'Plages de sable blanc, granite, faune unique. Plus authentique que les Maldives. Budget : 3500-8000€/couple.'},
+      {dest: 'Bora Bora (Polynésie)', desc: 'Le plus iconique. Lagons bleus, bungalows pilotis. Long voyage (24h). Budget : 5000-12000€/couple.'},
+      {dest: 'République Dominicaine (Punta Cana)', desc: 'All-inclusive 5*, plages superbes, animations. Plus abordable. Budget : 2000-4500€/couple.'},
+      {dest: 'Île Maurice', desc: 'Mix culturel, plages, montagnes. Hôtels luxe accessibles. Budget : 3000-6500€/couple.'}
+    ],
+    'culture': [
+      {dest: 'Japon (Tokyo + Kyoto)', desc: 'Mix modernité-tradition. Sakura au printemps. Idéal 10-14 jours. Budget : 4500-8000€/couple.'},
+      {dest: 'Italie (Toscane + Cinque Terre)', desc: 'Romance, gastronomie, paysages. Voiture conseillée. Budget : 2500-5000€/couple.'},
+      {dest: 'Maroc (Marrakech + Sahara)', desc: 'Riads, désert, oasis. Dépaysement à 3h d\'avion. Budget : 1800-4500€/couple.'},
+      {dest: 'Pérou (Cusco + Machu Picchu)', desc: 'Aventure et histoire. Altitude attention. Budget : 3500-6000€/couple.'},
+      {dest: 'Vietnam', desc: 'Du nord au sud : baie d\'Halong, Hué, delta du Mékong. Budget : 2800-5500€/couple.'}
+    ],
+    'aventure': [
+      {dest: 'Costa Rica', desc: 'Volcans, forêts tropicales, plages 2 côtes. Idéal pour couple actif. Budget : 3500-6500€/couple.'},
+      {dest: 'Islande', desc: 'Aurores boréales (hiver) ou soleil de minuit (été). Geysers, glaciers. Budget : 4000-7500€/couple.'},
+      {dest: 'Nouvelle-Zélande', desc: 'Paysages mythiques, randos, vignobles. Long voyage. Budget : 5500-10000€/couple.'},
+      {dest: 'Afrique du Sud (Cape Town + Safari)', desc: 'Mix safari, océan, vignobles. Diversité. Budget : 4500-8500€/couple.'},
+      {dest: 'Canada Ouest (Rocheuses)', desc: 'Lacs turquoise, glaciers, ours. Roadtrip parfait. Budget : 4500-7500€/couple.'}
+    ],
+    'romantique-europe': [
+      {dest: 'Santorin (Grèce)', desc: 'Couchers de soleil mythiques, maisons blanches. Très romantique. Budget : 2200-4500€/couple.'},
+      {dest: 'Paris + Loire', desc: 'La capitale + châteaux. Romantique et culturel. Budget : 1500-3500€/couple.'},
+      {dest: 'Venise + Vérone', desc: 'Gondoles, balcon de Juliette. Plein d\'âme. Budget : 1800-3800€/couple.'},
+      {dest: 'Andalousie (Séville, Grenade, Cordoue)', desc: 'Tapas, flamenco, palais arabes. Budget : 1500-3500€/couple.'},
+      {dest: 'Lacs italiens (Côme, Garde)', desc: 'Villas, jardins, gastronomie. Budget : 2000-4500€/couple.'}
+    ]
+  },
+
+  // ─── 10. CADEAUX INVITÉS ─────────────────────────────────────────────────
+  cadeauxInvites: {
+    'petit-budget': [
+      {nom: 'Sachet de dragées personnalisé', desc: 'Classique mais toujours apprécié. ~1€/personne.'},
+      {nom: 'Bocal de confiture maison', desc: 'À faire soi-même 2 mois avant. ~1,50€/personne avec étiquette.'},
+      {nom: 'Sachet de graines à planter', desc: 'Original et écologique. ~2€/personne (sachet kraft + étiquette).'},
+      {nom: 'Petit savon artisanal', desc: 'Senteur du mariage. ~2-3€/personne.'},
+      {nom: 'Marque-page personnalisé', desc: 'En bois, papier ou tissu. ~1€/personne.'}
+    ],
+    'moyen-budget': [
+      {nom: 'Sachet de thé / café personnalisé', desc: 'Sachets avec étiquette à vos prénoms. ~3-4€/personne.'},
+      {nom: 'Mini-bouteille de vin / spiritueux', desc: 'Étiquette personnalisée. ~5-8€/personne.'},
+      {nom: 'Bougie parfumée artisanale', desc: 'Parfum signature du mariage. ~4-6€/personne.'},
+      {nom: 'Coffret épices / sels gourmets', desc: 'Petits pots à votre image. ~5€/personne.'},
+      {nom: 'Photo polaroid + cadre carton', desc: 'Souvenir immédiat à emporter. ~4€/personne.'}
+    ],
+    'gros-budget': [
+      {nom: 'Coffret gastronomique régional', desc: 'Produits locaux mis en valeur. ~10-15€/personne.'},
+      {nom: 'Verre gravé aux initiales', desc: 'Avec gravure du jour et prénoms. ~8-12€/personne.'},
+      {nom: 'Plante en pot personnalisée', desc: 'Pot peint à la main, plante grasse. ~10€/personne.'},
+      {nom: 'Coffret beauté (bougie + savon + huile)', desc: 'Box bien-être complète. ~12-18€/personne.'},
+      {nom: 'Mini-album photo souvenir', desc: 'À remplir avec polaroids pendant le mariage. ~10€/personne.'}
+    ]
+  },
+
+  // ─── 11. TENUE MARIÉE ────────────────────────────────────────────────────
+  tenueMariee: {
+    morphologies: {
+      'sablier': 'Morphologie en sablier (taille marquée, épaules = hanches) : presque tous les styles vous vont. Privilégiez les coupes sirène, fourreau, ou princesse cintrée à la taille.',
+      'poire': 'Morphologie en poire (hanches plus larges que les épaules) : privilégiez les robes A-line (évasées du bas), bustier large, manches volumineuses. Évitez les robes sirène très moulantes.',
+      'pomme': 'Morphologie en pomme (taille moins marquée) : privilégiez l\'empire (ceinture sous la poitrine), les coupes droites fluides, V-neck. Évitez les ceintures sur la taille naturelle.',
+      'rectangle': 'Morphologie rectangle (épaules = taille = hanches) : créez des courbes avec une robe ceinturée à la taille, jupe volumineuse, bustier accentué.'
+    },
+    styles: [
+      {nom: 'Princesse', desc: 'Bustier ajusté + jupe ample. Effet "conte de fées". Budget : 1500-5000€.'},
+      {nom: 'Sirène', desc: 'Moulante jusqu\'aux genoux puis évasée. Très sexy, demande une morpho sablier. Budget : 1500-4500€.'},
+      {nom: 'Empire', desc: 'Ceinture sous la poitrine, jupe fluide. Confortable et romantique. Budget : 1200-3500€.'},
+      {nom: 'A-line', desc: 'Resserrée taille puis évasée. Convient à toutes morphos. Budget : 1300-4000€.'},
+      {nom: 'Fourreau', desc: 'Coupe droite près du corps. Élégant, idéal pour mariage civil. Budget : 1000-3000€.'},
+      {nom: 'Courte / asymétrique', desc: 'Robe courte devant longue derrière. Moderne et originale. Budget : 1000-3500€.'},
+      {nom: 'Robe à manches longues', desc: 'Effet "Kate Middleton". Romantique et chic. Budget : 2000-5500€.'},
+      {nom: 'Combinaison pantalon', desc: 'Pour mariées modernes / décontractées. Budget : 800-2500€.'}
+    ],
+    budget: {
+      'sous-1500': 'Boutiques en ligne (Asos, Bhldn), boutiques outlet, robes d\'occasion sur Vinted/Once Wed. Compter ~500-1500€.',
+      '1500-3000': 'Gamme moyenne : grandes enseignes (Pronovias, San Patrick, Cymbeline collection grand public). Excellent rapport qualité-prix.',
+      '3000-6000': 'Gamme premium : créateurs (Rosa Clara, Laure de Sagazan, Delphine Manivet). Robes sur mesure possibles.',
+      'plus-6000': 'Haute couture : Élie Saab, Vera Wang, Monique Lhuillier. Robe pièce unique.'
+    }
+  },
+
+  // ─── 12. TENUE MARIÉ ─────────────────────────────────────────────────────
+  tenueMarie: {
+    styles: [
+      {nom: 'Costume trois-pièces classique', desc: 'Veste + gilet + pantalon, cravate ou nœud papillon. Élégant, intemporel. Budget : 400-1500€.'},
+      {nom: 'Smoking', desc: 'Pour mariage chic / soirée. Noir avec col cranté ou châle. Nœud pap noir. Budget : 500-2000€.'},
+      {nom: 'Costume couleur (bleu nuit, bordeaux)', desc: 'Plus original. Très tendance. Budget : 500-1500€.'},
+      {nom: 'Costume bohème / lin', desc: 'Léger, décontracté. Idéal mariage été ou plage. Budget : 300-1200€.'},
+      {nom: 'Frac / queue de pie', desc: 'Très formel. Pour mariage très chic. Budget : 700-2500€.'},
+      {nom: 'Costume traditionnel régional', desc: 'Kilt écossais, costume basque, traditionnel africain. À adapter selon origines.'},
+      {nom: 'Tenue casual chic', desc: 'Chino + chemise + veste. Pour mariage très décontracté. Budget : 200-800€.'},
+      {nom: 'Sur-mesure', desc: 'Costume fait sur mesure pour ajustement parfait. Compter 6-8 séances. Budget : 1500-4500€.'}
+    ],
+    accessoires: ['Nœud papillon ou cravate (assortis au thème)', 'Pochette de costume colorée', 'Boutons de manchette personnalisés', 'Montre élégante', 'Boutonnière florale (assortie au bouquet de la mariée)', 'Chaussures cuir cirées (richelieu, derby ou monk)', 'Ceinture assortie aux chaussures', 'Chaussettes "fantaisie" pour la photo'],
+    couleurs: 'Pour un mariage en intérieur : marine, anthracite, noir. Pour extérieur en journée : beige, bleu clair, gris perle. Pour mariage d\'hiver : tons foncés (bordeaux, vert sapin).'
+  },
+
+  // ─── 13. BIJOUX MARIÉE ───────────────────────────────────────────────────
+  bijouxMariee: {
+    selonRobe: {
+      'decollete': 'Décolleté plongeant ou bateau → collier court / ras-de-cou (15-40 cm). Pendentif simple ou rivière de pierres.',
+      'bustier': 'Bustier sans bretelles → collier ras-de-cou ou collier draperie. Si vous portez les cheveux relevés : grandes boucles d\'oreille.',
+      'col-haut': 'Col haut, manches longues, dentelle → pas de collier (chargerait). Compensez avec belles boucles d\'oreilles et un bracelet.',
+      'dos-nu': 'Dos-nu spectaculaire → le bijou DEVANT doit rester discret. Optez pour un sautoir qui descend dans le dos, ou rien.',
+      'simple': 'Robe sobre / minimaliste → un beau bijou statement (collier ou boucles). Pas plus de 2 pièces fortes.'
+    },
+    voile: 'Si voile cathédrale (très long) : minimisez les bijoux dans les cheveux. Si voile court : tiare ou peigne fleuri possible. Voile = star, bijoux d\'accompagnement.',
+    coiffure: 'Cheveux relevés (chignon) : assumez les boucles d\'oreille pendantes. Cheveux lâchés : préférez les boucles ras de l\'oreille (chandeliers se perdent dans les cheveux). Tresses : ajoutez des perles ou pierres tressées dans la chevelure.',
+    bouquet: 'Si bouquet très coloré : bijoux discrets neutres. Si bouquet blanc/vert : bijoux peuvent être plus voyants.'
+  },
+
+  // ─── 14. MUSIQUE CÉRÉMONIE ───────────────────────────────────────────────
+  musiqueCer: {
+    'entree-classique': [
+      'Pachelbel - Canon en Ré',
+      'Mendelssohn - Marche nuptiale',
+      'Wagner - Marche nuptiale (Lohengrin)',
+      'Vivaldi - Spring (4 Saisons)',
+      'Bach - Air sur la corde de Sol',
+      'Albinoni - Adagio',
+      'Mozart - Concerto pour clarinette',
+      'Debussy - Clair de Lune',
+      'Massenet - Méditation de Thaïs',
+      'Satie - Gymnopédie n°1'
+    ],
+    'entree-moderne': [
+      'A Thousand Years - Christina Perri',
+      'Marry Me - Train',
+      'All of Me - John Legend',
+      'Make You Feel My Love - Adele',
+      'Can\'t Help Falling in Love - Elvis (cover acoustique)',
+      'Perfect - Ed Sheeran',
+      'Thinking Out Loud - Ed Sheeran',
+      'A Sky Full of Stars - Coldplay',
+      'You Are the Best Thing - Ray LaMontagne',
+      'Better Together - Jack Johnson'
+    ],
+    'voeux': [
+      'Bach - Concerto pour 2 violons (Largo)',
+      'Pachelbel - Canon (version cordes)',
+      'Massenet - Méditation de Thaïs',
+      'River Flows in You - Yiruma',
+      'Comptine d\'un autre été - Yann Tiersen'
+    ],
+    'sortie': [
+      'Marche nuptiale de Mendelssohn (sortie traditionnelle)',
+      'Signed Sealed Delivered - Stevie Wonder',
+      'I\'m Yours - Jason Mraz',
+      'Lovely Day - Bill Withers',
+      'Walking on Sunshine - Katrina',
+      'Best Day of My Life - American Authors',
+      'Happy - Pharrell Williams',
+      'Marry You - Bruno Mars'
+    ],
+    'premiere-danse': [
+      'At Last - Etta James (classique intemporel)',
+      'Thinking Out Loud - Ed Sheeran',
+      'All of Me - John Legend',
+      'Perfect - Ed Sheeran',
+      'You Are the Best Thing - Ray LaMontagne',
+      'L-O-V-E - Nat King Cole',
+      'La Vie en Rose - Édith Piaf',
+      'Can\'t Help Falling in Love - Elvis Presley',
+      'Make You Feel My Love - Adele',
+      'A Thousand Years - Christina Perri'
+    ],
+    'soiree-ambiance': [
+      'Dance Monkey - Tones and I',
+      'Uptown Funk - Bruno Mars',
+      'Shut Up and Dance - Walk the Moon',
+      'I Wanna Dance with Somebody - Whitney Houston',
+      'September - Earth Wind & Fire',
+      'Don\'t Stop Me Now - Queen',
+      'Mr. Brightside - The Killers',
+      'Cheap Thrills - Sia',
+      'Dynamite - BTS',
+      'Bella Ciao (version moderne)'
+    ]
+  },
+
+  // ─── 15. PHOTOS À NE PAS MANQUER ─────────────────────────────────────────
+  photosAneFairePas: {
+    'preparatifs-mariee': [
+      'La robe accrochée à une porte / fenêtre',
+      'Les chaussures + bijoux + parfum mis en scène',
+      'Le faire-part / invitations',
+      'La mariée se faisant maquiller / coiffer',
+      'Détail du maquillage (yeux, lèvres)',
+      'Les demoiselles d\'honneur en peignoirs',
+      'L\'instant où elle enfile sa robe',
+      'Le moment où le père voit la mariée pour la première fois',
+      'Plan large mariée avec les demoiselles'
+    ],
+    'preparatifs-marie': [
+      'Le costume sur un cintre',
+      'Détail des boutons de manchette / cravate',
+      'Le marié se rasant / coiffant',
+      'L\'instant où il enfile sa veste',
+      'Photo de groupe avec les témoins en peignoir',
+      'Le marié seul avec son alliance / sa boutonnière',
+      'L\'arrivée des invités'
+    ],
+    'ceremonie': [
+      'L\'entrée de la mariée avec son père (dos + de face)',
+      'Le visage du marié quand il découvre la mariée',
+      'L\'échange des alliances (gros plan sur les mains)',
+      'Le baiser des mariés',
+      'La sortie sous les pétales / riz',
+      'Les parents en train de pleurer',
+      'Les enfants à la cérémonie',
+      'La salle pleine vue de dos / de devant'
+    ],
+    'cocktail-reception': [
+      'Plan d\'ensemble du buffet / cocktail',
+      'Détail des verres qui trinquent',
+      'Les rires des invités en cercle',
+      'Plan des mariés discutant avec les invités',
+      'Les enfants qui courent / s\'amusent',
+      'Le coucher de soleil avec les mariés en silhouette'
+    ],
+    'reception': [
+      'Plan d\'ensemble de la salle décorée AVANT que les invités arrivent',
+      'Les centres de table et la décoration en détail',
+      'L\'entrée des mariés dans la salle',
+      'Les discours (témoins, parents)',
+      'La découpe du wedding cake (gros plan)',
+      'La première danse',
+      'Le lancer du bouquet (capture la chanceuse !)',
+      'Les invités en train de danser',
+      'Plan large de la piste de danse pleine',
+      'Les feux d\'artifice / lanternes / sparklers',
+      'La sortie des mariés en fin de soirée'
+    ],
+    'couple': [
+      'Séance "couple shooting" avec photographe (1h dans la journée)',
+      'Mariés se regardant les yeux dans les yeux',
+      'Mariés riant ensemble naturellement',
+      'Le marié regardant sa femme s\'éloigner (en marchant)',
+      'Vue de dos main dans la main',
+      'Mariés sous un arbre, à contre-jour',
+      'Photo "trash the dress" en fin de soirée (optionnelle)',
+      'Photo des chaussures côte à côte (sienne + sien)'
+    ]
+  },
+
+  // ─── 16. GESTION DU STRESS ───────────────────────────────────────────────
+  gestionStress: {
+    'avant': [
+      'Préparer un planning J-30, J-7, J-1 et J pour ne rien oublier',
+      'Déléguer à un témoin ou une wedding planner les détails du jour J',
+      'Faire de la méditation / yoga 2 à 3 fois par semaine le dernier mois',
+      'Ne pas faire de régime drastique : votre robe est ajustée le mois précédent',
+      'Dormir 8h les 3 nuits avant le mariage. Pas d\'alcool ni d\'écran après 22h',
+      'Préparer une "trousse de secours" : déodorant, mouchoirs, épingles, mini-couture, ibuprofène, pansements, double de votre maquillage',
+      'Listez les 3 personnes que vous pouvez appeler en cas de panique le jour J',
+      'Faites le point avec votre futur conjoint sur les craintes : la communication désamorce 80% du stress',
+      'Annulez tous vos rendez-vous superflus la dernière semaine'
+    ],
+    'jour-j': [
+      'Prendre un bon petit-déjeuner (œuf, fruits, eau) : vous ne mangerez pas avant 21h en général',
+      'Avoir une bouteille d\'eau à portée de main toute la journée',
+      'Respiration carrée : inspirez 4s, retenez 4s, expirez 4s, retenez 4s. À faire avant la cérémonie',
+      'Ne pas faire de selfie / regarder son téléphone dans la dernière heure',
+      'Avoir une amie ou témoin "dédiée" qui gère les imprévus à votre place',
+      'Acceptez que tout ne soit pas parfait : personne ne remarquera les petits ratés',
+      'Profitez consciemment de 3 moments clés : l\'instant des vœux, la première danse, le coucher du soleil',
+      'Si crise de larmes : pleurez 30 secondes, respirez, reprenez. C\'est OK et normal'
+    ],
+    'apres': [
+      'Bloquez 2-3 jours sans aucun engagement après le mariage : repos absolu',
+      'Acceptez le "post-wedding blues" : c\'est normal de se sentir vide après tant d\'attente',
+      'Faites un débrief positif en couple : 5 meilleurs souvenirs chacun',
+      'Récupérez vos photos / vidéos rapidement, regardez-les ensemble',
+      'Envoyez les remerciements dans le mois (manuscrits c\'est mieux)',
+      'Prévoyez quelque chose à attendre : voyage de noces, projet de couple, etc.'
+    ]
+  },
+
+  // ─── 17. BELLE-FAMILLE & SITUATIONS DÉLICATES ────────────────────────────
+  belleFamille: {
+    'situations': [
+      {nom: 'Parents divorcés en froid', desc: 'Asseyez-les à des tables éloignées. Demandez à un témoin de "veiller" sur l\'ambiance. Soyez clair : "Aujourd\'hui c\'est nous, pas vous." Pour la cérémonie, prévoir l\'entrée avec un seul parent, ou les deux séparément.'},
+      {nom: 'Belle-mère envahissante', desc: 'Donnez-lui une mission précise (gérer les arrivées, le livre d\'or). Elle se sentira utile sans contrôler. Cadrez avec votre conjoint·e en amont : c\'est à lui/elle de parler à sa mère, pas à vous.'},
+      {nom: 'Famille recomposée nombreuse', desc: 'Faire un tableau clair des places. Penser aux beaux-enfants : leur dédier un rôle (porteur d\'alliances, demoiselle d\'honneur). Discours : mentionnez tous les "parents" du couple par leurs prénoms.'},
+      {nom: 'Témoin qui annule à la dernière minute', desc: 'Pas de panique. Promouvoir un.e ami.e proche le jour même. Pas obligé d\'être en costume "officiel". Concentrez-vous sur la cérémonie, pas l\'organisation.'},
+      {nom: 'Conflit familial autour du budget', desc: 'Si famille participe : précisez par écrit qui finance quoi. Privilégier les cadeaux indirects (fleurs, voyage de noces) plutôt que cash. Si tensions : assumer son propre budget pour rester libre.'},
+      {nom: 'Invitations refusées qui font mal', desc: 'Ne pas relancer, ne pas en parler le jour J. Une carte de remerciement après peut suffire. Ne demandez pas pourquoi : ça crée des disputes.'}
+    ],
+    'astuces': [
+      'Toujours communiquer en couple : présentez les décisions à 2, jamais "il/elle a décidé que..."',
+      'Ne jamais critiquer la belle-famille devant son conjoint, même en blaguant',
+      'Inviter chaque parent à participer SYMBOLIQUEMENT (papa choisit la chanson père-fille, maman aide à la décoration)',
+      'Préparer 3 phrases types pour les questions intrusives : "On y travaille", "Merci pour ta sollicitude", "C\'est encore en réflexion"',
+      'Le jour J, désignez UNE personne neutre (témoin) pour gérer les tensions familiales',
+      'Programmer un dîner à 4 (les 2 couples de parents) 6 mois avant : favorise la cohésion'
+    ]
+  },
+
+  // ─── 18. QUESTIONS À POSER AUX PRESTATAIRES ──────────────────────────────
+  questionsPrestataires: {
+    'lieu': [
+      'Quelle est la capacité maximale (assis et debout) ?',
+      'Quels sont les horaires de location (heure d\'entrée, heure de fin) ?',
+      'Y a-t-il une cuisine ou un espace pour le traiteur ?',
+      'La salle est-elle disponible la veille pour les préparatifs / décoration ?',
+      'Y a-t-il un parking et combien de places ?',
+      'Les enfants sont-ils acceptés ? Existe-t-il un espace dédié ?',
+      'Quelles sont les restrictions sonores (heure de fermeture musique) ?',
+      'Y a-t-il un lieu de couchage ou hôtel à proximité ?',
+      'Le traiteur est-il imposé ou peut-on amener le sien ?',
+      'Quels sont les modes de paiement et délais ? Acompte ?'
+    ],
+    'traiteur': [
+      'Combien de menus différents proposez-vous ? Adaptable aux régimes (vegan, sans gluten, halal, casher) ?',
+      'Le prix par personne inclut-il les boissons (champagne, vins, eaux) ?',
+      'Combien de serveurs serez-vous ce jour-là ? Combien d\'invités par serveur ?',
+      'Faites-vous le service à l\'assiette ou en buffet ?',
+      'Apportez-vous la vaisselle, verres, nappes ? Sont-ils inclus ?',
+      'Pouvez-vous me fournir un menu de dégustation avant la signature ?',
+      'Gérez-vous le vin d\'honneur ? Le brunch du lendemain ?',
+      'Quel est le délai pour me fournir le nombre exact d\'invités ?',
+      'Que se passe-t-il en cas d\'annulation ou de réduction du nombre ?',
+      'Avez-vous les autorisations sanitaires nécessaires ?'
+    ],
+    'photographe': [
+      'Combien d\'heures de couverture sont incluses ?',
+      'Combien de photos finales recevrai-je ?',
+      'Sous quel format (numériques HD, tirages, album) ? Délai de livraison ?',
+      'Avez-vous un style "reportage" ou "posé" ?',
+      'Pouvez-vous me montrer 2-3 mariages complets que vous avez shootés ?',
+      'Que se passe-t-il en cas d\'imprévu de votre côté (maladie) ? Avez-vous un remplaçant ?',
+      'Les retouches sont-elles incluses ? Combien ?',
+      'Détenez-vous tous les droits ou puis-je les utiliser librement ?',
+      'Y a-t-il des frais de déplacement supplémentaires ?',
+      'Pouvez-vous coordonner avec le vidéaste si présent ?'
+    ],
+    'dj': [
+      'Avez-vous une playlist suggérée ? Puis-je la personnaliser ?',
+      'Comment gérez-vous les demandes des invités ?',
+      'Apportez-vous votre propre matériel sono / éclairage ? Compatible avec la salle ?',
+      'Avez-vous une animation prévue (jeux, montage live) ?',
+      'Combien d\'heures incluses ? Tarif des heures supplémentaires ?',
+      'En cas de panne matériel, avez-vous un backup ?',
+      'Que faites-vous avant et après la soirée (musique d\'accueil, fin de soirée) ?',
+      'Avez-vous des références récentes que je peux contacter ?',
+      'Comment vous habillez-vous (costume requis ?) ?',
+      'Acompte demandé et conditions d\'annulation ?'
+    ],
+    'fleuriste': [
+      'Avez-vous un portfolio de mariages déjà réalisés que je peux voir ?',
+      'Quelles fleurs sont de saison pour ma date de mariage ?',
+      'Puis-je avoir un devis détaillé par poste (bouquet, centres de table, arche, boutonnières) ?',
+      'Livrez-vous et installez-vous sur place ? Frais inclus ?',
+      'Que se passe-t-il si certaines fleurs ne sont pas disponibles le jour J ?',
+      'Récupérez-vous les vases / structures à la fin du mariage ?',
+      'Les boutonnières et bouquets de demoiselles d\'honneur sont-ils inclus ?',
+      'Délai pour passer la commande définitive ?',
+      'Pouvez-vous me montrer un échantillon ou maquette avant ?',
+      'Acompte et modalités de paiement ?'
+    ]
   }
 };
+
+// Helper : génère une URL Pinterest pour ouvrir une recherche dans le navigateur.
+// Utile pour montrer des inspirations visuelles légalement (Pinterest = service public).
+function pinterestUrl(query){
+  return 'https://www.pinterest.com/search/pins/?q=' + encodeURIComponent(query);
+}
 
 function renderAssistant(){
   el('page-10').innerHTML = `
     <div class="card" style="padding:18px 16px;margin-bottom:16px;background:linear-gradient(135deg,${sf},#fff);">
       <h2 style="font-family:Playfair Display,Georgia,serif;font-size:22px;color:${tm};margin:0 0 6px;text-align:center;font-weight:700;">✨ Assistant Wedding Dream</h2>
-      <p style="text-align:center;font-size:12px;color:${tl};margin:0;font-style:italic;line-height:1.5;">Des conseils personnalisés pour ton mariage, instantanément et sans connexion internet.</p>
+      <p style="text-align:center;font-size:12px;color:${tl};margin:0;font-style:italic;line-height:1.5;">Tous les conseils dont tu as besoin pour ton mariage, instantanément et sans connexion internet.</p>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:16px;">
       ${[
-        {key:'menu', label:'Suggestions de menu', icon:'🍽️', desc:'Menu adapté au style et à la saison'},
-        {key:'fairepart', label:'Faire-part', icon:'✉️', desc:'Textes de faire-part prêts à utiliser'},
-        {key:'discours', label:'Discours témoin', icon:'🎤', desc:'Trame de discours personnalisable'},
-        {key:'budget', label:'Conseils budget', icon:'💰', desc:'Répartition optimisée du budget'},
-        {key:'timeline', label:'Timeline du jour J', icon:'⏰', desc:'Planning détaillé heure par heure'},
-        {key:'decoration', label:'Idées déco', icon:'🎀', desc:'Inspiration selon style et saison'}
+        {key:'menu',          label:'Menu repas',          icon:'🍽️', desc:'Menu adapté au style et à la saison'},
+        {key:'fairepart',     label:'Faire-part',           icon:'✉️', desc:'12 modèles prêts à utiliser'},
+        {key:'discours',      label:'Discours témoin',      icon:'🎤', desc:'Trames de discours complets'},
+        {key:'budget',        label:'Conseils budget',      icon:'💰', desc:'Répartition optimisée'},
+        {key:'timeline',      label:'Timeline jour J',      icon:'⏰', desc:'Planning heure par heure'},
+        {key:'decoration',    label:'Décoration mariage',   icon:'🎀', desc:'Inspiration selon style'},
+        {key:'weddingCake',   label:'Wedding cake',         icon:'🎂', desc:'Styles et inspirations'},
+        {key:'animations',    label:'Animations soirée',    icon:'🎉', desc:'Idées pour égayer la fête'},
+        {key:'voyageNoces',   label:'Voyage de noces',      icon:'✈️', desc:'Idées de destinations'},
+        {key:'cadeauxInvites',label:'Cadeaux invités',      icon:'🎁', desc:'Selon votre budget'},
+        {key:'tenueMariee',   label:'Tenue mariée',         icon:'👰', desc:'Robes, styles, bijoux'},
+        {key:'tenueMarie',    label:'Tenue marié',          icon:'🤵', desc:'Costumes et accessoires'},
+        {key:'bijouxMariee',  label:'Bijoux mariée',        icon:'💍', desc:'Selon robe et coiffure'},
+        {key:'musiqueCer',    label:'Musique cérémonie',    icon:'🎵', desc:'Playlists par moment'},
+        {key:'photos',        label:'Photos à prévoir',     icon:'📸', desc:'Checklist photographe'},
+        {key:'stress',        label:'Gestion du stress',    icon:'🧘', desc:'Avant, pendant, après'},
+        {key:'belleFamille',  label:'Belle-famille',        icon:'👨‍👩‍👧', desc:'Gérer les situations délicates'},
+        {key:'questions',     label:'Questions prestataires',icon:'❓', desc:'Que demander à chacun'}
       ].map(s=>`<button onclick="assistOpen('${s.key}')" class="card" style="padding:14px 12px;border:1.5px solid ${br};text-align:left;cursor:pointer;background:#fff;font-family:Lora,serif;transition:all .15s;">
-        <div style="font-size:28px;margin-bottom:6px;">${s.icon}</div>
+        <div style="font-size:26px;margin-bottom:6px;">${s.icon}</div>
         <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:3px;">${s.label}</div>
         <div style="font-size:10px;color:${tl};line-height:1.4;">${s.desc}</div>
       </button>`).join('')}
@@ -3352,7 +3835,7 @@ function renderAssistant(){
 
     <div id="assist-content" style="margin-top:8px;"></div>
 
-    <p style="text-align:center;font-size:11px;color:${tl};font-style:italic;margin-top:18px;">💡 Tous les conseils sont basés sur les meilleures pratiques des planners mariage. Adapte-les à ton histoire.</p>
+    <p style="text-align:center;font-size:11px;color:${tl};font-style:italic;margin-top:18px;">💡 Tous les conseils sont basés sur les meilleures pratiques des wedding planners. Pour les inspirations visuelles, des liens Pinterest sont fournis (légal et gratuit).</p>
   `;
 }
 
@@ -3360,12 +3843,26 @@ function renderAssistant(){
 function assistOpen(service){
   const cont = el('assist-content');
   if(!cont) return;
-  if(service === 'menu') return assistMenu(cont);
-  if(service === 'fairepart') return assistFairepart(cont);
-  if(service === 'discours') return assistDiscours(cont);
-  if(service === 'budget') return assistBudget(cont);
-  if(service === 'timeline') return assistTimeline(cont);
-  if(service === 'decoration') return assistDecoration(cont);
+  // Scroller en douceur jusqu'au contenu après le clic
+  setTimeout(()=>{cont.scrollIntoView({behavior:'smooth',block:'start'});}, 50);
+  if(service === 'menu')           return assistMenu(cont);
+  if(service === 'fairepart')      return assistFairepart(cont);
+  if(service === 'discours')       return assistDiscours(cont);
+  if(service === 'budget')         return assistBudget(cont);
+  if(service === 'timeline')       return assistTimeline(cont);
+  if(service === 'decoration')     return assistDecoration(cont);
+  if(service === 'weddingCake')    return assistWeddingCake(cont);
+  if(service === 'animations')     return assistAnimations(cont);
+  if(service === 'voyageNoces')    return assistVoyageNoces(cont);
+  if(service === 'cadeauxInvites') return assistCadeauxInvites(cont);
+  if(service === 'tenueMariee')    return assistTenueMariee(cont);
+  if(service === 'tenueMarie')     return assistTenueMarie(cont);
+  if(service === 'bijouxMariee')   return assistBijouxMariee(cont);
+  if(service === 'musiqueCer')     return assistMusiqueCer(cont);
+  if(service === 'photos')         return assistPhotos(cont);
+  if(service === 'stress')         return assistStress(cont);
+  if(service === 'belleFamille')   return assistBelleFamille(cont);
+  if(service === 'questions')      return assistQuestions(cont);
 }
 
 // ─── SERVICE 1 : MENU ───
@@ -3671,7 +4168,380 @@ function assistGenerateDeco(){
     <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;">✨ Ambiance générale</span><div style="font-size:13px;color:${tx};margin-top:4px;line-height:1.6;">${h(d.ambiance)}</div></div>
 
     <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;">🌿 Arche de cérémonie</span><div style="font-size:13px;color:${tx};margin-top:4px;line-height:1.6;">${h(d.arche)}</div></div>
+
+    <a href="${pinterestUrl(d.title)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;padding:10px 16px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:10px;text-decoration:none;color:${tx};font-size:12px;font-weight:700;font-family:Lora,serif;">
+      📌 Voir des inspirations sur Pinterest
+    </a>
   </div>`;
+}
+
+// ─── SERVICE 7 : WEDDING CAKE ───
+function assistWeddingCake(cont){
+  const savedStyle = ld('assist_cake_style', 'romantique');
+  const styles = ASSIST_KB.weddingCake;
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎂 Wedding cake — styles & inspirations</div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
+        <select id="cake-style" class="inp" style="margin-top:4px;">
+          ${Object.keys(styles).map(k=>`<option value="${k}" ${savedStyle===k?'selected':''}>${h(styles[k].title)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn" onclick="assistGenerateCake()" style="width:100%;">Voir les détails</button>
+      <div id="cake-result" style="margin-top:16px;"></div>
+    </div>
+  `;
+}
+function assistGenerateCake(){
+  const styleKey = el('cake-style').value;
+  sv('assist_cake_style', styleKey);
+  const d = ASSIST_KB.weddingCake[styleKey];
+  if(!d) return;
+  const r = el('cake-result');
+  r.innerHTML = `<div style="border-top:1.5px solid ${br};padding-top:14px;">
+    <div style="font-family:Playfair Display,serif;font-style:italic;font-size:17px;color:${tm};margin-bottom:6px;text-align:center;">${h(d.title)}</div>
+    <p style="font-size:13px;color:${tx};line-height:1.6;margin-bottom:14px;">${h(d.description)}</p>
+
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Caractéristiques</div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.7;">
+        ${d.details.map(x=>`<li>${h(x)}</li>`).join('')}
+      </ul>
+    </div>
+
+    <div style="background:${sf};padding:12px;border-radius:10px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">🍰 Saveurs recommandées</div>
+      <div style="font-size:13px;color:${tx};">${h(d.saveurs)}</div>
+    </div>
+
+    <a href="${pinterestUrl(d.pinterest)}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 16px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:10px;text-decoration:none;color:${tx};font-size:12px;font-weight:700;font-family:Lora,serif;">
+      📌 Voir des photos sur Pinterest
+    </a>
+  </div>`;
+}
+
+// ─── SERVICE 8 : ANIMATIONS ───
+function assistAnimations(cont){
+  const saved = ld('assist_anim_cat', 'classique');
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎉 Animations pour la soirée</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        ${[
+          {k:'classique',l:'Classiques'},{k:'fun',l:'Fun & originales'},
+          {k:'surprise',l:'Surprises'},{k:'enfants',l:'Pour enfants'}
+        ].map(c=>`<button onclick="sv('assist_anim_cat','${c.k}');assistRenderAnim();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
+      </div>
+      <div id="anim-result"></div>
+    </div>
+  `;
+  assistRenderAnim();
+}
+function assistRenderAnim(){
+  const cat = ld('assist_anim_cat', 'classique');
+  const list = ASSIST_KB.animations[cat] || [];
+  el('anim-result').innerHTML = list.map(a=>`<div class="card" style="padding:14px;margin-bottom:8px;background:${sf};">
+    <div style="font-weight:700;color:${tx};font-size:14px;margin-bottom:5px;">${h(a.nom)}</div>
+    <div style="font-size:12px;color:${tm};line-height:1.6;">${h(a.desc)}</div>
+  </div>`).join('');
+  // Refresh boutons actifs
+  const buttons = document.querySelectorAll('#assist-content .btn-sec');
+  // (style déjà mis à jour à chaque clic via attribut inline)
+}
+
+// ─── SERVICE 9 : VOYAGE DE NOCES ───
+function assistVoyageNoces(cont){
+  const saved = ld('assist_voyage_cat', 'plage');
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">✈️ Voyage de noces</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        ${[
+          {k:'plage',l:'🏖️ Plage'},{k:'culture',l:'🏛️ Culture'},
+          {k:'aventure',l:'⛰️ Aventure'},{k:'romantique-europe',l:'💕 Europe romantique'}
+        ].map(c=>`<button onclick="sv('assist_voyage_cat','${c.k}');assistRenderVoyage();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
+      </div>
+      <div id="voyage-result"></div>
+    </div>
+  `;
+  assistRenderVoyage();
+}
+function assistRenderVoyage(){
+  const cat = ld('assist_voyage_cat', 'plage');
+  const list = ASSIST_KB.voyageNoces[cat] || [];
+  el('voyage-result').innerHTML = list.map(d=>`<div class="card" style="padding:14px;margin-bottom:8px;background:${sf};">
+    <div style="font-weight:700;color:${tx};font-size:14px;margin-bottom:5px;">${h(d.dest)}</div>
+    <div style="font-size:12px;color:${tm};line-height:1.6;">${h(d.desc)}</div>
+  </div>`).join('');
+}
+
+// ─── SERVICE 10 : CADEAUX INVITÉS ───
+function assistCadeauxInvites(cont){
+  const saved = ld('assist_cadeau_cat', 'petit-budget');
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎁 Cadeaux pour les invités</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        ${[
+          {k:'petit-budget',l:'Petit budget (1-3€)'},
+          {k:'moyen-budget',l:'Moyen budget (3-8€)'},
+          {k:'gros-budget',l:'Gros budget (8-20€)'}
+        ].map(c=>`<button onclick="sv('assist_cadeau_cat','${c.k}');assistRenderCadeau();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
+      </div>
+      <div id="cadeau-result"></div>
+    </div>
+  `;
+  assistRenderCadeau();
+}
+function assistRenderCadeau(){
+  const cat = ld('assist_cadeau_cat', 'petit-budget');
+  const list = ASSIST_KB.cadeauxInvites[cat] || [];
+  el('cadeau-result').innerHTML = list.map(c=>`<div class="card" style="padding:14px;margin-bottom:8px;background:${sf};">
+    <div style="font-weight:700;color:${tx};font-size:14px;margin-bottom:5px;">${h(c.nom)}</div>
+    <div style="font-size:12px;color:${tm};line-height:1.6;">${h(c.desc)}</div>
+  </div>`).join('');
+}
+
+// ─── SERVICE 11 : TENUE MARIÉE ───
+function assistTenueMariee(cont){
+  const d = ASSIST_KB.tenueMariee;
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">👰 Tenue de la mariée</div>
+
+      <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">🧍 Conseils selon morphologie</div>
+      ${Object.entries(d.morphologies).map(([k,v])=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+        <div style="font-weight:700;color:${tx};font-size:13px;text-transform:capitalize;margin-bottom:4px;">Morphologie en ${h(k)}</div>
+        <div style="font-size:12px;color:${tm};line-height:1.6;">${h(v)}</div>
+      </div>`).join('')}
+
+      <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">👗 Styles de robe</div>
+      ${d.styles.map(s=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+        <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${h(s.nom)}</div>
+        <div style="font-size:12px;color:${tm};line-height:1.6;">${h(s.desc)}</div>
+      </div>`).join('')}
+
+      <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">💰 Selon budget</div>
+      ${Object.entries(d.budget).map(([k,v])=>{
+        const label = k==='sous-1500'?'< 1500€':k==='1500-3000'?'1500-3000€':k==='3000-6000'?'3000-6000€':'> 6000€';
+        return `<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+          <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${label}</div>
+          <div style="font-size:12px;color:${tm};line-height:1.6;">${h(v)}</div>
+        </div>`;
+      }).join('')}
+
+      <a href="${pinterestUrl('robe de mariée 2027')}" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;padding:10px 16px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:10px;text-decoration:none;color:${tx};font-size:12px;font-weight:700;font-family:Lora,serif;">
+        📌 Voir des robes sur Pinterest
+      </a>
+    </div>
+  `;
+}
+
+// ─── SERVICE 12 : TENUE MARIÉ ───
+function assistTenueMarie(cont){
+  const d = ASSIST_KB.tenueMarie;
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🤵 Tenue du marié</div>
+
+      <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">👔 Styles de costume</div>
+      ${d.styles.map(s=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+        <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${h(s.nom)}</div>
+        <div style="font-size:12px;color:${tm};line-height:1.6;">${h(s.desc)}</div>
+      </div>`).join('')}
+
+      <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">🎩 Accessoires essentiels</div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.8;">
+        ${d.accessoires.map(a=>`<li>${h(a)}</li>`).join('')}
+      </ul>
+
+      <div style="background:${sf};padding:12px;border-radius:10px;margin-top:14px;">
+        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">🎨 Choix des couleurs</div>
+        <div style="font-size:13px;color:${tx};line-height:1.6;">${h(d.couleurs)}</div>
+      </div>
+
+      <a href="${pinterestUrl('costume marié mariage')}" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;padding:10px 16px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:10px;text-decoration:none;color:${tx};font-size:12px;font-weight:700;font-family:Lora,serif;">
+        📌 Voir des costumes sur Pinterest
+      </a>
+    </div>
+  `;
+}
+
+// ─── SERVICE 13 : BIJOUX MARIÉE ───
+function assistBijouxMariee(cont){
+  const d = ASSIST_KB.bijouxMariee;
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">💍 Bijoux de la mariée</div>
+
+      <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">👗 Selon le décolleté / style de robe</div>
+      ${Object.entries(d.selonRobe).map(([k,v])=>{
+        const labels = {decollete:'Décolleté plongeant',bustier:'Bustier sans bretelles','col-haut':'Col haut','dos-nu':'Dos-nu',simple:'Robe minimaliste'};
+        return `<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+          <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${labels[k]||k}</div>
+          <div style="font-size:12px;color:${tm};line-height:1.6;">${h(v)}</div>
+        </div>`;
+      }).join('')}
+
+      <div style="background:${sf};padding:12px;border-radius:10px;margin-top:14px;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">👰 Coordination avec le voile</div>
+        <div style="font-size:13px;color:${tx};line-height:1.6;">${h(d.voile)}</div>
+      </div>
+
+      <div style="background:${sf};padding:12px;border-radius:10px;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">💇 Selon la coiffure</div>
+        <div style="font-size:13px;color:${tx};line-height:1.6;">${h(d.coiffure)}</div>
+      </div>
+
+      <div style="background:${sf};padding:12px;border-radius:10px;">
+        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">💐 Coordination avec le bouquet</div>
+        <div style="font-size:13px;color:${tx};line-height:1.6;">${h(d.bouquet)}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ─── SERVICE 14 : MUSIQUE CÉRÉMONIE ───
+function assistMusiqueCer(cont){
+  const saved = ld('assist_musique_moment', 'entree-moderne');
+  const moments = [
+    {k:'entree-classique',l:'🎼 Entrée — Classique'},
+    {k:'entree-moderne',l:'🎵 Entrée — Moderne'},
+    {k:'voeux',l:'💕 Pendant les vœux'},
+    {k:'sortie',l:'🎉 Sortie'},
+    {k:'premiere-danse',l:'💃 Première danse'},
+    {k:'soiree-ambiance',l:'🪩 Ambiance soirée'}
+  ];
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎵 Musique pour la cérémonie</div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Moment du mariage</label>
+        <select id="musique-moment" class="inp" style="margin-top:4px;" onchange="sv('assist_musique_moment',this.value);assistRenderMusique();">
+          ${moments.map(m=>`<option value="${m.k}" ${saved===m.k?'selected':''}>${m.l}</option>`).join('')}
+        </select>
+      </div>
+      <div id="musique-result"></div>
+    </div>
+  `;
+  assistRenderMusique();
+}
+function assistRenderMusique(){
+  const moment = el('musique-moment').value;
+  const list = ASSIST_KB.musiqueCer[moment] || [];
+  el('musique-result').innerHTML = `<ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.9;">
+    ${list.map(s=>`<li>${h(s)}</li>`).join('')}
+  </ul>`;
+}
+
+// ─── SERVICE 15 : PHOTOS À PRÉVOIR ───
+function assistPhotos(cont){
+  const d = ASSIST_KB.photosAneFairePas;
+  const sections = [
+    {k:'preparatifs-mariee',l:'👰 Préparatifs mariée'},
+    {k:'preparatifs-marie',l:'🤵 Préparatifs marié'},
+    {k:'ceremonie',l:'💒 Cérémonie'},
+    {k:'cocktail-reception',l:'🥂 Vin d\'honneur'},
+    {k:'reception',l:'🍽️ Réception / Soirée'},
+    {k:'couple',l:'💕 Photos de couple'}
+  ];
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:6px;font-weight:700;">📸 Photos à ne pas manquer</div>
+      <div style="font-size:11px;color:${tl};font-style:italic;margin-bottom:14px;">Donne cette checklist à ton photographe pour ne rien oublier.</div>
+      ${sections.map(s=>`<div style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">${s.l}</div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.8;">
+          ${d[s.k].map(p=>`<li>${h(p)}</li>`).join('')}
+        </ul>
+      </div>`).join('')}
+    </div>
+  `;
+}
+
+// ─── SERVICE 16 : STRESS ───
+function assistStress(cont){
+  const saved = ld('assist_stress_cat', 'avant');
+  const cats = [
+    {k:'avant',l:'📅 Avant le mariage'},
+    {k:'jour-j',l:'⭐ Le jour J'},
+    {k:'apres',l:'🌅 Après le mariage'}
+  ];
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🧘 Gestion du stress</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        ${cats.map(c=>`<button onclick="sv('assist_stress_cat','${c.k}');assistRenderStress();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
+      </div>
+      <div id="stress-result"></div>
+    </div>
+  `;
+  assistRenderStress();
+}
+function assistRenderStress(){
+  const cat = ld('assist_stress_cat', 'avant');
+  const list = ASSIST_KB.gestionStress[cat] || [];
+  el('stress-result').innerHTML = `<ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.9;">
+    ${list.map(s=>`<li>${h(s)}</li>`).join('')}
+  </ul>`;
+}
+
+// ─── SERVICE 17 : BELLE-FAMILLE ───
+function assistBelleFamille(cont){
+  const d = ASSIST_KB.belleFamille;
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">👨‍👩‍👧 Belle-famille & situations délicates</div>
+
+      <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">Situations courantes</div>
+      ${d.situations.map(s=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
+        <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${h(s.nom)}</div>
+        <div style="font-size:12px;color:${tm};line-height:1.6;">${h(s.desc)}</div>
+      </div>`).join('')}
+
+      <div style="background:linear-gradient(135deg,#fff8ec,#fef5e0);padding:14px;border-radius:12px;border:1px solid ${gd}40;margin-top:14px;">
+        <div style="font-family:Playfair Display,serif;font-size:14px;color:${tm};margin-bottom:10px;font-weight:700;">💡 6 astuces générales</div>
+        <ul style="margin:0;padding-left:18px;font-size:12px;color:${tx};line-height:1.7;">
+          ${d.astuces.map(a=>`<li>${h(a)}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+// ─── SERVICE 18 : QUESTIONS PRESTATAIRES ───
+function assistQuestions(cont){
+  const saved = ld('assist_quest_presta', 'lieu');
+  const types = [
+    {k:'lieu',l:'🏛️ Lieu de réception'},
+    {k:'traiteur',l:'🍽️ Traiteur'},
+    {k:'photographe',l:'📷 Photographe'},
+    {k:'dj',l:'🎵 DJ / Musique'},
+    {k:'fleuriste',l:'💐 Fleuriste'}
+  ];
+  cont.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">❓ Questions aux prestataires</div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Type de prestataire</label>
+        <select id="quest-presta" class="inp" style="margin-top:4px;" onchange="sv('assist_quest_presta',this.value);assistRenderQuestions();">
+          ${types.map(t=>`<option value="${t.k}" ${saved===t.k?'selected':''}>${t.l}</option>`).join('')}
+        </select>
+      </div>
+      <div id="quest-result"></div>
+    </div>
+  `;
+  assistRenderQuestions();
+}
+function assistRenderQuestions(){
+  const t = el('quest-presta').value;
+  const list = ASSIST_KB.questionsPrestataires[t] || [];
+  el('quest-result').innerHTML = `<div style="font-size:11px;color:${tl};font-style:italic;margin-bottom:10px;">Coche les questions à poser lors du rendez-vous :</div>
+    ${list.map((q,i)=>`<div class="card" style="padding:10px 12px;margin-bottom:6px;background:${sf};display:flex;align-items:flex-start;gap:8px;">
+      <span style="color:${pk};font-weight:700;flex-shrink:0;">${i+1}.</span>
+      <span style="font-size:13px;color:${tx};line-height:1.5;">${h(q)}</span>
+    </div>`).join('')}`;
 }
 
 // ── NOTES ─────────────────────────────────────────────────────────────────────
