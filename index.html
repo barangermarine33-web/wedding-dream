@@ -1768,27 +1768,18 @@ function addTableEl(table){
     seat.style.cssText=`position:absolute;left:${sx}px;top:${sy}px;width:26px;height:26px;border-radius:50%;border:${hidden?`2px dashed ${br}`:'2.5px solid #fff'};background:${hidden?'rgba(255,255,255,.35)':g?(g.cote==='p1'?'#e8a0b0':'#a0b0e8'):'#f5e0e8'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.13);z-index:10;color:${hidden?br:'#fff'};user-select:none;touch-action:manipulation;`;
     seat.textContent=hidden?'·':(g?g.nom.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase():'+');
     seat.title=g?g.nom:'Libre';
-    // CORRECTIF DOUBLE :
-    // 1) On bloque pointerdown sur la chaise pour empêcher le drag du parent
-    //    de capturer l'event (setPointerCapture absorberait sinon le click).
-    // 2) On bind l'ouverture de la modale à la fois sur 'click' et 'pointerup'
-    //    pour fiabilité maximale (sur mobile, click peut parfois ne pas se déclencher
-    //    si l'utilisateur a légèrement bougé son doigt).
-    seat.addEventListener('pointerdown',e=>{e.stopPropagation();});
-    let seatTouched=false;
-    seat.addEventListener('click',e=>{
+    // CORRECTIF CHAISE — version simple et fiable :
+    // 1) pointerdown : stoppe la propagation pour empêcher le drag de capturer
+    //    le pointeur (sinon openSeatModal ne se déclenche jamais).
+    // 2) click : ouvre la modale. Délai de garde court pour éviter qu'un
+    //    click "fantôme" (issu du même tap) ferme la modale juste après.
+    seat.addEventListener('pointerdown', e => {
       e.stopPropagation();
-      if(seatTouched){seatTouched=false;return;}
-      openSeatModal(table.id,i);
     });
-    // Fallback pour mobile : si pointerup arrive sans click (rare), on déclenche aussi
-    seat.addEventListener('pointerup',e=>{
-      // Ne déclenche que si le pointer est resté sur la chaise (pas un drag externe)
-      if(e.pointerType==='touch'){
-        seatTouched=true;
-        e.stopPropagation();
-        openSeatModal(table.id,i);
-      }
+    seat.addEventListener('click', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      openSeatModal(table.id, i);
     });
     div.appendChild(seat);
   }
@@ -1884,6 +1875,10 @@ function openSeatModal(tid, si){
       </div>
     </div>`;
   root.style.display = 'flex';
+  // Délai de garde : on n'active la fermeture par clic sur le fond
+  // qu'après 300 ms (sinon le click "tail" du tap qui a ouvert ferme tout de suite).
+  let canClose = false;
+  setTimeout(()=>{ canClose = true; }, 300);
 
   // Event handlers
   const closeM = ()=>{ root.style.display='none'; root.innerHTML=''; seatPicker=null; };
@@ -1899,7 +1894,7 @@ function openSeatModal(tid, si){
   const hideBtn = root.querySelector('button[data-action="hide"]');
   if(hideBtn) hideBtn.addEventListener('click', ()=>{ toggleHideSeat(); closeM(); });
   root.querySelector('button[data-cancel]').addEventListener('click', closeM);
-  root.addEventListener('click', e=>{ if(e.target===root) closeM(); });
+  root.addEventListener('click', e=>{ if(canClose && e.target===root) closeM(); });
 }
 function assignSeat(gid){
   if(!seatPicker)return;
@@ -3185,7 +3180,7 @@ const ASSIST_KB = {
       plat: 'Filet de bœuf Wellington aux truffes, gratin dauphinois et légumes glacés',
       fromage: 'Plateau d\'exception hivernal',
       dessert: 'Dôme chocolat-marrons confits, cœur coulant praliné',
-      vins: 'Meursault premier cru, Pétrus en plat, Yquem sur le dessert'
+      vins: 'Grand cru de Bourgogne, Grand cru de Pomerol en plat, vin liquide d\'exception sur le dessert'
     },
     'nature-printemps': {
       title: 'Menu Nature de Printemps',
@@ -3457,68 +3452,153 @@ const ASSIST_KB = {
 
   // ─── 6. DÉCORATION ─────────────────────────────────────────────────────
   decoration: {
+    // ─── ROMANTIQUE × 4 saisons ───
     'romantique-printemps': {
-      title: 'Décoration Romantique Printanière',
-      couleurs: ['Rose poudré', 'Blanc cassé', 'Vert sauge', 'Touches dorées'],
-      fleurs: 'Pivoines, roses David Austin, lisianthus, eucalyptus, gypsophile',
-      tables: 'Nappes en lin écru, chemins de table en lin rose poudré, bougies blanches dans des photophores en verre, vaisselle blanche avec liseré doré',
-      vaisselle: 'Assiettes en porcelaine blanche, couverts dorés mat, verres en cristal fin',
-      ambiance: 'Guirlandes lumineuses chaudes, photophores partout, fleurs suspendues',
-      arche: 'Arche en bois clair recouverte de mousse, pivoines blanches et roses, eucalyptus en cascade'
+      title: 'Décoration Romantique de Printemps',
+      couleurs: ['Rose poudré', 'Blanc cassé', 'Vert sauge tendre', 'Touches dorées'],
+      fleurs: 'Pivoines roses pâles, roses anciennes, lisianthus blancs, jacinthes, branches de cerisier en fleurs, eucalyptus et gypsophile en remplissage',
+      tables: 'Nappes en lin écru, chemins de table en lin rose poudré, bougies blanches dans des photophores en verre, vaisselle blanche avec liseré doré, petits cadres dorés pour les noms de table',
+      vaisselle: 'Assiettes en porcelaine blanche, couverts dorés mat, verres en cristal fin avec liseré',
+      ambiance: 'Guirlandes lumineuses chaudes, photophores partout, fleurs suspendues, voilages roses légers, ambiance jardin secret',
+      arche: 'Arche en bois clair recouverte de mousse, pivoines blanches et roses, eucalyptus en cascade, branches fleuries de cerisier'
     },
     'romantique-ete': {
       title: 'Décoration Romantique d\'Été',
-      couleurs: ['Blanc', 'Pêche', 'Vert clair', 'Or rose'],
-      fleurs: 'Roses pêche, hortensias blancs, fleurs des champs, oliviers',
-      tables: 'Nappes blanches, chemins de table verts feuillage, vaisselle artisanale',
+      couleurs: ['Blanc immaculé', 'Pêche tendre', 'Vert clair', 'Or rose'],
+      fleurs: 'Roses pêche et blanches, hortensias bleu pâle, fleurs des champs (cosmos, marguerites), oliviers, lavande, herbes aromatiques',
+      tables: 'Nappes blanches en lin léger, chemins de table verts feuillage, vaisselle artisanale, fleurs en abondance sur la table',
       vaisselle: 'Service en céramique blanche mate, verrerie ambrée, couverts en or rose',
-      ambiance: 'Lampions, mariage en plein air, ombrelles colorées pour les invités',
-      arche: 'Pergola en bois flotté, hortensias blancs, voilage léger qui flotte au vent'
+      ambiance: 'Lampions et guirlandes accrochés aux arbres, mariage en plein air, ombrelles colorées pour les invités, citronnade en pichet',
+      arche: 'Pergola en bois flotté, hortensias blancs et bleus, voilage léger qui flotte au vent, lierre en cascade'
     },
     'romantique-automne': {
       title: 'Décoration Romantique d\'Automne',
-      couleurs: ['Bordeaux', 'Terracotta', 'Or vieilli', 'Crème'],
-      fleurs: 'Dahlias bordeaux, roses terracotta, eucalyptus argenté, feuilles d\'automne',
-      tables: 'Nappes crème, chemins de table en velours bordeaux, candélabres dorés',
-      vaisselle: 'Assiettes en grès terracotta, verres ambrés, couverts en cuivre',
-      ambiance: 'Lustres en plumes, beaucoup de bougies à la cire, foyer / cheminée',
-      arche: 'Arche en branches sèches, dahlias et physalis, drapé de velours'
+      couleurs: ['Bordeaux profond', 'Terracotta', 'Or vieilli', 'Crème'],
+      fleurs: 'Dahlias bordeaux, roses terracotta et caramel, eucalyptus argenté, feuilles d\'automne colorées, chrysanthèmes, branches d\'épines vinettes',
+      tables: 'Nappes crème, chemins de table en velours bordeaux, candélabres dorés, citrouilles décoratives miniatures, feuilles dorées dispersées',
+      vaisselle: 'Assiettes en grès terracotta, verres ambrés, couverts en cuivre, serviettes en velours',
+      ambiance: 'Lustres en plumes, beaucoup de bougies à la cire d\'abeille, foyer / cheminée, lanternes en cuivre, chemin de feuilles à l\'entrée',
+      arche: 'Arche en branches sèches, dahlias et physalis, drapé de velours bordeaux, feuilles d\'automne en cascade'
     },
+    'romantique-hiver': {
+      title: 'Décoration Romantique d\'Hiver',
+      couleurs: ['Blanc immaculé', 'Argent', 'Bleu glacier', 'Touches dorées'],
+      fleurs: 'Roses blanches, anémones, eucalyptus argenté, branches givrées, baies blanches, brins de sapin, feuilles d\'olivier',
+      tables: 'Nappes blanches damassées, chemins de table argentés ou en velours bleu glacier, candélabres argentés, paillettes blanches, flocons décoratifs',
+      vaisselle: 'Porcelaine blanche, couverts argentés, verres en cristal taillé, serviettes blanches avec rond argenté',
+      ambiance: 'Beaucoup de bougies blanches, lumière tamisée, branches givrées, pommes de pin argentées, ambiance "forêt enchantée d\'hiver"',
+      arche: 'Arche en branches blanches givrées, roses blanches, branches de sapin et baies, voile blanc qui scintille'
+    },
+    // ─── BOHÈME × 4 saisons ───
     'boheme-printemps': {
-      title: 'Décoration Bohème Printanière',
+      title: 'Décoration Bohème de Printemps',
       couleurs: ['Blanc cassé', 'Vert tendre', 'Pampa beige', 'Touches dorées'],
-      fleurs: 'Pampa, eucalyptus, gypsophile, fleurs séchées, roses blanches',
-      tables: 'Tables en bois brut sans nappe, chemins en macramé, vaisselle dépareillée vintage',
-      vaisselle: 'Assiettes vintage chinées, verres en pied dorés, couverts en bois',
-      ambiance: 'Tapis berbères, coussins au sol, attrape-rêves, ampoules guinguettes',
-      arche: 'Arche triangulaire en bois, pampa, dentelle blanche, plumes'
+      fleurs: 'Pampa, eucalyptus, gypsophile, branches de cerisier en fleurs, fleurs séchées, roses blanches, anémones',
+      tables: 'Tables en bois brut sans nappe, chemins en macramé, vaisselle dépareillée vintage chinée, herbes aromatiques en pots',
+      vaisselle: 'Assiettes vintage chinées, verres en pied dorés, couverts en bois ou bambou, serviettes en lin froissé',
+      ambiance: 'Tapis berbères, coussins au sol, attrape-rêves, ampoules guinguettes, herbes fraîches en bouquets',
+      arche: 'Arche triangulaire en bois, pampa et fleurs séchées, dentelle blanche, plumes, branches fleuries'
     },
     'boheme-ete': {
       title: 'Décoration Bohème Estivale',
-      couleurs: ['Beige', 'Terre cuite', 'Ocre', 'Blanc cassé'],
-      fleurs: 'Tournesols, marguerites, lavande, herbes de la pampa, oliviers',
-      tables: 'Tables en bois flotté, chemins en lin sable, paniers tressés',
-      vaisselle: 'Vaisselle en argile, verres colorés style méditerranéen, couverts dépareillés',
-      ambiance: 'Tapis berbères au sol, hamacs, lampions, ambiance "désert"',
-      arche: 'Arche en macramé géant, fleurs séchées, voilage écru'
+      couleurs: ['Beige sable', 'Terre cuite', 'Ocre doré', 'Blanc cassé'],
+      fleurs: 'Tournesols, marguerites, lavande, herbes de la pampa, oliviers, immortelles, soucis, fleurs sauvages',
+      tables: 'Tables en bois flotté, chemins en lin sable, paniers tressés en osier, marque-place en pierre ou bois gravé',
+      vaisselle: 'Vaisselle en argile naturelle, verres colorés style méditerranéen, couverts dépareillés en bois ou cuivre',
+      ambiance: 'Tapis berbères au sol, hamacs sous les arbres, lampions colorés, ambiance "désert"/"oasis", musique douce',
+      arche: 'Arche en macramé géant, fleurs séchées (pampa, immortelles), voilage écru au vent, lierre'
     },
-    'chic-toute-saison': {
-      title: 'Décoration Chic & Élégante',
-      couleurs: ['Blanc', 'Or', 'Marbre', 'Touches noires'],
-      fleurs: 'Roses blanches, orchidées, lys, calla, feuillage vert foncé',
-      tables: 'Nappes blanches en lin épais, chemins de table dorés, candélabres hauts argentés',
-      vaisselle: 'Service en porcelaine fine avec filet doré, verres cristal Baccarat, couverts plaqués or',
-      ambiance: 'Grands chandeliers, lustre en cristal, marbre, touches noires',
-      arche: 'Arche en marbre / colonnes blanches, cascade de roses blanches et lierre'
+    'boheme-automne': {
+      title: 'Décoration Bohème d\'Automne',
+      couleurs: ['Terracotta', 'Moutarde', 'Ocre', 'Marron caramel'],
+      fleurs: 'Chrysanthèmes ocre, dahlias terracotta, branches de blé séchées, pampa dorée, feuilles d\'automne, gypsophile teintée',
+      tables: 'Tables en bois brut, chemins en jute, paniers tressés, pommes et poires comme décoration, citrouilles miniatures',
+      vaisselle: 'Vaisselle en grès brut, verres ambrés, couverts en bois ou cuivre, serviettes en coton brut',
+      ambiance: 'Tapis berbères, coussins en velours moutarde, lanternes en métal, beaucoup de bougies, ambiance "chalet bohème"',
+      arche: 'Arche en branches torsadées, pampa dorée, dahlias terracotta, blé séché, voilage couleur sable'
     },
-    'nature-toute-saison': {
-      title: 'Décoration Nature & Champêtre',
-      couleurs: ['Vert sapin', 'Beige', 'Bois clair', 'Touches dorées'],
-      fleurs: 'Fleurs de saison du fleuriste local, mousse, fougère, brindilles',
-      tables: 'Tables en bois brut, chemins de table en mousse, bougies dans des bocaux',
-      vaisselle: 'Vaisselle artisanale céramique, verrerie simple, serviettes en lin',
-      ambiance: 'Cabane en bois, lanternes, chemin en pierres, ambiance forêt',
-      arche: 'Arche en branches naturelles, feuillage abondant, sans fleurs'
+    'boheme-hiver': {
+      title: 'Décoration Bohème d\'Hiver',
+      couleurs: ['Blanc cassé', 'Beige rosé', 'Argent vieilli', 'Vert sapin'],
+      fleurs: 'Pampa blanche, eucalyptus argenté, branches de sapin, baies blanches, pommes de pin argentées, fleurs séchées',
+      tables: 'Tables en bois brut, chemins en lin blanc froissé, paniers en osier, branches de sapin en décoration',
+      vaisselle: 'Assiettes vintage blanc cassé, verres en pied, couverts en cuivre patiné',
+      ambiance: 'Plaids en laine sur les chaises, beaucoup de bougies, lanternes, ambiance "cocoon d\'hiver bohème", musique acoustique',
+      arche: 'Arche en bois flotté, pampa blanche, branches de sapin, voilage écru, fausse fourrure'
+    },
+    // ─── CHIC × 4 saisons ───
+    'chic-printemps': {
+      title: 'Décoration Chic de Printemps',
+      couleurs: ['Blanc immaculé', 'Vert sauge', 'Or', 'Rose pâle'],
+      fleurs: 'Roses blanches, pivoines blanches, lys, calla, branches fleuries hautes (cerisier), feuillage vert foncé',
+      tables: 'Nappes blanches en lin épais, chemins de table dorés, candélabres hauts argentés, marque-places calligraphiés',
+      vaisselle: 'Service en porcelaine fine avec filet doré, verres en cristal haut de gamme, couverts plaqués or, serviettes blanches en lin damassé',
+      ambiance: 'Grands chandeliers en argent, lustre en cristal, parterres fleuris, marbre, touches noires',
+      arche: 'Arche en colonnes blanches, cascade de roses blanches, branches fleuries hautes en cascade'
+    },
+    'chic-ete': {
+      title: 'Décoration Chic d\'Été',
+      couleurs: ['Blanc', 'Or', 'Bleu marine', 'Vert profond'],
+      fleurs: 'Roses blanches, hortensias bleu nuit, orchidées, fougères, lis blancs',
+      tables: 'Nappes blanches, chemins de table en velours bleu marine, candélabres dorés hauts, vaisselle blanche et or',
+      vaisselle: 'Porcelaine blanche à liseré doré, verres en cristal, couverts plaqués or, ronds de serviette dorés',
+      ambiance: 'Mariage en jardin chic ou en château, ambiance "Gatsby"/"Riviera", lumière naturelle généreuse',
+      arche: 'Arche en marbre / colonnes blanches, hortensias bleus et blancs, voile fluide en mousseline'
+    },
+    'chic-automne': {
+      title: 'Décoration Chic d\'Automne',
+      couleurs: ['Bordeaux', 'Or vieilli', 'Noir', 'Crème'],
+      fleurs: 'Roses bordeaux, calla noires, orchidées, branches dorées, feuilles d\'automne dorées (or véritable)',
+      tables: 'Nappes en velours bordeaux, chemins de table en or, candélabres noirs hauts, vaisselle dorée',
+      vaisselle: 'Porcelaine avec filet or, verres en cristal ambré, couverts en or rose, serviettes en velours',
+      ambiance: 'Lustre en cristal sombre, beaucoup de bougies, ambiance opéra/théâtre, marbre noir et or',
+      arche: 'Arche noire métallique, cascade de roses bordeaux et calla noires, drapés de velours'
+    },
+    'chic-hiver': {
+      title: 'Décoration Chic d\'Hiver',
+      couleurs: ['Argent', 'Blanc immaculé', 'Bleu glacier', 'Cristal'],
+      fleurs: 'Roses blanches, anémones noir-blanc, branches givrées, baies blanches, eucalyptus argenté',
+      tables: 'Nappes blanches damassées, chemins en cristal ou paillettes argentées, candélabres en cristal, ronds de serviette argentés',
+      vaisselle: 'Porcelaine blanche à filet argent, verres en cristal Bohème, couverts argentés massifs',
+      ambiance: 'Lustres en cristal de Bohème, ambiance "palais de glace", beaucoup de cristal et de blanc, neige artificielle scintillante',
+      arche: 'Arche en cristal et branches givrées, roses blanches et anémones, drapés de mousseline blanche scintillante'
+    },
+    // ─── NATURE × 4 saisons ───
+    'nature-printemps': {
+      title: 'Décoration Nature de Printemps',
+      couleurs: ['Vert tendre', 'Blanc', 'Beige', 'Jaune doux'],
+      fleurs: 'Fleurs sauvages de saison (coquelicots, marguerites, anémones), branches de saule, fougères, primevères',
+      tables: 'Tables en bois brut, chemins de table en mousse fraîche, bougies dans des bocaux en verre, herbes aromatiques en pots',
+      vaisselle: 'Vaisselle artisanale céramique, verrerie simple, serviettes en lin écru, couverts en bois',
+      ambiance: 'Mariage en plein air, ambiance prairie en fleurs, papillons décoratifs, ballots de paille',
+      arche: 'Arche en branches naturelles, feuillage abondant, fleurs sauvages, voilage en gaze de coton'
+    },
+    'nature-ete': {
+      title: 'Décoration Nature Estivale',
+      couleurs: ['Vert sapin', 'Blanc', 'Jaune tournesol', 'Bois clair'],
+      fleurs: 'Tournesols, marguerites, lavande, herbes folles, fenouil sauvage, oliviers',
+      tables: 'Grandes tables en bois en U pour ambiance conviviale, chemins en lin naturel, fleurs sauvages dans des bouteilles dépareillées',
+      vaisselle: 'Vaisselle en grès brut, verres dépareillés, couverts en bois',
+      ambiance: 'Mariage champêtre dans un verger ou champ, guirlandes de loupiotes, tables en bois sur l\'herbe',
+      arche: 'Arche en bois brut couverte de feuillage abondant et tournesols, sans fleurs sophistiquées'
+    },
+    'nature-automne': {
+      title: 'Décoration Nature d\'Automne',
+      couleurs: ['Marron', 'Orange brûlé', 'Vert sapin', 'Bois'],
+      fleurs: 'Branches de sorbier (avec baies), chrysanthèmes, blé séché, branches d\'épines vinettes, feuilles d\'automne',
+      tables: 'Tables en bois, chemins en jute, citrouilles miniatures, pommes, châtaignes, mousse',
+      vaisselle: 'Vaisselle en grès terracotta, verres ambrés, couverts en bois',
+      ambiance: 'Mariage en grange ou forêt, beaucoup de bougies, ambiance "feu de cheminée", couvertures en laine pour les invités',
+      arche: 'Arche en branches mortes torsadées, feuilles d\'automne, citrouilles décoratives, blé'
+    },
+    'nature-hiver': {
+      title: 'Décoration Nature d\'Hiver',
+      couleurs: ['Vert sapin profond', 'Blanc', 'Bois sombre', 'Touches dorées'],
+      fleurs: 'Branches de sapin, houx, pommes de pin, baies rouges et blanches, eucalyptus',
+      tables: 'Tables en bois sombre, chemins en lin naturel, branches de sapin en décoration, oranges piquées de clous de girofle',
+      vaisselle: 'Vaisselle en céramique brute, verres en verre soufflé, couverts en bois ou cuivre',
+      ambiance: 'Cabane en bois en montagne, beaucoup de bougies, plaids en laine sur les chaises, vin chaud à l\'arrivée',
+      arche: 'Arche en branches de sapin, pommes de pin, baies rouges, ambiance "forêt enchantée d\'hiver"'
     }
   },
 
@@ -3699,10 +3779,10 @@ const ASSIST_KB = {
       {nom: 'Combinaison pantalon', desc: 'Pour mariées modernes / décontractées. Budget : 800-2500€.'}
     ],
     budget: {
-      'sous-1500': 'Boutiques en ligne (Asos, Bhldn), boutiques outlet, robes d\'occasion sur Vinted/Once Wed. Compter ~500-1500€.',
-      '1500-3000': 'Gamme moyenne : grandes enseignes (Pronovias, San Patrick, Cymbeline collection grand public). Excellent rapport qualité-prix.',
-      '3000-6000': 'Gamme premium : créateurs (Rosa Clara, Laure de Sagazan, Delphine Manivet). Robes sur mesure possibles.',
-      'plus-6000': 'Haute couture : Élie Saab, Vera Wang, Monique Lhuillier. Robe pièce unique.'
+      'sous-1500': 'Boutiques en ligne spécialisées, outlets, robes d\'occasion sur sites de seconde main. Compter ~500-1500€.',
+      '1500-3000': 'Gamme moyenne : enseignes spécialisées mariage, collections grand public. Excellent rapport qualité-prix.',
+      '3000-6000': 'Gamme premium : créateurs français et internationaux reconnus. Robes sur mesure possibles.',
+      'plus-6000': 'Haute couture : maisons de prestige internationales. Robe pièce unique.'
     }
   },
 
@@ -4034,7 +4114,7 @@ const ASSIST_KB = {
     'invitations': [
       'Envoyer le save-the-date 6 mois minimum à l\'avance pour qu\'ils puissent organiser leur voyage et hébergement.',
       'Dans le faire-part, inclure : adresse exacte du lieu, parking, transports, hôtels recommandés (3 options), planning détaillé du week-end (si plusieurs jours).',
-      'Créer un site mariage simple (sur Joy ou Wedshoots gratuits) avec toutes les infos pratiques : horaires, lieux, code vestimentaire, FAQ.',
+      'Créer un site mariage simple sur une plateforme gratuite avec toutes les infos pratiques : horaires, lieux, code vestimentaire, FAQ.',
       'Pour les invités étrangers : envoyer aussi une version anglaise du faire-part et des infos pratiques.'
     ],
     'attentions': [
@@ -4049,11 +4129,11 @@ const ASSIST_KB = {
   // ─── 22. LISTE DE MARIAGE / CAGNOTTE ──────────────────────────────────
   listeCadeaux: {
     'cagnotte-en-ligne': [
-      {nom: 'Mille-et-une-listes', desc: 'La plus complète : mix produits + voyage + projets. Gratuit pour le créateur, 3 % sur les contributions. Très utilisée en France.'},
-      {nom: 'Zankyou', desc: 'Site mariage + liste mariage tout-en-un. Gratuit. Pratique si vous voulez aussi un site mariage.'},
-      {nom: 'Joy', desc: 'Le plus tendance et moderne. Belle interface. Gratuit pour le couple, frais sur les contributions ~3 %.'},
-      {nom: 'Galeries Lafayette', desc: 'Liste traditionnelle de produits. Pas de frais, choix de cadeaux concrets. Pratique pour électroménager et arts de la table.'},
-      {nom: 'Habitat / IKEA / Maisons du Monde', desc: 'Listes mariage en magasin avec scanette. Très simple. Pratique pour aménagement et déco.'}
+      {nom: 'Cagnotte en ligne mixte', desc: 'Plateformes qui combinent produits + voyage + projets. Généralement gratuites pour le couple, prélèvent ~3 % sur les contributions. Pratique pour récolter pour un projet commun.'},
+      {nom: 'Site mariage tout-en-un', desc: 'Certaines plateformes combinent site mariage et liste cadeaux. Gratuit. Pratique si vous voulez aussi un site dédié pour informer vos invités.'},
+      {nom: 'Liste en grand magasin', desc: 'Liste traditionnelle de produits chez un grand magasin avec scanette. Pas de frais. Pratique pour électroménager et arts de la table.'},
+      {nom: 'Liste en magasin de décoration', desc: 'Listes mariage dans une enseigne d\'ameublement / décoration. Très simple. Pratique pour aménagement de votre futur foyer.'},
+      {nom: 'Cagnotte voyage spécialisée', desc: 'Plateformes dédiées au voyage de noces : les invités contribuent à une étape du voyage (vol, nuit d\'hôtel, excursion).'}
     ],
     'idees': [
       'Voyage de noces : la plus populaire. Précisez une destination ou laissez libre.',
@@ -4265,7 +4345,7 @@ const ASSIST_KB = {
   problemes: [
     {pb: 'Pluie le jour J', sol: 'Avoir un plan B en intérieur prêt. Acheter des parapluies blancs/transparents (jolies photos sous la pluie). Tente extérieure de secours. La pluie le jour du mariage porte bonheur !'},
     {pb: 'Témoin malade ou absent', sol: 'Identifier un remplaçant possible (ami proche). Pas grave si pas de discours préparé : un témoignage spontané est touchant.'},
-    {pb: 'Robe tachée juste avant la cérémonie', sol: 'Trousse de secours : lingettes nettoyantes textile (Vanish), bicarbonate, talc pour absorber graisses. Si grosse tache : voile/châle pour camoufler.'},
+    {pb: 'Robe tachée juste avant la cérémonie', sol: 'Trousse de secours : lingettes nettoyantes textile spécifiques, bicarbonate de soude, talc pour absorber graisses. Si grosse tache : voile/châle pour camoufler.'},
     {pb: 'Retard d\'un prestataire', sol: 'Avoir contact du prestataire et d\'un backup (DJ amateur ami, photographe ami). Réorganiser horaires (vin d\'honneur prolongé).'},
     {pb: 'Invité ivre / problématique', sol: 'Avoir 1-2 personnes "veilleuses" (témoin discret). Discrètement faire raccompagner. Ne pas en faire un drame le jour J.'},
     {pb: 'Bagarre familiale', sol: 'Préparer en amont : ne pas asseoir les conflits à la même table. Un témoin neutre arbitre en cas de tension.'},
@@ -4302,41 +4382,42 @@ function renderAssistant(){
   el('page-10').innerHTML = `
     <div class="card" style="padding:18px 16px;margin-bottom:16px;background:linear-gradient(135deg,${sf},#fff);">
       <h2 style="font-family:Playfair Display,Georgia,serif;font-size:22px;color:${tm};margin:0 0 6px;text-align:center;font-weight:700;">✨ Assistant Wedding Dream</h2>
-      <p style="text-align:center;font-size:12px;color:${tl};margin:0;font-style:italic;line-height:1.5;">Tous les conseils dont tu as besoin pour ton mariage, instantanément et sans connexion internet.</p>
+      <p style="text-align:center;font-size:12px;color:${tl};margin:0;font-style:italic;line-height:1.5;">Tous les conseils dont tu as besoin pour ton mariage.</p>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:16px;">
       ${[
-        {key:'menu',          label:'Menu repas',          icon:'🍽️', desc:'Menu adapté au style et à la saison'},
-        {key:'fairepart',     label:'Faire-part',           icon:'✉️', desc:'12 modèles prêts à utiliser'},
-        {key:'discours',      label:'Discours témoin',      icon:'🎤', desc:'Trames de discours complets'},
-        {key:'budget',        label:'Conseils budget',      icon:'💰', desc:'Répartition optimisée'},
-        {key:'timeline',      label:'Timeline jour J',      icon:'⏰', desc:'Planning heure par heure'},
-        {key:'decoration',    label:'Décoration mariage',   icon:'🎀', desc:'Inspiration selon style'},
-        {key:'weddingCake',   label:'Wedding cake',         icon:'🎂', desc:'Styles et inspirations'},
+        // Liste pré-triée alphabétiquement par label (français)
         {key:'animations',    label:'Animations soirée',    icon:'🎉', desc:'Idées pour égayer la fête'},
-        {key:'voyageNoces',   label:'Voyage de noces',      icon:'✈️', desc:'Idées de destinations'},
-        {key:'cadeauxInvites',label:'Cadeaux invités',      icon:'🎁', desc:'Selon votre budget'},
-        {key:'tenueMariee',   label:'Tenue mariée',         icon:'👰', desc:'Robes, styles, bijoux'},
-        {key:'tenueMarie',    label:'Tenue marié',          icon:'🤵', desc:'Costumes et accessoires'},
+        {key:'belleFamille',  label:'Belle-famille',        icon:'👨‍👩‍👧', desc:'Gérer les situations délicates'},
         {key:'bijouxMariee',  label:'Bijoux mariée',        icon:'💍', desc:'Selon robe et coiffure'},
+        {key:'cadeauxInvites',label:'Cadeaux invités',      icon:'🎁', desc:'Selon votre budget'},
+        {key:'checklistAvant',label:'Check 10min avant',    icon:'✅', desc:'Tout vérifier avant cérémonie'},
+        {key:'budget',        label:'Conseils budget',      icon:'💰', desc:'Répartition optimisée'},
+        {key:'weddingDay',    label:'Conseils jour J',      icon:'⭐', desc:'Pas-à-pas du jour J'},
+        {key:'decoration',    label:'Décoration mariage',   icon:'🎀', desc:'Inspiration selon style'},
+        {key:'discours',      label:'Discours témoin',      icon:'🎤', desc:'Trames de discours complets'},
+        {key:'enfants',       label:'Enfants au mariage',   icon:'🧒', desc:'Rôles et animations'},
+        {key:'fairepart',     label:'Faire-part',           icon:'✉️', desc:'12 modèles prêts à utiliser'},
+        {key:'stress',        label:'Gestion du stress',    icon:'🧘', desc:'Avant, pendant, après'},
+        {key:'problemes',     label:'Imprévus & solutions', icon:'🆘', desc:'Comment réagir'},
+        {key:'invitesLoin',   label:'Invités de loin',      icon:'🧳', desc:'Logement, attentions, infos'},
+        {key:'listeCadeaux',  label:'Liste / Cagnotte',     icon:'🎀', desc:'Sites, idées, conseils'},
+        {key:'menu',          label:'Menu repas',           icon:'🍽️', desc:'Menu adapté au style et à la saison'},
+        {key:'emotion',       label:'Moments-émotion',      icon:'💖', desc:'Instants à ne pas manquer'},
         {key:'musiqueCer',    label:'Musique cérémonie',    icon:'🎵', desc:'Playlists par moment'},
         {key:'photos',        label:'Photos à prévoir',     icon:'📸', desc:'Checklist photographe'},
-        {key:'stress',        label:'Gestion du stress',    icon:'🧘', desc:'Avant, pendant, après'},
-        {key:'belleFamille',  label:'Belle-famille',        icon:'👨‍👩‍👧', desc:'Gérer les situations délicates'},
-        {key:'questions',     label:'Questions prestataires',icon:'❓', desc:'Que demander à chacun'},
-        {key:'voeux',         label:'Vœux personnalisés',   icon:'💞', desc:'Modèles de vœux à adapter'},
-        {key:'remerciements', label:'Remerciements',         icon:'💌', desc:'Cartes post-mariage'},
-        {key:'invitesLoin',   label:'Invités de loin',       icon:'🧳', desc:'Logement, attentions, infos'},
-        {key:'listeCadeaux',  label:'Liste / Cagnotte',      icon:'🎀', desc:'Sites, idées, conseils'},
-        {key:'prepCivile',    label:'Préparation civile',    icon:'🏛️', desc:'Documents, étapes mairie'},
+        {key:'playlistAmbi',  label:'Playlist par ambiance',icon:'🎶', desc:'Pour chaque moment et style'},
+        {key:'prepCivile',    label:'Préparation civile',   icon:'🏛️', desc:'Documents, étapes mairie'},
         {key:'prepReligieuse',label:'Préparation religieuse',icon:'⛪', desc:'Selon la religion'},
-        {key:'weddingDay',    label:'Conseils jour J',       icon:'⭐', desc:'Pas-à-pas du jour J'},
-        {key:'enfants',       label:'Enfants au mariage',    icon:'🧒', desc:'Rôles et animations'},
-        {key:'traditions',    label:'Traditions régionales', icon:'🗺️', desc:'France par région'},
-        {key:'emotion',       label:'Moments-émotion',       icon:'💖', desc:'Instants à ne pas manquer'},
-        {key:'problemes',     label:'Imprévus & solutions',  icon:'🆘', desc:'Comment réagir'},
-        {key:'checklistAvant',label:'Check 10min avant',     icon:'✅', desc:'Tout vérifier avant cérémonie'}
+        {key:'questions',     label:'Questions prestataires',icon:'❓', desc:'Que demander à chacun'},
+        {key:'remerciements', label:'Remerciements',        icon:'💌', desc:'Cartes post-mariage'},
+        {key:'tenueMariee',   label:'Tenue mariée',         icon:'👰', desc:'Robes, styles, bijoux'},
+        {key:'tenueMarie',    label:'Tenue marié',          icon:'🤵', desc:'Costumes et accessoires'},
+        {key:'timeline',      label:'Timeline jour J',      icon:'⏰', desc:'Planning heure par heure'},
+        {key:'voeux',         label:'Vœux personnalisés',   icon:'💞', desc:'Modèles de vœux à adapter'},
+        {key:'voyageNoces',   label:'Voyage de noces',      icon:'✈️', desc:'Idées de destinations'},
+        {key:'weddingCake',   label:'Wedding cake',         icon:'🎂', desc:'Styles et inspirations'}
       ].map(s=>`<button onclick="assistOpen('${s.key}')" class="card" style="padding:14px 12px;border:1.5px solid ${br};text-align:left;cursor:pointer;background:#fff;font-family:Lora,serif;transition:all .15s;">
         <div style="font-size:26px;margin-bottom:6px;">${s.icon}</div>
         <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:3px;">${s.label}</div>
@@ -4345,8 +4426,6 @@ function renderAssistant(){
     </div>
 
     <div id="assist-content" style="margin-top:8px;"></div>
-
-    <p style="text-align:center;font-size:11px;color:${tl};font-style:italic;margin-top:18px;">💡 Tous les conseils sont basés sur les meilleures pratiques des wedding planners. Pour les inspirations visuelles, des liens Pinterest sont fournis (légal et gratuit).</p>
   `;
 }
 
@@ -4383,6 +4462,7 @@ function assistOpen(service){
   if(service === 'weddingDay')     return assistWeddingDay(cont);
   if(service === 'enfants')        return assistEnfants(cont);
   if(service === 'traditions')     return assistTraditions(cont);
+  if(service === 'playlistAmbi')   return assistPlaylistAmbi(cont);
   if(service === 'emotion')        return assistEmotion(cont);
   if(service === 'problemes')      return assistProblemes(cont);
   if(service === 'checklistAvant') return assistChecklistAvant(cont);
@@ -4511,6 +4591,156 @@ function assistGenerateMenu(){
   // Construire les adaptations restrictions
   const adaptations = restrictions.map(r => ASSIST_KB.restrictions[r]);
 
+  // ─── ADAPTATION DU MENU AU BUDGET ───
+  // Si budget économique : on remplace les produits luxueux (Saint-Jacques, foie gras,
+  // homard, caviar, ris de veau, truffe, agneau, turbot) par des alternatives accessibles.
+  // Si budget premium/luxe : on garde tout, ou on AMÉLIORE.
+  function adaptByBudget(menu, budgetKey) {
+    let m = JSON.parse(JSON.stringify(menu)); // clone
+    if (budgetKey === 'eco') {
+      // Remplacements pour budget économique
+      const repl = [
+        // Produits luxueux → alternatives plus accessibles
+        [/Saint-Jacques/gi, 'noix de Saint-Jacques de petite taille (ou crevettes roses si hors budget)'],
+        [/foie gras (mi-cuit|au pain d'épices|aux figues)?/gi, 'terrine de campagne maison'],
+        [/homard breton|homard/gi, 'grosses crevettes roses'],
+        [/caviar Osciètre|caviar/gi, 'œufs de saumon ou de truite'],
+        [/ris de veau croustillant|ris de veau/gi, 'champignons sautés au beurre persillé'],
+        [/truffe noire du Périgord|truffes? noires?|truffé/gi, 'huile parfumée aux herbes fraîches'],
+        [/filet d'agneau de printemps en croûte d'herbes/gi, 'gigot d\'agneau aux herbes (épaule plus économique)'],
+        [/filet de turbot aux morilles et beurre Champagne/gi, 'pavé de cabillaud sauce blanche aux herbes'],
+        [/Filet de bœuf Wellington/gi, 'rôti de bœuf en croûte'],
+        [/bœuf Wagyu|bœuf Rossini/gi, 'bavette ou onglet de bœuf snacké'],
+        [/turbot/gi, 'cabillaud ou colin'],
+        [/orchidées blanches/gi, 'fleurs blanches de saison'],
+        [/Champagne (Ruinart Blanc de Blancs|millésimé|brut nature aux mirabelles)/gi, 'Crémant de Loire ou de Bourgogne'],
+        [/Meursault premier cru/gi, 'Mâcon-Villages blanc'],
+        [/Pomerol|Saint-Émilion/gi, 'Bordeaux Supérieur'],
+        [/Sancerre blanc/gi, 'Touraine Sauvignon blanc'],
+        [/Chassagne-Montrachet/gi, 'Mâcon-Villages blanc'],
+        [/Sauternes/gi, 'Monbazillac'],
+        [/Pavlova aux fruits rouges/gi, 'salade de fruits rouges au sirop'],
+        [/Royal chocolat-noisette/gi, 'tarte au chocolat'],
+        [/Fraisier revisité/gi, 'fraisier classique']
+      ];
+      const apply = (s) => repl.reduce((acc, [r, t]) => acc.replace(r, t), s);
+      m.entree = apply(m.entree);
+      m.plat = apply(m.plat);
+      m.fromage = apply(m.fromage);
+      m.dessert = apply(m.dessert);
+      m.cocktail = m.cocktail.map(apply);
+    } else if (budgetKey === 'standard') {
+      // Standard : retirer le caviar et la truffe noire mais garder le foie gras
+      const repl = [
+        [/caviar Osciètre|caviar/gi, 'œufs de saumon ou tarama maison'],
+        [/truffe noire du Périgord/gi, 'huile de truffe (en touche)'],
+        [/bœuf Wagyu/gi, 'filet de bœuf']
+      ];
+      const apply = (s) => repl.reduce((acc, [r, t]) => acc.replace(r, t), s);
+      m.entree = apply(m.entree);
+      m.plat = apply(m.plat);
+      m.cocktail = m.cocktail.map(apply);
+    }
+    // premium et luxe : on garde le menu tel quel (les produits luxueux sont OK)
+    return m;
+  }
+  const adaptedMenu = adaptByBudget(menu, budget);
+
+  // ─── ADAPTATION DU MENU AUX RESTRICTIONS ALIMENTAIRES ───
+  // Si des restrictions sont cochées, on remplace certains éléments pour proposer
+  // une vraie alternative dans le menu principal (ou on signale clairement).
+  function adaptByRestrictions(menu, restrictionsList) {
+    let m = JSON.parse(JSON.stringify(menu));
+    const hasVegan = restrictionsList.includes('vegan');
+    const hasVeg = restrictionsList.includes('vegetarien');
+    const hasHalal = restrictionsList.includes('halal');
+    const hasCasher = restrictionsList.includes('casher');
+    const hasGluten = restrictionsList.includes('sansgluten');
+    const hasLactose = restrictionsList.includes('sanslactose');
+    const hasNoix = restrictionsList.includes('allergie-noix');
+
+    // Helper qui retire les viandes/poissons/produits animaux
+    const noViande = (s) => s
+      .replace(/agneau|bœuf|veau|porc|pintade|volaille|canard|pigeon|chevreuil|lapin/gi, 'légumes-racines rôtis (panais, carotte, betterave)')
+      .replace(/jambon|lardons|charcuterie|magret/gi, 'tomates séchées')
+      .replace(/Saint-Jacques|cabillaud|turbot|loup|daurade|saumon|sole|colin|poisson/gi, 'tofu fumé');
+
+    const noFromage = (s) => s
+      .replace(/chèvre|brie|comté|époisses|beaufort|brillat-savarin|crottin|mozzarella|burrata|parmesan|feta|ricotta|roquefort|camembert/gi, 'fromage végétal (cajou ou amande)')
+      .replace(/Plateau de fromages[^\.]*|Sélection de fromages[^\.]*|Plateau[^\.]*fromage[^\.]*/gi, 'Plateau de fromages végétaux artisanaux');
+
+    const noOeuf = (s) => s
+      .replace(/œuf parfait|œufs de saumon/gi, 'crème végétale')
+      .replace(/Pavlova/gi, 'Salade de fruits frais')
+      .replace(/meringue/gi, 'crème végétale')
+      .replace(/mayonnaise/gi, 'sauce végétale');
+
+    const noPorc = (s) => s
+      .replace(/jambon (cru|de Parme|ibérique|fumé)/gi, 'bœuf séché ou viande halal'  )
+      .replace(/lardons/gi, 'allumettes de bœuf séché')
+      .replace(/charcuterie/gi, 'charcuterie de bœuf');
+
+    const noGluten = (s) => s
+      .replace(/croûte d'herbes/gi, 'crumble sans gluten')
+      .replace(/en croûte feuilletée|wellington/gi, 'rôti aux herbes')
+      .replace(/blinis|toasts|tartelettes|mini-feuilletés|crackers|bagels|wraps|pain|pain perdu/gi, 'verrines')
+      .replace(/pâtes|risotto d'orge|orge perlé/gi, 'riz')
+      .replace(/feuilleté/gi, 'verrine');
+
+    const noLactose = (s) => s
+      .replace(/crème (vanille|mousseline|fraîche|au beurre|chantilly)|beurre noisette|beurre demi-sel|au beurre|mascarpone/gi, 'crème végétale')
+      .replace(/mozzarella|burrata|ricotta|fromage frais/gi, 'tofu soyeux');
+
+    const noNoix = (s) => s
+      .replace(/noisettes? torréfiées?|praliné|amandes?|noix de [a-z]+|noisette/gi, 'graines de courge ou tournesol');
+
+    if (hasVegan) {
+      m.entree = noOeuf(noFromage(noViande(m.entree)));
+      m.plat = noOeuf(noFromage(noViande(m.plat)));
+      m.fromage = 'Plateau de fromages végétaux (cajou, amande, tofu mariné) accompagné de fruits secs et confitures';
+      m.dessert = noOeuf(noFromage(m.dessert)) + ' (version vegan : crème de coco)';
+      m.cocktail = m.cocktail.map(b => noOeuf(noFromage(noViande(b))));
+    } else if (hasVeg) {
+      m.entree = noViande(m.entree);
+      m.plat = noViande(m.plat);
+      m.cocktail = m.cocktail.map(b => noViande(b));
+    }
+    if (hasHalal) {
+      m.entree = noPorc(m.entree);
+      m.plat = noPorc(m.plat);
+      m.cocktail = m.cocktail.map(b => noPorc(b));
+    }
+    if (hasCasher) {
+      m.entree = noPorc(m.entree).replace(/Saint-Jacques|crevettes|homard|fruits de mer/gi, 'poisson casher');
+      m.plat = noPorc(m.plat).replace(/Saint-Jacques|crevettes|homard|fruits de mer/gi, 'poisson casher');
+      m.cocktail = m.cocktail.map(b => noPorc(b).replace(/Saint-Jacques|crevettes|homard|fruits de mer/gi, 'poisson casher'));
+    }
+    if (hasGluten) {
+      m.entree = noGluten(m.entree);
+      m.plat = noGluten(m.plat);
+      m.dessert = noGluten(m.dessert);
+      m.cocktail = m.cocktail.map(b => noGluten(b));
+    }
+    if (hasLactose) {
+      m.entree = noLactose(m.entree);
+      m.plat = noLactose(m.plat);
+      m.fromage = 'À sauter ou alternative : sorbet ou crudités';
+      m.dessert = noLactose(m.dessert);
+      m.cocktail = m.cocktail.map(b => noLactose(b));
+    }
+    if (hasNoix) {
+      m.entree = noNoix(m.entree);
+      m.plat = noNoix(m.plat);
+      m.dessert = noNoix(m.dessert);
+      m.cocktail = m.cocktail.map(b => noNoix(b));
+    }
+    return m;
+  }
+  const finalMenu = adaptByRestrictions(adaptedMenu, restrictions);
+  // Réutiliser le menu final transformé pour le reste de la génération
+  menu.title = adaptedMenu.title; // (le titre reste inchangé)
+  const cocktailListFinal = finalMenu.cocktail.slice(0, nbBouchees);
+
   // Format-specific notes
   const formatNotes = {
     'assiette': 'Service à l\'assiette : repas servi à chaque convive par les serveurs. Format chic et élégant. Compter 4-5 serveurs pour 50 invités.',
@@ -4531,13 +4761,13 @@ function assistGenerateMenu(){
       <div style="margin-bottom:14px;">
         <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">🥂 Vin d'honneur — ${nbBouchees} bouchées par personne</div>
         <div style="font-size:11px;color:${tl};margin-bottom:6px;font-style:italic;">Total à prévoir : ${totalBouchees} bouchées pour ${invites} invités</div>
-        <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.7;">${cocktailList.map(c=>`<li>${h(c)}</li>`).join('')}</ul>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.7;">${cocktailListFinal.map(c=>`<li>${h(c)}</li>`).join('')}</ul>
       </div>
 
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Entrée</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.entree)}</div></div>
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Plat principal</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.plat)}</div></div>
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Fromage</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.fromage)}</div></div>
-      <div style="margin-bottom:14px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Dessert</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(menu.dessert)}</div></div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Entrée</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(finalMenu.entree)}</div></div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Plat principal</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(finalMenu.plat)}</div></div>
+      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Fromage</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(finalMenu.fromage)}</div></div>
+      <div style="margin-bottom:14px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Dessert</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(finalMenu.dessert)}</div></div>
 
       <div style="background:linear-gradient(135deg,#fff8ec,#fef5e0);padding:12px;border-radius:10px;margin-bottom:12px;border:1px solid ${gd}40;">
         <div style="font-size:11px;font-weight:700;color:${gd};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🍷 ${h(boissonsInfo.title)}</div>
@@ -4896,7 +5126,7 @@ function assistAnimations(cont){
         ${[
           {k:'classique',l:'Classiques'},{k:'fun',l:'Fun & originales'},
           {k:'surprise',l:'Surprises'},{k:'enfants',l:'Pour enfants'}
-        ].map(c=>`<button onclick="sv('assist_anim_cat','${c.k}');assistRenderAnim();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
+        ].map(c=>`<button onclick="sv('assist_anim_cat','${c.k}');assistAnimations(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
       </div>
       <div id="anim-result"></div>
     </div>
@@ -4925,7 +5155,7 @@ function assistVoyageNoces(cont){
         ${[
           {k:'plage',l:'🏖️ Plage'},{k:'culture',l:'🏛️ Culture'},
           {k:'aventure',l:'⛰️ Aventure'},{k:'romantique-europe',l:'💕 Europe romantique'}
-        ].map(c=>`<button onclick="sv('assist_voyage_cat','${c.k}');assistRenderVoyage();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
+        ].map(c=>`<button onclick="sv('assist_voyage_cat','${c.k}');assistVoyageNoces(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
       </div>
       <div id="voyage-result"></div>
     </div>
@@ -4952,7 +5182,7 @@ function assistCadeauxInvites(cont){
           {k:'petit-budget',l:'Petit budget (1-3€)'},
           {k:'moyen-budget',l:'Moyen budget (3-8€)'},
           {k:'gros-budget',l:'Gros budget (8-20€)'}
-        ].map(c=>`<button onclick="sv('assist_cadeau_cat','${c.k}');assistRenderCadeau();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
+        ].map(c=>`<button onclick="sv('assist_cadeau_cat','${c.k}');assistCadeauxInvites(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
       </div>
       <div id="cadeau-result"></div>
     </div>
@@ -5137,7 +5367,7 @@ function assistStress(cont){
     <div class="card" style="padding:16px;">
       <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🧘 Gestion du stress</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
-        ${cats.map(c=>`<button onclick="sv('assist_stress_cat','${c.k}');assistRenderStress();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
+        ${cats.map(c=>`<button onclick="sv('assist_stress_cat','${c.k}');assistStress(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===c.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${c.l}</button>`).join('')}
       </div>
       <div id="stress-result"></div>
     </div>
@@ -5353,7 +5583,7 @@ function assistPrepReligieuse(cont){
   cont.innerHTML = `<div class="card" style="padding:16px;">
     <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">⛪ Préparation religieuse</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
-      ${types.map(t=>`<button onclick="sv('assist_religion','${t.k}');assistRenderReligion();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===t.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${t.l}</button>`).join('')}
+      ${types.map(t=>`<button onclick="sv('assist_religion','${t.k}');assistPrepReligieuse(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===t.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${t.l}</button>`).join('')}
     </div>
     <div id="religion-result"></div>
   </div>`;
@@ -5380,7 +5610,7 @@ function assistWeddingDay(cont){
   cont.innerHTML = `<div class="card" style="padding:16px;">
     <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">⭐ Conseils du jour J</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
-      ${phases.map(p=>`<button onclick="sv('assist_wday_phase','${p.k}');assistRenderWday();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===p.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${p.l}</button>`).join('')}
+      ${phases.map(p=>`<button onclick="sv('assist_wday_phase','${p.k}');assistWeddingDay(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===p.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${p.l}</button>`).join('')}
     </div>
     <div id="wday-result"></div>
   </div>`;
@@ -5433,7 +5663,7 @@ function assistTraditions(cont){
   cont.innerHTML = `<div class="card" style="padding:16px;">
     <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🗺️ Traditions régionales</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
-      ${regions.map(r=>`<button onclick="sv('assist_region','${r.k}');assistRenderRegion();" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===r.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${r.l}</button>`).join('')}
+      ${regions.map(r=>`<button onclick="sv('assist_region','${r.k}');assistTraditions(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===r.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${r.l}</button>`).join('')}
     </div>
     <div id="region-result"></div>
   </div>`;
@@ -5488,6 +5718,166 @@ function assistChecklistAvant(cont){
     </label>`).join('')}
     <div style="margin-top:16px;text-align:center;padding:14px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border-radius:12px;border:1px solid ${gd}40;font-family:Playfair Display,serif;font-style:italic;color:${tm};font-size:14px;">
       ✨ Profite de cet instant. Tout est prêt.
+    </div>
+  </div>`;
+}
+
+// ─── SERVICE : PLAYLIST PAR AMBIANCE ───
+// Playlists complètes (20 titres) pour chaque moment + ambiance du mariage.
+// Reste 100 % textuel (pas de lecteur intégré, on cite juste les titres).
+const PLAYLIST_KB = {
+  'cocktail-chill': {
+    title: 'Cocktail / Vin d\'honneur — Chill & Élégant',
+    desc: 'Ambiance feutrée, lounge, parfaite pour les discussions',
+    tracks: [
+      'Sade — Smooth Operator', 'Nora Jones — Don\'t Know Why', 'Jamie Cullum — These Are the Days',
+      'Stacey Kent — The Boy Next Door', 'Diana Krall — The Look of Love', 'Michael Bublé — Feeling Good',
+      'Madeleine Peyroux — Dance Me to the End of Love', 'Jamie Cullum — All at Sea',
+      'Caro Emerald — Back It Up', 'Carla Bruni — Quelqu\'un m\'a dit',
+      'Norah Jones — Come Away with Me', 'Frank Sinatra — Fly Me to the Moon',
+      'Ella Fitzgerald — Cheek to Cheek', 'Stan Getz & João Gilberto — The Girl from Ipanema',
+      'Astrud Gilberto — Águas de Março', 'Bossanostra — Café del Mar (cover)',
+      'Bebel Gilberto — So Nice', 'Henri Salvador — Jardin d\'hiver',
+      'Pink Martini — Sympathique', 'Caravan Palace — Lone Digger (version lounge)'
+    ]
+  },
+  'cocktail-festif': {
+    title: 'Cocktail / Vin d\'honneur — Festif',
+    desc: 'Ambiance entraînante, pop, parfait pour mettre tout le monde de bonne humeur',
+    tracks: [
+      'Justin Timberlake — Can\'t Stop the Feeling', 'Pharrell Williams — Happy',
+      'Bruno Mars — Marry You', 'Earth Wind & Fire — September',
+      'Stevie Wonder — Signed Sealed Delivered', 'Bill Withers — Lovely Day',
+      'Walk the Moon — Shut Up and Dance', 'Daft Punk — Get Lucky',
+      'Michael Jackson — Don\'t Stop \'Til You Get Enough', 'Lizzo — Good as Hell',
+      'Pharrell Williams — Get Lucky (version live)', 'Beyoncé — Love On Top',
+      'Sister Sledge — We Are Family', 'Cyndi Lauper — Girls Just Want to Have Fun',
+      'Whitney Houston — I Wanna Dance with Somebody', 'Maroon 5 — Sugar',
+      'Edwin Starr — War', 'Mark Ronson ft. Bruno Mars — Uptown Funk',
+      'The Weeknd — Can\'t Feel My Face', 'Doja Cat — Say So'
+    ]
+  },
+  'diner': {
+    title: 'Dîner — Ambiance feutrée',
+    desc: 'Discussion en table, douceur, classes',
+    tracks: [
+      'Coldplay — Sky Full of Stars', 'Ed Sheeran — Perfect', 'Norah Jones — Sunrise',
+      'John Mayer — Gravity', 'Michael Bublé — Home', 'Adele — Make You Feel My Love',
+      'James Bay — Let It Go', 'Birdy — Skinny Love', 'Ed Sheeran — Thinking Out Loud',
+      'James Blunt — You\'re Beautiful', 'Lewis Capaldi — Someone You Loved',
+      'Sam Smith — Stay With Me', 'Calum Scott — You Are the Reason',
+      'Christina Perri — A Thousand Years', 'John Legend — All of Me',
+      'Ben Platt — Grow As We Go', 'Maroon 5 — She Will Be Loved',
+      'Ed Sheeran — Photograph', 'Tracy Chapman — Fast Car', 'James Bay — Hold Back the River'
+    ]
+  },
+  'ouverture-bal': {
+    title: 'Ouverture de bal — Première danse',
+    desc: '20 grands classiques pour votre première danse en couple',
+    tracks: [
+      'At Last — Etta James', 'Thinking Out Loud — Ed Sheeran', 'All of Me — John Legend',
+      'Perfect — Ed Sheeran', 'You Are the Best Thing — Ray LaMontagne',
+      'L-O-V-E — Nat King Cole', 'La Vie en Rose — Édith Piaf',
+      'Can\'t Help Falling in Love — Elvis Presley', 'Make You Feel My Love — Adele',
+      'A Thousand Years — Christina Perri', 'Marry Me — Train',
+      'Better Together — Jack Johnson', 'I\'m Yours — Jason Mraz',
+      'I Won\'t Give Up — Jason Mraz', 'Stand By Me — Ben E. King',
+      'How Long Will I Love You — Ellie Goulding', 'You Make My Dreams — Hall & Oates',
+      'Marvin Gaye — Let\'s Get It On', 'Crazy Love — Michael Bublé',
+      'Lucky — Jason Mraz & Colbie Caillat'
+    ]
+  },
+  'soiree-dancefloor': {
+    title: 'Soirée — Dancefloor déchaîné',
+    desc: 'Pour faire danser tout le monde jusqu\'au bout de la nuit',
+    tracks: [
+      'Mark Ronson — Uptown Funk', 'Queen — Don\'t Stop Me Now',
+      'ABBA — Dancing Queen', 'Daft Punk — Around the World',
+      'Sister Sledge — He\'s the Greatest Dancer', 'Earth Wind & Fire — Boogie Wonderland',
+      'Donna Summer — Hot Stuff', 'The Killers — Mr. Brightside',
+      'Black Eyed Peas — I Gotta Feeling', 'Bruno Mars — 24K Magic',
+      'Outkast — Hey Ya!', 'Beyoncé — Crazy in Love',
+      'Michael Jackson — Billie Jean', 'Lady Gaga — Bad Romance',
+      'Pitbull ft. Ne-Yo — Time of Our Lives', 'Madonna — Like a Prayer',
+      'Whitney Houston — I Wanna Dance with Somebody', 'Bonnie Tyler — Total Eclipse of the Heart',
+      'Robbie Williams — Rock DJ', 'AC/DC — You Shook Me All Night Long'
+    ]
+  },
+  'soiree-annees80': {
+    title: 'Soirée — Spéciale années 80',
+    desc: 'Pour la génération de tes parents et grands enfants',
+    tracks: [
+      'Michael Jackson — Thriller', 'Whitney Houston — I Wanna Dance with Somebody',
+      'A-ha — Take On Me', 'Cyndi Lauper — Girls Just Want to Have Fun',
+      'Madonna — Like a Virgin', 'Wham! — Wake Me Up Before You Go-Go',
+      'Tina Turner — What\'s Love Got to Do with It', 'Bonnie Tyler — Total Eclipse of the Heart',
+      'Toto — Africa', 'Journey — Don\'t Stop Believin\'',
+      'Prince — Kiss', 'Indochine — L\'Aventurier',
+      'France Gall — Résiste', 'Téléphone — Cendrillon',
+      'Téléphone — Ça (c\'est vraiment toi)', 'Les Rita Mitsouko — Marcia Baïla',
+      'Niagara — J\'ai vu', 'Mylène Farmer — Libertine',
+      'Etienne Daho — Week-end à Rome', 'Dépêche Mode — Just Can\'t Get Enough'
+    ]
+  },
+  'soiree-francaise': {
+    title: 'Soirée — Spéciale française',
+    desc: 'Variété française pour faire chanter tout le monde',
+    tracks: [
+      'Stromae — Alors on danse', 'Indila — Dernière danse',
+      'Christine and the Queens — Christine', 'Maître Gims — Sapés comme jamais',
+      'Aya Nakamura — Djadja', 'Angèle — Balance ton quoi',
+      'Jul — Wesh alors', 'Bigflo & Oli — Dommage',
+      'Patrick Bruel — Casser la voix', 'Francis Cabrel — Octobre',
+      'Goldman — Quand la musique est bonne', 'Mylène Farmer — Désenchantée',
+      'Daniel Balavoine — Le chanteur', 'Renaud — Mistral Gagnant',
+      'Charles Aznavour — La Bohème', 'Jacques Brel — Ne me quitte pas',
+      'Edith Piaf — Non, je ne regrette rien', 'Joe Dassin — Les Champs-Élysées',
+      'Michel Sardou — La Maladie d\'amour', 'Claude François — Alexandrie Alexandra'
+    ]
+  },
+  'fin-soiree': {
+    title: 'Fin de soirée — Slow et émotion',
+    desc: 'Pour clôturer la soirée en douceur',
+    tracks: [
+      'Coldplay — Yellow', 'Coldplay — Fix You', 'Adele — Someone Like You',
+      'Sam Smith — Stay With Me', 'Lewis Capaldi — Someone You Loved',
+      'Etta James — At Last', 'Norah Jones — Come Away with Me',
+      'Édith Piaf — La Vie en Rose', 'Frank Sinatra — My Way',
+      'Louis Armstrong — What a Wonderful World', 'Bill Withers — Lean on Me',
+      'James Brown — It\'s a Man\'s Man\'s Man\'s World', 'Otis Redding — These Arms of Mine',
+      'Aretha Franklin — Natural Woman', 'Tracy Chapman — Talkin\' Bout a Revolution',
+      'John Lennon — Imagine', 'The Beatles — Let It Be',
+      'Simon & Garfunkel — Bridge Over Troubled Water', 'Bob Dylan — Make You Feel My Love',
+      'Ed Sheeran — Photograph'
+    ]
+  }
+};
+
+function assistPlaylistAmbi(cont){
+  const saved = ld('assist_playlist_moment','cocktail-chill');
+  const moments = [
+    {k:'cocktail-chill',l:'🥂 Cocktail Chill'},
+    {k:'cocktail-festif',l:'🎉 Cocktail Festif'},
+    {k:'diner',l:'🍽️ Dîner feutré'},
+    {k:'ouverture-bal',l:'💃 Ouverture de bal'},
+    {k:'soiree-dancefloor',l:'🪩 Dancefloor'},
+    {k:'soiree-annees80',l:'🕺 Années 80'},
+    {k:'soiree-francaise',l:'🇫🇷 Française'},
+    {k:'fin-soiree',l:'🌙 Fin de soirée'}
+  ];
+  const list = PLAYLIST_KB[saved] || PLAYLIST_KB['cocktail-chill'];
+  cont.innerHTML = `<div class="card" style="padding:16px;">
+    <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎶 Playlist par ambiance</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+      ${moments.map(m=>`<button onclick="sv('assist_playlist_moment','${m.k}');assistPlaylistAmbi(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===m.k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${m.l}</button>`).join('')}
+    </div>
+    <div style="font-family:Playfair Display,serif;font-style:italic;font-size:16px;color:${tm};text-align:center;margin-bottom:4px;">${h(list.title)}</div>
+    <div style="text-align:center;font-size:11px;color:${tl};font-style:italic;margin-bottom:14px;">${h(list.desc)}</div>
+    <ol style="margin:0;padding-left:24px;font-size:13px;color:${tx};line-height:1.9;">
+      ${list.tracks.map(t=>`<li>${h(t)}</li>`).join('')}
+    </ol>
+    <div style="margin-top:14px;padding:10px 12px;background:${sf};border-radius:8px;font-size:11px;color:${tm};font-style:italic;">
+      💡 Donne cette playlist à ton DJ ou crée la directement dans ton application de musique préférée.
     </div>
   </div>`;
 }
