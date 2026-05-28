@@ -213,7 +213,6 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
     <div class="page" id="page-7"></div>
     <div class="page" id="page-8"></div>
     <div class="page" id="page-9"></div>
-    <div class="page" id="page-10"></div>
   </div>
 </div>
 
@@ -649,7 +648,7 @@ window.appModal = appModal;
 let USER=null, cdInt=null, currentTab=0;
 let TASKS=[], BUDGET=[], GUESTS=[], TABLES=[], VENDORS_FAV=[], VENDORS_CHO=[], ALBUM=[], NOTES='', MENU=[];
 let seatPicker=null, lbPhotoId=null;
-const TABS=["Checklist","Budget","Invités","Plan de table","Prestataires","Menu & quantités","Décorations","Wedding cake","Album","Notes","Assistant"];
+const TABS=["Checklist","Budget","Invités","Plan de table","Prestataires","Menu & quantités","Décorations","Assistant","Album","Notes"];
 const ROLES=["Invité·e","Demoiselle d'honneur","Garçon d'honneur","Témoin"];
 const REGIMES=["Aucun","Végétarien","Vegan","Sans gluten","Sans lactose","Halal","Sans porc","Sans fruits à coque et arachides","Sans poisson","Sans alcool"];
 function editGuestRegimes(id){
@@ -1225,10 +1224,9 @@ function renderTab(i){
   else if(i===4)renderVendors();
   else if(i===5)renderMenu();
   else if(i===6)renderDecorations();
-  else if(i===7)renderCake();
+  else if(i===7)renderAssistant();
   else if(i===8)renderAlbum();
   else if(i===9)renderNotes();
-  else if(i===10)renderAssistant();
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
@@ -1630,6 +1628,7 @@ function renderTablePlan(){
       <button id="tp-shape-square" onclick="setTpShape(\'square\')" style="background:#fff;color:#b07a90;border:1.5px solid #f5d5e0;border-radius:9px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:Lora,serif;">■ Carrée</button>
     </div>
     <button class="btn" onclick="addTable()">+ Table</button>
+    <button class="btn" onclick="openAutoPlaceModal()" style="background:linear-gradient(135deg,#c9a84c,#a8872e);">✨ Placement auto</button>
     <div style="display:flex;gap:6px;margin-left:auto;">
       <button onclick="tpZoom(0.2)" style="background:#fff;border:1.5px solid ${br};border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:18px;font-weight:700;color:${pk};">+</button>
       <button onclick="tpZoom(-0.2)" style="background:#fff;border:1.5px solid ${br};border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:18px;font-weight:700;color:${pk};">-</button>
@@ -1813,6 +1812,217 @@ function addTableEl(table){
 }
 function addTable(){TABLES.push({id:Date.now(),nom:`Table ${TABLES.length+1}`,shape:window.tpSelectedShape||'round',seats:8,x:80+Math.random()*150,y:80+Math.random()*80,hiddenSeats:[]});saveTables();renderTablePlan();}
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PLACEMENT AUTOMATIQUE DES INVITÉS
+// Algorithme maison (sans IA externe) :
+//  - Place les invités confirmés sur les chaises disponibles
+//  - Respecte les INCOMPATIBILITÉS : 2 invités "qui ne s'aiment pas" ne seront
+//    jamais placés à la même table
+//  - Garde de préférence les invités d'un même côté (p1/p2) ensemble
+//  - Garde de préférence les couples / membres d'une même famille ensemble
+// Les incompatibilités sont stockées dans INCOMPAT (tableau de paires d'ids).
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getIncompat(){ return ld('incompat_'+USER.email, []); }
+function saveIncompat(list){ sv('incompat_'+USER.email, list); }
+
+function openAutoPlaceModal(){
+  const conf = GUESTS.filter(g => g.presence === 'confirmée');
+  if(conf.length === 0){
+    appAlert('Aucun invité confirmé à placer. Ajoute d\'abord des invités avec présence "Confirmée".', 'Placement auto');
+    return;
+  }
+  const totalSeats = TABLES.reduce((sum,t)=>sum + (Math.min(t.seats,12) - (t.hiddenSeats||[]).length), 0);
+  if(TABLES.length === 0){
+    appAlert('Crée d\'abord au moins une table avec le bouton "+ Table".', 'Placement auto');
+    return;
+  }
+
+  const incompat = getIncompat();
+
+  let root = document.getElementById('app-modal-root');
+  if(!root){
+    root = document.createElement('div');
+    root.id = 'app-modal-root';
+    root.style.cssText = 'position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(45,10,24,0.55);backdrop-filter:blur(6px);padding:18px;';
+    document.body.appendChild(root);
+  }
+  root.innerHTML = `
+    <div style="background:#fff;border-radius:18px;max-width:440px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(154,40,72,0.35);overflow:hidden;">
+      <div style="background:linear-gradient(135deg,${gd},${am});padding:14px 18px;color:#fff;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">✨</span>
+        <div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:700;flex:1;">Placement automatique</div>
+      </div>
+      <div style="overflow-y:auto;padding:16px;flex:1;">
+        <div style="font-size:13px;color:${tx};line-height:1.6;margin-bottom:14px;">
+          ${conf.length} invité${conf.length>1?'s':''} confirmé${conf.length>1?'s':''} · ${totalSeats} place${totalSeats>1?'s':''} disponible${totalSeats>1?'s':''} sur ${TABLES.length} table${TABLES.length>1?'s':''}.
+        </div>
+        ${totalSeats < conf.length ? `<div style="background:#fff5f5;border:1px solid ${rd}40;border-radius:10px;padding:10px 12px;font-size:12px;color:${rd};margin-bottom:14px;">⚠️ Pas assez de places (${totalSeats}) pour tous les invités (${conf.length}). Ajoute des tables ou des chaises.</div>` : ''}
+
+        <div style="background:${sf};border-radius:10px;padding:12px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:${tx};font-weight:600;margin-bottom:8px;">
+            <input type="checkbox" id="ap-cote" checked style="accent-color:${pk};width:16px;height:16px;">
+            Regrouper par côté (${'famille/amis de chaque marié'})
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:${tx};font-weight:600;">
+            <input type="checkbox" id="ap-erase" checked style="accent-color:${pk};width:16px;height:16px;">
+            Réinitialiser les placements existants
+          </label>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;">🚫 Invités à ne pas placer ensemble</div>
+            <button onclick="addIncompatPair()" style="background:${sf};border:1.5px solid ${br};color:${pk};border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">+ Ajouter</button>
+          </div>
+          <div id="incompat-list">${renderIncompatList(incompat, conf)}</div>
+        </div>
+      </div>
+      <div style="padding:12px 16px;background:${sf};border-top:1px solid ${br};display:flex;gap:8px;">
+        <button data-cancel style="flex:1;background:none;border:1.5px solid ${br};color:${tm};border-radius:9px;padding:10px;font-family:Lora,serif;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>
+        <button data-run style="flex:2;background:linear-gradient(135deg,${gd},${am});color:#fff;border:none;border-radius:9px;padding:10px;font-family:Lora,serif;font-size:13px;font-weight:700;cursor:pointer;">✨ Lancer le placement</button>
+      </div>
+    </div>`;
+  root.style.display = 'flex';
+
+  const closeM = ()=>{ root.style.display='none'; root.innerHTML=''; };
+  root.querySelector('[data-cancel]').addEventListener('click', closeM);
+  root.querySelector('[data-run]').addEventListener('click', ()=>{
+    const byCote = el('ap-cote').checked;
+    const erase = el('ap-erase').checked;
+    closeM();
+    runAutoPlace(byCote, erase);
+  });
+  root.addEventListener('click', e=>{ if(e.target===root) closeM(); });
+}
+
+// Affiche la liste des paires d'incompatibilité
+function renderIncompatList(incompat, conf){
+  if(!incompat.length){
+    return `<div style="font-size:12px;color:${tl};font-style:italic;">Aucune incompatibilité définie. Tous les invités peuvent être placés ensemble.</div>`;
+  }
+  return incompat.map((pair, idx)=>{
+    const g1 = GUESTS.find(g=>g.id===pair[0]);
+    const g2 = GUESTS.find(g=>g.id===pair[1]);
+    if(!g1||!g2) return '';
+    return `<div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid ${br};border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+      <span style="flex:1;font-size:12px;color:${tx};">${h(g1.nom)} <span style="color:${rd};">✗</span> ${h(g2.nom)}</span>
+      <button onclick="removeIncompatPair(${idx})" style="background:none;border:none;color:${tl};font-size:18px;cursor:pointer;padding:0 4px;">×</button>
+    </div>`;
+  }).join('');
+}
+
+// Ouvre un sous-picker pour choisir 2 invités incompatibles
+async function addIncompatPair(){
+  const conf = GUESTS.filter(g=>g.presence==='confirmée');
+  if(conf.length < 2){ appAlert('Il faut au moins 2 invités confirmés.', 'Incompatibilité'); return; }
+  const opts = conf.map(g=>({value:String(g.id), label:g.nom}));
+  const v1 = await appPicker(opts, null, 'Premier invité', {icon:'🚫'});
+  if(v1===null) return;
+  const opts2 = conf.filter(g=>String(g.id)!==v1).map(g=>({value:String(g.id), label:g.nom}));
+  const v2 = await appPicker(opts2, null, 'Ne doit pas être avec...', {icon:'🚫'});
+  if(v2===null) return;
+  const incompat = getIncompat();
+  // Éviter doublons
+  const exists = incompat.some(p => (String(p[0])===v1&&String(p[1])===v2)||(String(p[0])===v2&&String(p[1])===v1));
+  if(!exists){
+    incompat.push([parseInt(v1,10), parseInt(v2,10)]);
+    saveIncompat(incompat);
+  }
+  // Rouvrir la modale de placement pour rafraîchir la liste
+  openAutoPlaceModal();
+}
+
+function removeIncompatPair(idx){
+  const incompat = getIncompat();
+  incompat.splice(idx,1);
+  saveIncompat(incompat);
+  openAutoPlaceModal();
+}
+
+// L'algorithme de placement lui-même
+function runAutoPlace(byCote, erase){
+  const incompat = getIncompat();
+  // Fonction : 2 invités sont-ils incompatibles ?
+  const areIncompat = (id1, id2) => incompat.some(p =>
+    (p[0]===id1&&p[1]===id2) || (p[0]===id2&&p[1]===id1));
+
+  // Réinitialiser si demandé
+  if(erase){
+    GUESTS = GUESTS.map(g => ({...g, seatTableId: null, seatIdx: null}));
+  }
+
+  // Liste des invités confirmés à placer (ceux sans place si erase=false)
+  let toPlace = GUESTS.filter(g => g.presence==='confirmée' && (erase || g.seatTableId==null));
+
+  // Trier : par côté si demandé (pour regrouper p1 ensemble, p2 ensemble)
+  if(byCote){
+    toPlace.sort((a,b)=>{
+      const ca = a.cote||'p1', cb = b.cote||'p1';
+      if(ca!==cb) return ca<cb?-1:1;
+      return (a.nom||'').localeCompare(b.nom||'');
+    });
+  } else {
+    // Mélange aléatoire (placement aléatoire demandé par l'utilisatrice)
+    for(let i=toPlace.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [toPlace[i],toPlace[j]]=[toPlace[j],toPlace[i]];
+    }
+  }
+
+  // Construire la liste des chaises disponibles par table
+  // tableSeats = [{tableId, freeSeats:[idx...], placedGuestIds:[...]}]
+  const tableSeats = TABLES.map(t=>{
+    const n = Math.min(t.seats,12);
+    const hidden = t.hiddenSeats||[];
+    const free = [];
+    for(let i=0;i<n;i++){
+      if(hidden.includes(i)) continue;
+      // chaise déjà occupée (si erase=false) ?
+      const occupied = GUESTS.find(g=>g.seatTableId===t.id && g.seatIdx===i);
+      if(!occupied) free.push(i);
+    }
+    // invités déjà à cette table (pour vérifier incompatibilités)
+    const placedGuestIds = GUESTS.filter(g=>g.seatTableId===t.id).map(g=>g.id);
+    return { tableId: t.id, free, placedGuestIds };
+  });
+
+  // Placement : pour chaque invité, trouver une table avec une place libre
+  // ET sans invité incompatible déjà présent
+  let nonPlaces = [];
+  for(const guest of toPlace){
+    let placed = false;
+    // Chercher d'abord une table compatible
+    for(const ts of tableSeats){
+      if(ts.free.length === 0) continue;
+      // Vérifier incompatibilités avec les invités déjà à cette table
+      const conflit = ts.placedGuestIds.some(pid => areIncompat(pid, guest.id));
+      if(conflit) continue;
+      // Placer ici
+      const seatIdx = ts.free.shift();
+      const gi = GUESTS.findIndex(g=>g.id===guest.id);
+      GUESTS[gi] = {...GUESTS[gi], seatTableId: ts.tableId, seatIdx};
+      ts.placedGuestIds.push(guest.id);
+      placed = true;
+      break;
+    }
+    if(!placed) nonPlaces.push(guest);
+  }
+
+  saveTables();
+  renderTablePlan();
+
+  // Message de résultat
+  const nbPlaces = toPlace.length - nonPlaces.length;
+  let msg = `${nbPlaces} invité${nbPlaces>1?'s':''} placé${nbPlaces>1?'s':''} avec succès.`;
+  if(nonPlaces.length){
+    msg += `\n\n${nonPlaces.length} invité(s) non placé(s) faute de place compatible :\n` +
+      nonPlaces.map(g=>'• '+g.nom).join('\n') +
+      `\n\nAjoute des tables/chaises ou réduis les incompatibilités.`;
+  }
+  appAlert(msg, '✨ Placement terminé');
+}
+
 function openSeatModal(tid, si){
   seatPicker = {tid, si};
   const tbl = TABLES.find(t => t.id === tid);
@@ -1825,22 +2035,49 @@ function openSeatModal(tid, si){
   if(conf.length === 0){
     bodyHtml = `<div style="font-size:13px;color:${tl};text-align:center;padding:14px 0;">Aucun invité confirmé. Ajoute des invités avec présence "Confirmée" pour les placer.</div>`;
   } else {
-    bodyHtml = `<div style="font-size:12px;color:${tl};margin-bottom:10px;">Choisis un invité à placer sur cette chaise :</div>`;
-    bodyHtml += `<div style="max-height:280px;overflow-y:auto;">`;
-    bodyHtml += conf.map(g => {
+    // Helper : carte invité
+    const guestCard = (g) => {
       const a = g.seatTableId === tid && g.seatIdx === si;
       const initials = g.nom.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
       const cote = g.cote === 'p1' ? '#e8a0b0' : '#a0b0e8';
-      const status = g.seatTableId != null && !a ? 'Placé·e (T'+g.seatTableId+')' : 'Non placé·e';
+      // Nom de la table où l'invité est placé (pas l'ID technique)
+      const placedTable = g.seatTableId != null ? TABLES.find(t=>t.id===g.seatTableId) : null;
+      const placedLabel = placedTable ? ('Placé·e — ' + (placedTable.nom||'Table')) : '';
       return `<button data-guest-id="${g.id}" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;margin-bottom:6px;border-radius:10px;border:1.5px solid ${a?pk:br};background:${a?sf:'#fff'};color:${tx};font-family:Lora,Georgia,serif;font-size:13px;cursor:pointer;text-align:left;">
         <div style="width:28px;height:28px;border-radius:50%;background:${cote};display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold;flex-shrink:0;">${initials}</div>
         <div style="flex:1;">
           <div style="font-weight:700;">${h(g.nom)}</div>
-          <div style="font-size:10px;color:${tl};">${status}</div>
+          ${placedLabel?`<div style="font-size:10px;color:${tl};">${h(placedLabel)}</div>`:''}
         </div>
         ${a?`<span style="color:${pk};font-weight:700;font-size:16px;">✓</span>`:''}
       </button>`;
-    }).join('');
+    };
+
+    // Séparer : non placés vs déjà placés ailleurs (hors chaise courante)
+    const aPlacer = conf.filter(g => g.seatTableId == null);
+    const dejaPlaces = conf.filter(g => g.seatTableId != null && !(g.seatTableId===tid && g.seatIdx===si));
+    const surCetteChaise = conf.filter(g => g.seatTableId===tid && g.seatIdx===si);
+
+    bodyHtml = `<div style="font-size:12px;color:${tl};margin-bottom:10px;">Choisis un invité à placer sur cette chaise :</div>`;
+    bodyHtml += `<div style="max-height:320px;overflow-y:auto;">`;
+
+    // Invité déjà sur cette chaise (en haut, mis en évidence)
+    if(surCetteChaise.length){
+      bodyHtml += `<div style="font-size:10px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px;">Sur cette chaise</div>`;
+      bodyHtml += surCetteChaise.map(guestCard).join('');
+    }
+
+    // Section À PLACER
+    bodyHtml += `<div style="font-size:10px;font-weight:700;color:${gn};text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 6px;">✓ À placer (${aPlacer.length})</div>`;
+    bodyHtml += aPlacer.length ? aPlacer.map(guestCard).join('')
+      : `<div style="font-size:12px;color:${tl};font-style:italic;padding:4px 0 8px;">Tous les invités confirmés sont déjà placés.</div>`;
+
+    // Section DÉJÀ PLACÉS
+    if(dejaPlaces.length){
+      bodyHtml += `<div style="font-size:10px;font-weight:700;color:${tl};text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;">Déjà placés ailleurs (${dejaPlaces.length})</div>`;
+      bodyHtml += `<div style="opacity:0.7;">` + dejaPlaces.map(guestCard).join('') + `</div>`;
+    }
+
     bodyHtml += `</div>`;
   }
 
@@ -4379,7 +4616,7 @@ function pinterestUrl(query){
 }
 
 function renderAssistant(){
-  el('page-10').innerHTML = `
+  el('page-7').innerHTML = `
     <div class="card" style="padding:18px 16px;margin-bottom:16px;background:linear-gradient(135deg,${sf},#fff);">
       <h2 style="font-family:Playfair Display,Georgia,serif;font-size:22px;color:${tm};margin:0 0 6px;text-align:center;font-weight:700;">✨ Assistant Wedding Dream</h2>
       <p style="text-align:center;font-size:12px;color:${tl};margin:0;font-style:italic;line-height:1.5;">Tous les conseils dont tu as besoin pour ton mariage.</p>
@@ -4405,9 +4642,8 @@ function renderAssistant(){
         {key:'listeCadeaux',  label:'Liste / Cagnotte',     icon:'🎀', desc:'Sites, idées, conseils'},
         {key:'menu',          label:'Menu repas',           icon:'🍽️', desc:'Menu adapté au style et à la saison'},
         {key:'emotion',       label:'Moments-émotion',      icon:'💖', desc:'Instants à ne pas manquer'},
-        {key:'musiqueCer',    label:'Musique cérémonie',    icon:'🎵', desc:'Playlists par moment'},
         {key:'photos',        label:'Photos à prévoir',     icon:'📸', desc:'Checklist photographe'},
-        {key:'playlistAmbi',  label:'Playlist par ambiance',icon:'🎶', desc:'Pour chaque moment et style'},
+        {key:'playlistAmbi',  label:'Playlist par ambiance',icon:'🎶', desc:'Cérémonie, cocktail, soirée'},
         {key:'prepCivile',    label:'Préparation civile',   icon:'🏛️', desc:'Documents, étapes mairie'},
         {key:'prepReligieuse',label:'Préparation religieuse',icon:'⛪', desc:'Selon la religion'},
         {key:'questions',     label:'Questions prestataires',icon:'❓', desc:'Que demander à chacun'},
@@ -4448,7 +4684,6 @@ function assistOpen(service){
   if(service === 'tenueMariee')    return assistTenueMariee(cont);
   if(service === 'tenueMarie')     return assistTenueMarie(cont);
   if(service === 'bijouxMariee')   return assistBijouxMariee(cont);
-  if(service === 'musiqueCer')     return assistMusiqueCer(cont);
   if(service === 'photos')         return assistPhotos(cont);
   if(service === 'stress')         return assistStress(cont);
   if(service === 'belleFamille')   return assistBelleFamille(cont);
@@ -5214,7 +5449,8 @@ function assistTenueMariee(cont){
       <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">👗 Styles de robe</div>
       ${d.styles.map(s=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
         <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${h(s.nom)}</div>
-        <div style="font-size:12px;color:${tm};line-height:1.6;">${h(s.desc)}</div>
+        <div style="font-size:12px;color:${tm};line-height:1.6;margin-bottom:8px;">${h(s.desc)}</div>
+        <a href="${pinterestUrl('robe de mariée '+s.nom)}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 11px;background:#fff;border:1.5px solid ${gd}50;border-radius:8px;text-decoration:none;color:${tx};font-size:11px;font-weight:700;font-family:Lora,serif;">📌 Voir sur Pinterest</a>
       </div>`).join('')}
 
       <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">💰 Selon budget</div>
@@ -5243,7 +5479,8 @@ function assistTenueMarie(cont){
       <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">👔 Styles de costume</div>
       ${d.styles.map(s=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
         <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${h(s.nom)}</div>
-        <div style="font-size:12px;color:${tm};line-height:1.6;">${h(s.desc)}</div>
+        <div style="font-size:12px;color:${tm};line-height:1.6;margin-bottom:8px;">${h(s.desc)}</div>
+        <a href="${pinterestUrl('costume marié '+s.nom)}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 11px;background:#fff;border:1.5px solid ${gd}50;border-radius:8px;text-decoration:none;color:${tx};font-size:11px;font-weight:700;font-family:Lora,serif;">📌 Voir sur Pinterest</a>
       </div>`).join('')}
 
       <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">🎩 Accessoires essentiels</div>
@@ -5726,6 +5963,54 @@ function assistChecklistAvant(cont){
 // Playlists complètes (20 titres) pour chaque moment + ambiance du mariage.
 // Reste 100 % textuel (pas de lecteur intégré, on cite juste les titres).
 const PLAYLIST_KB = {
+  'ceremonie-entree': {
+    title: 'Cérémonie — Entrée de la mariée',
+    desc: 'Le moment le plus émouvant : l\'arrivée à l\'autel',
+    tracks: [
+      'Pachelbel — Canon en Ré', 'Mendelssohn — Marche nuptiale',
+      'Wagner — Marche nuptiale (Lohengrin)', 'Vivaldi — Le Printemps (4 Saisons)',
+      'Bach — Air sur la corde de Sol', 'A Thousand Years — Christina Perri',
+      'Make You Feel My Love — Adele', 'Can\'t Help Falling in Love — Elvis (cover acoustique)',
+      'Perfect — Ed Sheeran', 'Marry Me — Train',
+      'River Flows in You — Yiruma', 'Comptine d\'un autre été — Yann Tiersen',
+      'All of Me — John Legend', 'Ave Maria — Schubert',
+      'Clair de Lune — Debussy', 'Gymnopédie n°1 — Satie',
+      'Méditation de Thaïs — Massenet', 'Adagio — Albinoni',
+      'Concerto pour clarinette — Mozart', 'You Are the Best Thing — Ray LaMontagne'
+    ]
+  },
+  'ceremonie-voeux': {
+    title: 'Cérémonie — Pendant les vœux / signature',
+    desc: 'Musique douce en fond pendant les moments forts',
+    tracks: [
+      'Bach — Concerto pour 2 violons (Largo)', 'Pachelbel — Canon (version cordes)',
+      'Massenet — Méditation de Thaïs', 'River Flows in You — Yiruma',
+      'Comptine d\'un autre été — Yann Tiersen', 'Clair de Lune — Debussy',
+      'The Book of Love — Peter Gabriel', 'Your Song — Ellie Goulding',
+      'First Day of My Life — Bright Eyes', 'Holocene — Bon Iver',
+      'Skinny Love — Birdy', 'To Build a Home — The Cinematic Orchestra',
+      'Saturn — Sleeping at Last', 'Turning Page — Sleeping at Last',
+      'I Choose You — Sara Bareilles', 'Latch (Acoustic) — Sam Smith',
+      'Lover — Taylor Swift', 'Better Together — Jack Johnson',
+      'Like Real People Do — Hozier', 'Flightless Bird — Iron & Wine'
+    ]
+  },
+  'ceremonie-sortie': {
+    title: 'Cérémonie — Sortie des mariés',
+    desc: 'Joyeux et entraînant pour la sortie sous les pétales',
+    tracks: [
+      'Signed Sealed Delivered — Stevie Wonder', 'I\'m Yours — Jason Mraz',
+      'Lovely Day — Bill Withers', 'Walking on Sunshine — Katrina & The Waves',
+      'Best Day of My Life — American Authors', 'Happy — Pharrell Williams',
+      'Marry You — Bruno Mars', 'This Will Be (An Everlasting Love) — Natalie Cole',
+      'Beautiful Day — U2', 'Good Life — OneRepublic',
+      'Don\'t Stop Me Now — Queen', 'I Gotta Feeling — Black Eyed Peas',
+      'Celebration — Kool & The Gang', 'September — Earth Wind & Fire',
+      'Love On Top — Beyoncé', 'Sugar — Maroon 5',
+      'Can\'t Stop the Feeling — Justin Timberlake', 'Build Me Up Buttercup — The Foundations',
+      'Here Comes the Sun — The Beatles', 'Best Day of My Life — American Authors'
+    ]
+  },
   'cocktail-chill': {
     title: 'Cocktail / Vin d\'honneur — Chill & Élégant',
     desc: 'Ambiance feutrée, lounge, parfaite pour les discussions',
@@ -5856,6 +6141,9 @@ const PLAYLIST_KB = {
 function assistPlaylistAmbi(cont){
   const saved = ld('assist_playlist_moment','cocktail-chill');
   const moments = [
+    {k:'ceremonie-entree',l:'💒 Entrée mariée'},
+    {k:'ceremonie-voeux',l:'💍 Vœux / signature'},
+    {k:'ceremonie-sortie',l:'🎊 Sortie cérémonie'},
     {k:'cocktail-chill',l:'🥂 Cocktail Chill'},
     {k:'cocktail-festif',l:'🎉 Cocktail Festif'},
     {k:'diner',l:'🍽️ Dîner feutré'},
