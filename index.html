@@ -741,8 +741,8 @@ const DEF_GUESTS=[
   {id:3,nom:"Sophie Bernard",email:"sophie@email.com",invitation:"envoyée",presence:"en attente",cote:"p1",role:"Demoiselle d'honneur",regime:"Végétarien",vinHonneur:true,age:"Adulte",seatTableId:null,seatIdx:null}
 ];
 const DEF_TABLES=[
-  {id:1,nom:"Table des mariés",shape:"round",seats:8,x:80,y:80,hiddenSeats:[]},
-  {id:2,nom:"Table famille",shape:"round",seats:8,x:300,y:80,hiddenSeats:[]}
+  {id:1,nom:"Table des mariés",shape:"round",seats:6,x:80,y:80,hiddenSeats:[]},
+  {id:2,nom:"Table famille",shape:"round",seats:6,x:300,y:80,hiddenSeats:[]}
 ];
 const DEF_MENU=[
   {id:1,section:"Vin d'honneur / Cocktail",items:[{id:11,text:"Champagne & vins"},{id:12,text:"Cocktails & softs"},{id:13,text:"Amuse-bouches (canapés, verrines, petits fours)"}]},
@@ -1701,8 +1701,18 @@ function renderTPLegend(){
 }
 function addTableEl(table){
   const canvas=el('tp-canvas');const inner=el('tp-inner')||canvas;if(!canvas)return;
-  const isR=table.shape==='round';const isSq=table.shape==='square';const R=52,TW=90,TH=46,SQ=80;
-  const W=isR?R*2+24:isSq?SQ+34:TW+34,H=isR?R*2+24:isSq?SQ+34:TH+50,cx=W/2,cy=H/2;
+  const isR=table.shape==='round';const isSq=table.shape==='square';
+  // Dimensions des surfaces de table
+  const RND=68;   // diamètre cercle
+  const SQ=72;    // côté carré
+  const TW=120, TH=58; // rectangle
+  // Marge pour les chaises autour (rayon d'orbite)
+  const SEAT=24;  // taille d'une chaise
+  const GAP=10;   // espace entre table et chaise
+  // Boîte englobante (table + chaises autour)
+  const W = (isR?RND:isSq?SQ:TW) + 2*(SEAT+GAP) + 8;
+  const H = (isR?RND:isSq?SQ:TH) + 2*(SEAT+GAP) + 8;
+  const cx=W/2, cy=H/2;
   const div=document.createElement('div');
   div.id=`tp-${table.id}`;
   div.style.cssText=`position:absolute;left:${table.x}px;top:${table.y}px;width:${W}px;height:${H}px;touch-action:none;`;
@@ -1729,9 +1739,7 @@ function addTableEl(table){
     inp.addEventListener('pointerdown',e=>e.stopPropagation());
   };
 
-  // Double-click (desktop)
   lbl.addEventListener('dblclick',e=>{e.stopPropagation();startRename();});
-  // Double-tap (mobile)
   let tapTimer2=null;
   lbl.addEventListener('click',e=>{
     e.stopPropagation();
@@ -1746,25 +1754,56 @@ function addTableEl(table){
   del.textContent='×';del.onclick=e=>{e.stopPropagation();TABLES=TABLES.filter(t=>t.id!==table.id);div.remove();saveTables();};
   div.appendChild(del);
 
-  // Surface
+  // Surface de la table (centrée dans la boîte)
   const surf=document.createElement('div');
-  if(isR){surf.style.cssText=`position:absolute;left:${cx-30}px;top:${cy-30}px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,${sf},#fff);border:2px solid ${pm};box-shadow:0 2px 10px rgba(212,96,122,.1);z-index:1;`;}
-  else if(isSq){surf.style.cssText=`position:absolute;left:${cx-SQ/2}px;top:${cy-SQ/2}px;width:${SQ}px;height:${SQ}px;border-radius:6px;background:linear-gradient(135deg,${sf},#fff);border:2px solid ${pm};box-shadow:0 2px 10px rgba(212,96,122,.1);z-index:1;`;}
-  else{surf.style.cssText=`position:absolute;left:${cx-TW/2}px;top:${cy-TH/2}px;width:${TW}px;height:${TH}px;border-radius:10px;background:linear-gradient(135deg,${sf},#fff);border:2px solid ${pm};box-shadow:0 2px 10px rgba(212,96,122,.1);z-index:1;`;}
+  if(isR){
+    surf.style.cssText=`position:absolute;left:${cx-RND/2}px;top:${cy-RND/2}px;width:${RND}px;height:${RND}px;border-radius:50%;background:linear-gradient(135deg,${sf},#fff);border:2px solid ${pm};box-shadow:0 2px 10px rgba(184,64,96,.12);z-index:1;`;
+  } else if(isSq){
+    surf.style.cssText=`position:absolute;left:${cx-SQ/2}px;top:${cy-SQ/2}px;width:${SQ}px;height:${SQ}px;border-radius:8px;background:linear-gradient(135deg,${sf},#fff);border:2px solid ${pm};box-shadow:0 2px 10px rgba(184,64,96,.12);z-index:1;`;
+  } else {
+    surf.style.cssText=`position:absolute;left:${cx-TW/2}px;top:${cy-TH/2}px;width:${TW}px;height:${TH}px;border-radius:12px;background:linear-gradient(135deg,${sf},#fff);border:2px solid ${pm};box-shadow:0 2px 10px rgba(184,64,96,.12);z-index:1;`;
+  }
   div.appendChild(surf);
 
-  // Seats
-  const n=Math.min(table.seats,12);
+  // ─── PLACEMENT DES CHAISES AUTOUR DE LA TABLE (jamais dessus) ───
+  const n = Math.min(table.seats, 12);
   for(let i=0;i<n;i++){
-    let sx,sy;
-    if(isR){const a=(i/n)*2*Math.PI-Math.PI/2;sx=cx+(R-1)*Math.cos(a)-13;sy=cy+(R-1)*Math.sin(a)-13;}
-    else if(isSq){const side=Math.floor(i/(n/4));const idx=i%(Math.ceil(n/4));const sp=SQ/Math.ceil(n/4);if(side===0){sx=(cx-SQ/2)+idx*sp+sp/2-13;sy=cy-SQ/2-16;}else if(side===1){sx=cx+SQ/2+2;sy=(cy-SQ/2)+idx*sp+sp/2-13;}else if(side===2){sx=(cx-SQ/2)+idx*sp+sp/2-13;sy=cy+SQ/2+2;}else{sx=cx-SQ/2-16;sy=(cy-SQ/2)+idx*sp+sp/2-13;}}
-    else{const half=Math.ceil(n/2);const isTop=i<half;const idx=isTop?i:i-half;const sp=TW/half;sx=(cx-TW/2)+idx*sp+sp/2-13;sy=isTop?cy-TH/2-16:cy+TH/2+2;}
+    let sx, sy;
+    if(isR){
+      // Cercle : chaises sur une orbite = rayon table + gap + demi-chaise
+      const orbit = RND/2 + GAP + SEAT/2;
+      const a = (i/n)*2*Math.PI - Math.PI/2;
+      sx = cx + orbit*Math.cos(a) - SEAT/2;
+      sy = cy + orbit*Math.sin(a) - SEAT/2;
+    } else if(isSq){
+      // Carré : répartir les chaises sur les 4 côtés
+      const perSide = Math.ceil(n/4);
+      const side = Math.floor(i / perSide);
+      const idxOnSide = i % perSide;
+      const realPerSide = (side === 3) ? (n - 3*perSide) : perSide;
+      const span = SQ;
+      const step = span / (realPerSide + 1);
+      const pos = step * (idxOnSide + 1);
+      const off = SQ/2 + GAP; // distance du centre au rang de chaises
+      if(side===0){ sx = cx - SQ/2 + pos - SEAT/2; sy = cy - off - SEAT/2; }       // haut
+      else if(side===1){ sx = cx + off - SEAT/2; sy = cy - SQ/2 + pos - SEAT/2; }   // droite
+      else if(side===2){ sx = cx - SQ/2 + pos - SEAT/2; sy = cy + off - SEAT/2; }   // bas
+      else { sx = cx - off - SEAT/2; sy = cy - SQ/2 + pos - SEAT/2; }               // gauche
+    } else {
+      // Rectangle : moitié en haut, moitié en bas
+      const half = Math.ceil(n/2);
+      const isTop = i < half;
+      const idx = isTop ? i : i - half;
+      const cnt = isTop ? half : (n - half);
+      const step = TW / (cnt + 1);
+      sx = cx - TW/2 + step*(idx+1) - SEAT/2;
+      sy = isTop ? (cy - TH/2 - GAP - SEAT/2) : (cy + TH/2 + GAP - SEAT/2);
+    }
     const seat=document.createElement('div');
     seat.className='tp-seat';
     const hidden=(table.hiddenSeats||[]).includes(i);
     const g=GUESTS.find(g=>g.seatTableId===table.id&&g.seatIdx===i);
-    seat.style.cssText=`position:absolute;left:${sx}px;top:${sy}px;width:26px;height:26px;border-radius:50%;border:${hidden?`2px dashed ${br}`:'2.5px solid #fff'};background:${hidden?'rgba(255,255,255,.35)':g?(g.cote==='p1'?'#e8a0b0':'#a0b0e8'):'#f5e0e8'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.13);z-index:10;color:${hidden?br:'#fff'};user-select:none;touch-action:manipulation;`;
+    seat.style.cssText=`position:absolute;left:${sx}px;top:${sy}px;width:${SEAT}px;height:${SEAT}px;border-radius:50%;border:${hidden?`2px dashed ${br}`:'2.5px solid #fff'};background:${hidden?'rgba(255,255,255,.35)':g?(g.cote==='p1'?'#e8a0b0':'#a0b0e8'):'#f5e0e8'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.13);z-index:10;color:${hidden?br:'#fff'};user-select:none;touch-action:manipulation;`;
     seat.textContent=hidden?'·':(g?g.nom.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase():'+');
     seat.title=g?g.nom:'Libre';
     // CORRECTIF CHAISE — version simple et fiable :
@@ -1810,7 +1849,7 @@ function addTableEl(table){
   div.addEventListener('pointercancel',()=>{tpDrag=null;});
   inner.appendChild(div);
 }
-function addTable(){TABLES.push({id:Date.now(),nom:`Table ${TABLES.length+1}`,shape:window.tpSelectedShape||'round',seats:8,x:80+Math.random()*150,y:80+Math.random()*80,hiddenSeats:[]});saveTables();renderTablePlan();}
+function addTable(){TABLES.push({id:Date.now(),nom:`Table ${TABLES.length+1}`,shape:window.tpSelectedShape||'round',seats:6,x:80+Math.random()*150,y:80+Math.random()*80,hiddenSeats:[]});saveTables();renderTablePlan();}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PLACEMENT AUTOMATIQUE DES INVITÉS
@@ -2430,8 +2469,8 @@ async function runCategorySearch(tags, catLabel, lat, lng, radiusMeters){
     if(wrap) wrap.innerHTML = `
       <div style="text-align:center;padding:16px;font-size:13px;color:${tl};">
         <div style="margin-bottom:8px;">Le serveur OpenStreetMap est temporairement indisponible.</div>
-        <a href="https://www.google.com/maps/search/${encodeURIComponent(catLabel)}/@${lat},${lng},13z" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
-          🔎 Chercher ${catLabel.toLowerCase()} sur Google Maps
+        <a href="https://www.google.com/search?q=${encodeURIComponent(catLabel + " mariage")}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
+          🔎 Chercher ${catLabel.toLowerCase()} sur Google
         </a>
       </div>`;
     return;
@@ -2444,8 +2483,8 @@ async function runCategorySearch(tags, catLabel, lat, lng, radiusMeters){
       <div style="text-align:center;padding:16px;font-size:13px;color:${tl};">
         <div style="margin-bottom:8px;">Aucun ${catLabel.toLowerCase()} trouvé dans un rayon de ${Math.round(radiusMeters/1000)} km.</div>
         <div style="font-size:11px;font-style:italic;margin-bottom:14px;">Essaie d'augmenter le rayon avec le slider, ou consulte Google Maps.</div>
-        <a href="https://www.google.com/maps/search/${encodeURIComponent(catLabel)}/@${lat},${lng},13z" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
-          🔎 Chercher sur Google Maps
+        <a href="https://www.google.com/search?q=${encodeURIComponent(catLabel + " mariage")}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
+          🔎 Chercher sur Google
         </a>
       </div>`;
     return;
@@ -2738,14 +2777,14 @@ async function searchVendorsWithLocation(query,lat,lng){
     // Aucun résultat OSM : on propose directement Google Maps
     const lat0=lat, lng0=lng;
     const googleUrl = (lat0&&lng0)
-      ? `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${lat0},${lng0},13z`
-      : `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
+      ? `https://www.google.com/search?q=${encodeURIComponent(query + " mariage")}`
+      : `https://www.google.com/search?q=${encodeURIComponent(query + " mariage")}`;
     if(wrap)wrap.innerHTML=`
       <div style="text-align:center;padding:16px;font-size:13px;color:${tl};">
         <div style="margin-bottom:8px;">Aucun résultat trouvé pour "${h(query)}" sur OpenStreetMap.</div>
-        <div style="font-size:11px;font-style:italic;margin-bottom:14px;">OpenStreetMap est une base collaborative, certains commerces n'y sont pas répertoriés.</div>
+        <div style="font-size:11px;font-style:italic;margin-bottom:14px;">OpenStreetMap est une base collaborative ; certains prestataires n'y sont pas répertoriés.</div>
         <a href="${googleUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
-          🔎 Chercher sur Google Maps
+          🔎 Chercher sur Google
         </a>
       </div>`;
     return;
@@ -2761,8 +2800,8 @@ function renderVndResults(query){
   // (utile si OSM n'a pas tout — l'utilisateur peut compléter via Google)
   const lat=window._userLat, lng=window._userLng;
   const googleSearchUrl = (lat&&lng)
-    ? `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${lat},${lng},13z`
-    : `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
+    ? `https://www.google.com/search?q=${encodeURIComponent(query + " mariage")}`
+    : `https://www.google.com/search?q=${encodeURIComponent(query + " mariage")}`;
 
   const fewResults = r.length < 8;
 
@@ -2782,7 +2821,9 @@ function renderVndResults(query){
         ${v.adresse?`<div style="font-size:12px;color:${tl};margin-bottom:8px;line-height:1.5;">📍 ${h(v.adresse)}</div>`:''}
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
           ${v.tel?`<a href="tel:${v.tel}" style="background:${sf};color:${pk};border-radius:8px;padding:6px 10px;font-size:11px;text-decoration:none;font-weight:700;">📞 ${h(v.tel)}</a>`:''}
-          ${v.site?`<a href="https://${v.site.replace(/^https?:\/\//,'')}" target="_blank" rel="noopener" style="background:${sf};color:${pk};border-radius:8px;padding:6px 10px;font-size:11px;text-decoration:none;font-weight:700;">🌐 Site web</a>`:''}
+          ${v.site
+            ? `<a href="https://${v.site.replace(/^https?:\/\//,'')}" target="_blank" rel="noopener" style="background:${sf};color:${pk};border-radius:8px;padding:6px 10px;font-size:11px;text-decoration:none;font-weight:700;">🌐 Site web</a>`
+            : `<a href="https://www.google.com/search?q=${encodeURIComponent(v.nom+' '+(v.categorie||'')+' '+(v.adresse||''))}" target="_blank" rel="noopener" style="background:${sf};color:${pk};border-radius:8px;padding:6px 10px;font-size:11px;text-decoration:none;font-weight:700;">🌐 Trouver le site</a>`}
           ${mapsUrl?`<a href="${mapsUrl}" target="_blank" rel="noopener" style="background:#f0f8f0;color:${gn};border-radius:8px;padding:6px 10px;font-size:11px;text-decoration:none;font-weight:700;">🗺️ Itinéraire</a>`:''}
         </div>
         <button onclick="addToFav(${i})" style="width:100%;background:${VENDORS_FAV.find(f=>f.nom===v.nom)?'#f0f8f0':'linear-gradient(135deg,'+pk+',#b84060)'};color:${VENDORS_FAV.find(f=>f.nom===v.nom)?gn:'#fff'};border:none;border-radius:9px;padding:9px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;">
@@ -2793,8 +2834,8 @@ function renderVndResults(query){
   }).join('')+
   // Lien Google Maps en bas pour compléter (OSM est incomplet sur certains commerces)
   `<a href="${googleSearchUrl}" target="_blank" rel="noopener" style="display:block;margin-top:14px;padding:12px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:12px;text-align:center;text-decoration:none;color:${tx};font-size:13px;font-weight:700;font-family:Lora,serif;">
-    🔎 Voir plus de résultats sur Google Maps
-    <div style="font-size:10px;color:${tl};font-weight:400;margin-top:3px;font-style:italic;">Google Maps a souvent plus de prestataires qu'OpenStreetMap</div>
+    🔎 Voir plus de résultats sur Google
+    <div style="font-size:10px;color:${tl};font-weight:400;margin-top:3px;font-style:italic;">Google a souvent plus de prestataires qu'OpenStreetMap</div>
   </a>`;
 }
 
@@ -3303,6 +3344,382 @@ async function copyCurrentDriveUrl(){
 // en fonction des paramètres choisis par l'utilisateur (style, saison, budget,
 // nombre d'invités, etc.). Les réponses sont rédigées d'avance pour garantir
 // une qualité constante et un fonctionnement 100% offline et gratuit.
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MENU_ENGINE — Générateur de menus de mariage (sans API, 100% offline)
+// ───────────────────────────────────────────────────────────────────────────
+// Principe en couches :
+//   1) Un CATALOGUE de plats, chacun tagué par : catégorie, styles compatibles,
+//      saisons, niveau de budget mini, et FLAGS alimentaires (ce qu'il contient).
+//   2) Le moteur FILTRE les plats compatibles avec les critères choisis.
+//   3) Il TIRE aléatoirement une combinaison cohérente (variété entre 2 essais).
+//   4) Il ADAPTE selon le format (assiette/buffet/cocktail/foodtruck/garden).
+//   5) Il ADAPTE les restrictions : si un plat n'est pas compatible, il est
+//      remplacé par une vraie alternative de la même catégorie (jamais "supprimé").
+// ───────────────────────────────────────────────────────────────────────────
+// FLAGS d'un plat (ce qu'il CONTIENT) : viande, porc, alcool, poisson,
+//   fruitsmer, gluten, lactose, oeuf, noix. Une restriction exclut les plats
+//   portant le flag correspondant.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MENU_ENGINE = (function(){
+
+  // Niveaux de budget : eco=1, standard=2, luxe=3
+  const BUDGET_LEVEL = { eco:1, standard:2, luxe:3 };
+
+  // ─── CATALOGUE ─────────────────────────────────────────────────────────
+  // f = flags (ce que le plat contient) ; b = budget minimum (1/2/3) ;
+  // st = styles ; sa = saisons. Si st ou sa = null => tous compatibles.
+  // Styles : romantique, boheme, champetre, chic, moderne, minimaliste
+  // Saisons : printemps, ete, automne, hiver
+
+  const C = {
+    // ════════════ ENTRÉES ════════════
+    entrees: [
+      // — Économique —
+      {nom:'Velouté de saison et croûtons aux herbes', b:1, st:['champetre','boheme','romantique','minimaliste'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Salade de chèvre chaud, miel et noix', b:1, st:['champetre','boheme','romantique'], sa:['printemps','automne'], f:['gluten','lactose','noix']},
+      {nom:'Tarte fine aux légumes du marché et pesto', b:1, st:['champetre','boheme','moderne'], sa:['printemps','ete'], f:['gluten','noix']},
+      {nom:'Terrine de campagne maison et pickles', b:1, st:['champetre','boheme'], sa:['automne','hiver'], f:['viande','porc']},
+      {nom:'Salade composée du potager, œuf parfait', b:1, st:['champetre','boheme','nature','minimaliste'], sa:['printemps','ete'], f:['oeuf']},
+      {nom:'Gaspacho andalou et croûtons', b:1, st:['boheme','moderne','minimaliste'], sa:['ete'], f:['gluten']},
+      {nom:'Quiche fine aux poireaux et comté', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Caponata sicilienne et burrata crémeuse', b:1, st:['boheme','moderne'], sa:['ete','automne'], f:['lactose']},
+      {nom:'Velouté de légumes de saison, huile parfumée', b:1, st:null, sa:['automne','hiver'], f:[]},
+      {nom:'Carpaccio de betterave, roquette et vinaigrette balsamique', b:1, st:['moderne','minimaliste','boheme'], sa:null, f:[]},
+      {nom:'Salade de lentilles tièdes, légumes croquants et herbes', b:1, st:['champetre','boheme','minimaliste'], sa:['automne','hiver'], f:[]},
+      {nom:'Assiette de légumes grillés, houmous et graines', b:1, st:['boheme','moderne','minimaliste'], sa:['ete','printemps'], f:[]},
+      {nom:'Tartare d\'avocat, mangue et tomate, tuile croustillante', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:[]},
+      // — Standard —
+      {nom:'Carpaccio de bœuf, copeaux de parmesan et roquette', b:2, st:['chic','moderne','romantique'], sa:['printemps','ete','automne','hiver'], f:['viande','lactose']},
+      {nom:'Tartare de saumon à l\'aneth et citron vert', b:2, st:['chic','moderne','romantique','minimaliste'], sa:['printemps','ete'], f:['poisson']},
+      {nom:'Œuf parfait, crème de champignons et émulsion truffée', b:2, st:['chic','moderne','romantique'], sa:['automne','hiver'], f:['oeuf','lactose']},
+      {nom:'Foie gras mi-cuit, chutney de figues et pain brioché', b:2, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten']},
+      {nom:'Ballotine de volaille, condiment aux herbes', b:2, st:['chic','romantique','champetre'], sa:['printemps','automne'], f:['viande']},
+      {nom:'Risotto crémeux aux asperges vertes et parmesan', b:2, st:['romantique','moderne','chic'], sa:['printemps'], f:['lactose']},
+      {nom:'Tartare de daurade, mangue et avocat', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:['poisson']},
+      {nom:'Velouté de potimarron, éclats de châtaigne et huile de courge', b:2, st:['champetre','romantique','moderne'], sa:['automne','hiver'], f:['lactose']},
+      // — Luxe —
+      {nom:'Carpaccio de Saint-Jacques, caviar et huile vierge', b:3, st:['chic','moderne','romantique'], sa:['automne','hiver'], f:['fruitsmer','poisson']},
+      {nom:'Langoustines rôties, émulsion d\'agrumes', b:3, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer']},
+      {nom:'Foie gras poêlé, pain d\'épices et réduction de Sauternes', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten','alcool']},
+      {nom:'Tourteau décortiqué, fine gelée de tomate et caviar', b:3, st:['chic','moderne','minimaliste'], sa:['ete'], f:['fruitsmer']},
+      {nom:'Homard breton tiède, vinaigrette aux herbes fraîches', b:3, st:['chic','romantique'], sa:['printemps','ete'], f:['fruitsmer']},
+    ],
+
+    // ════════════ PLATS ════════════
+    plats: [
+      // — Économique —
+      {nom:'Suprême de volaille rôti, jus aux herbes', b:1, st:['champetre','romantique','boheme','minimaliste'], sa:null, f:['viande']},
+      {nom:'Sauté de porc aux pruneaux', b:1, st:['champetre','boheme'], sa:['automne','hiver'], f:['viande','porc']},
+      {nom:'Dos de cabillaud, sauce vierge et légumes du marché', b:1, st:['moderne','minimaliste','romantique'], sa:['printemps','ete'], f:['poisson']},
+      {nom:'Risotto aux légumes de saison et parmesan', b:1, st:['boheme','moderne','champetre'], sa:null, f:['lactose']},
+      {nom:'Curry de légumes au lait de coco et riz basmati', b:1, st:['boheme','moderne'], sa:['automne','hiver'], f:[]},
+      {nom:'Tajine de poulet aux abricots et semoule', b:1, st:['boheme','champetre'], sa:['automne'], f:['viande']},
+      {nom:'Filet de poisson blanc, écrasé de pommes de terre à l\'huile d\'olive', b:1, st:['minimaliste','moderne','champetre'], sa:null, f:['poisson']},
+      // — Standard —
+      {nom:'Filet mignon de veau, jus corsé et gratin dauphinois', b:2, st:['chic','romantique','champetre'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Pavé de bœuf, sauce au poivre et pommes grenailles', b:2, st:['chic','moderne','romantique'], sa:null, f:['viande','lactose']},
+      {nom:'Suprême de pintade, sauce forestière et purée maison', b:2, st:['chic','romantique','champetre'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Dos de cabillaud rôti, beurre blanc et légumes glacés', b:2, st:['chic','moderne','romantique'], sa:['printemps','hiver'], f:['poisson','lactose']},
+      {nom:'Magret de canard, sauce au miel et purée de patate douce', b:2, st:['chic','champetre','romantique'], sa:['automne','hiver'], f:['viande']},
+      {nom:'Risotto aux cèpes et copeaux de parmesan', b:2, st:['romantique','moderne','chic'], sa:['automne'], f:['lactose']},
+      {nom:'Loup de mer en croûte d\'herbes, fenouil confit', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','ete'], f:['poisson']},
+      {nom:'Wellington de légumes en croûte feuilletée', b:2, st:['moderne','boheme'], sa:null, f:['gluten','lactose']},
+      {nom:'Risotto crémeux aux champignons (sans produits laitiers)', b:1, st:['boheme','moderne','minimaliste'], sa:['automne','hiver'], f:[]},
+      {nom:'Curry de légumes et pois chiches au lait de coco, riz basmati', b:1, st:['boheme','moderne'], sa:null, f:[]},
+      {nom:'Légumes rôtis du marché, quinoa aux herbes et tahini', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
+      {nom:'Pavé de tofu mariné, légumes sautés au wok et sauce soja', b:1, st:['moderne','minimaliste'], sa:null, f:['gluten']},
+      {nom:'Wellington de légumes vegan sans gluten, sauce aux herbes', b:2, st:['moderne','boheme'], sa:null, f:[]},
+      {nom:'Aubergine rôtie entière, grenade, herbes et boulgour', b:1, st:['boheme','moderne'], sa:['ete','automne'], f:['gluten']},
+      // — Luxe —
+      {nom:'Filet de bœuf Rossini, sauce périgueux et gratin truffé', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose','alcool']},
+      {nom:'Turbot rôti aux morilles et beurre Champagne', b:3, st:['chic','moderne'], sa:['printemps','hiver'], f:['poisson','lactose','alcool']},
+      {nom:'Ris de veau croustillant, jus réduit et légumes anciens', b:3, st:['chic','romantique'], sa:['automne'], f:['viande','lactose']},
+      {nom:'Homard rôti au beurre demi-sel et risotto crémeux', b:3, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer','lactose']},
+      {nom:'Pigeon rôti, jus corsé et purée de céleri à la truffe', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose']},
+    ],
+
+    // ════════════ ACCOMPAGNEMENTS (surtout buffet/garden) ════════════
+    accompagnements: [
+      {nom:'Gratin dauphinois maison', b:1, st:null, sa:['automne','hiver'], f:['lactose']},
+      {nom:'Légumes rôtis aux herbes de Provence', b:1, st:null, sa:null, f:[]},
+      {nom:'Écrasé de pommes de terre à l\'huile d\'olive', b:1, st:null, sa:null, f:[]},
+      {nom:'Riz pilaf aux petits légumes', b:1, st:null, sa:null, f:[]},
+      {nom:'Poêlée de légumes de saison', b:1, st:null, sa:null, f:[]},
+      {nom:'Purée de patate douce au cumin', b:1, st:['boheme','moderne'], sa:['automne','hiver'], f:[]},
+      {nom:'Tian de légumes provençal', b:1, st:['champetre','boheme'], sa:['ete'], f:[]},
+      {nom:'Risotto crémeux au parmesan', b:2, st:null, sa:null, f:['lactose']},
+      {nom:'Gratin de légumes anciens à la crème', b:2, st:['chic','champetre'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Pommes grenailles rôties au thym', b:1, st:null, sa:null, f:[]},
+      {nom:'Quinoa aux herbes fraîches et grenade', b:1, st:['moderne','boheme','minimaliste'], sa:null, f:[]},
+    ],
+
+    // ════════════ SALADES (buffet/garden) ════════════
+    salades: [
+      {nom:'Salade César revisitée', b:1, st:null, sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Taboulé libanais aux herbes fraîches', b:1, st:['boheme','champetre'], sa:['printemps','ete'], f:['gluten']},
+      {nom:'Salade de quinoa, légumes croquants et feta', b:1, st:['moderne','boheme'], sa:['printemps','ete'], f:['lactose']},
+      {nom:'Salade de tomates anciennes et mozzarella di bufala', b:2, st:['chic','romantique','champetre'], sa:['ete'], f:['lactose']},
+      {nom:'Salade de lentilles, échalotes et vinaigrette moutarde', b:1, st:['champetre','boheme','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Roquette, poire, copeaux de parmesan et noix', b:2, st:['chic','romantique'], sa:['automne'], f:['lactose','noix']},
+      {nom:'Salade de pousses, agrumes et avocat', b:1, st:['moderne','minimaliste'], sa:['printemps','hiver'], f:[]},
+    ],
+
+    // ════════════ DESSERTS ════════════
+    desserts: [
+      // — Économique —
+      {nom:'Tarte rustique aux fruits de saison', b:1, st:['champetre','boheme'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Salade de fruits frais au sirop léger', b:1, st:['minimaliste','moderne','boheme'], sa:['printemps','ete'], f:[]},
+      {nom:'Mousse au chocolat intense', b:1, st:null, sa:['automne','hiver'], f:['lactose','oeuf']},
+      {nom:'Crumble pommes-cannelle et crème anglaise', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Tiramisu classique', b:1, st:['romantique','moderne'], sa:null, f:['gluten','lactose','oeuf']},
+      // — Standard —
+      {nom:'Fraisier à la crème mousseline vanille', b:2, st:['romantique','chic','champetre'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Pavlova aux fruits rouges et chantilly', b:2, st:['romantique','moderne','minimaliste'], sa:['printemps','ete'], f:['lactose','oeuf']},
+      {nom:'Royal chocolat-praliné et son croustillant', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','noix']},
+      {nom:'Tarte au citron meringuée revisitée', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Dôme vanille-fruits de la passion', b:2, st:['moderne','chic'], sa:['ete','hiver'], f:['lactose','oeuf']},
+      // — Luxe —
+      {nom:'Pièce montée de choux croustillants et caramel', b:3, st:['chic','romantique'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Vacherin glacé vanille-marrons et meringue', b:3, st:['chic','romantique'], sa:['hiver'], f:['lactose','oeuf']},
+      {nom:'Sphère chocolat grand cru, cœur coulant et glace praliné', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['lactose','oeuf','noix']},
+      {nom:'Assiette gourmande : déclinaison de mignardises maison', b:3, st:['chic','romantique','moderne'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Salade de fruits frais de saison au sirop léger', b:1, st:['minimaliste','moderne','boheme','champetre'], sa:null, f:[]},
+      {nom:'Sorbet plein fruit et fruits frais', b:1, st:['minimaliste','moderne','boheme'], sa:['printemps','ete'], f:[]},
+      {nom:'Mousse au chocolat noir vegan (sans œuf ni lait)', b:1, st:['moderne','boheme','minimaliste'], sa:['automne','hiver'], f:[]},
+      {nom:'Crumble de fruits sans gluten et coulis', b:1, st:['champetre','boheme'], sa:['automne','hiver'], f:[]},
+      {nom:'Panna cotta vegan au lait de coco et fruits rouges', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','ete'], f:[]},
+      {nom:'Tarte fine aux pommes sans gluten et caramel', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:[]},
+    ],
+
+    // ════════════ FROMAGES (buffet/garden/assiette standard+) ════════════
+    fromages: [
+      {nom:'Plateau de fromages affinés et fruits secs', b:2, st:null, sa:null, f:['lactose','noix']},
+      {nom:'Sélection de fromages fermiers régionaux', b:1, st:['champetre','boheme','nature'], sa:null, f:['lactose']},
+      {nom:'Trilogie de fromages d\'exception et confiture de figues', b:3, st:['chic','romantique'], sa:null, f:['lactose']},
+    ],
+
+    // ════════════ BOUCHÉES COCKTAIL (nourriture, jamais boissons) ════════════
+    bouchees_froides: [
+      {nom:'Verrines de gaspacho et billes de melon', b:1, st:null, sa:['ete'], f:[]},
+      {nom:'Cuillères de tartare de saumon à l\'aneth', b:2, st:null, sa:null, f:['poisson']},
+      {nom:'Mini-tartelettes chèvre-miel', b:1, st:null, sa:null, f:['gluten','lactose']},
+      {nom:'Brochettes tomate-mozzarella-basilic', b:1, st:null, sa:['ete'], f:['lactose']},
+      {nom:'Macarons salés au foie gras', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['oeuf','noix']},
+      {nom:'Cuillères de Saint-Jacques marinées aux agrumes', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['fruitsmer']},
+      {nom:'Mini-bagels saumon fumé et fromage frais', b:2, st:null, sa:null, f:['gluten','poisson','lactose']},
+      {nom:'Verrines d\'avocat, crevettes et mangue', b:2, st:['moderne','chic'], sa:['printemps','ete'], f:['fruitsmer']},
+      {nom:'Houmous et bâtonnets de légumes croquants', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
+      {nom:'Wraps végétariens aux légumes grillés', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
+      {nom:'Mini-cônes au tarama maison', b:2, st:['moderne','chic'], sa:null, f:['gluten','poisson']},
+      {nom:'Tartare de tomates anciennes et basilic', b:1, st:['champetre','boheme','minimaliste'], sa:['ete'], f:[]},
+      {nom:'Verrines de guacamole et légumes croquants', b:1, st:['boheme','moderne'], sa:null, f:[]},
+      {nom:'Billes de melon et concombre à la menthe', b:1, st:['minimaliste','moderne','boheme'], sa:['ete'], f:[]},
+      {nom:'Mini-brochettes de légumes grillés marinés', b:1, st:['boheme','champetre','minimaliste'], sa:['ete','printemps'], f:[]},
+      {nom:'Verrines de caviar d\'aubergine et grenade', b:1, st:['boheme','moderne'], sa:['ete','automne'], f:[]},
+      {nom:'Rouleaux de printemps aux légumes croquants', b:1, st:['moderne','minimaliste','boheme'], sa:['printemps','ete'], f:[]},
+      {nom:'Cuillères de betterave marinée et pomme verte', b:1, st:['moderne','minimaliste'], sa:['automne','hiver'], f:[]},
+    ],
+    bouchees_chaudes: [
+      {nom:'Mini-croque-monsieur dorés', b:1, st:null, sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Beignets de légumes croustillants et sauce yaourt', b:1, st:['boheme','champetre'], sa:null, f:['gluten','lactose']},
+      {nom:'Brochettes de poulet mariné au citron', b:1, st:null, sa:null, f:['viande']},
+      {nom:'Mini-quiches lorraines', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','porc']},
+      {nom:'Accras de morue antillais', b:1, st:['boheme'], sa:['ete'], f:['gluten','poisson']},
+      {nom:'Gambas snackées au beurre d\'herbes', b:3, st:['chic','moderne'], sa:null, f:['fruitsmer','lactose']},
+      {nom:'Bouchées de risotto pané (arancini)', b:1, st:['moderne','boheme'], sa:null, f:['gluten','lactose']},
+      {nom:'Mini-burgers de bœuf au fromage fondu', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande','lactose']},
+      {nom:'Samoussas de légumes épicés', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
+      {nom:'Brochettes d\'agneau mariné aux épices douces', b:2, st:['chic','boheme'], sa:null, f:['viande']},
+      {nom:'Falafels croustillants et sauce sésame', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
+      {nom:'Légumes tempura et sauce ponzu', b:1, st:['moderne','minimaliste'], sa:null, f:['gluten']},
+      {nom:'Polenta croustillante aux herbes', b:1, st:['champetre','boheme','minimaliste'], sa:['automne','hiver'], f:[]},
+      {nom:'Champignons farcis aux herbes et chapelure', b:1, st:['champetre','boheme'], sa:['automne'], f:['gluten']},
+      {nom:'Boulettes de légumes et pois chiches épicées', b:1, st:['boheme','moderne'], sa:null, f:[]},
+    ],
+    mini_desserts: [
+      {nom:'Verrines de mousse au chocolat', b:1, st:null, sa:null, f:['lactose','oeuf']},
+      {nom:'Mini-tartelettes au citron meringuées', b:2, st:null, sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Macarons assortis', b:2, st:['chic','romantique','moderne'], sa:null, f:['lactose','oeuf','noix']},
+      {nom:'Verrines de fruits frais et chantilly', b:1, st:null, sa:['printemps','ete'], f:['lactose']},
+      {nom:'Mini-choux à la crème vanille', b:2, st:['romantique','chic'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Cake pops chocolatés', b:1, st:['moderne','boheme'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Brochettes de fruits frais', b:1, st:['minimaliste','moderne','boheme'], sa:['printemps','ete'], f:[]},
+      {nom:'Verrines de compote de fruits et granola maison', b:1, st:['champetre','boheme'], sa:null, f:['gluten']},
+      {nom:'Salade de fruits exotiques en verrine', b:1, st:['moderne','minimaliste','boheme'], sa:null, f:[]},
+      {nom:'Sorbets plein fruit (citron, fruits rouges, mangue)', b:1, st:null, sa:['printemps','ete'], f:[]},
+      {nom:'Mousse de coco et fruits de la passion', b:1, st:['moderne','boheme','minimaliste'], sa:['ete'], f:[]},
+    ],
+
+    // ════════════ FOOD TRUCK (street-food élégante) ════════════
+    foodtruck: [
+      {nom:'Burgers gourmets (bœuf Angus, cheddar affiné, oignons confits)', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande','lactose']},
+      {nom:'Bao buns vapeur au porc effiloché et pickles', b:2, st:['moderne'], sa:null, f:['gluten','viande','porc']},
+      {nom:'Tacos mexicains au poulet mariné et guacamole', b:1, st:['boheme','moderne'], sa:null, f:['gluten','viande']},
+      {nom:'Pizzas napolitaines cuites au feu de bois', b:1, st:['champetre','boheme','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Bowls poke saumon-avocat-edamame', b:2, st:['moderne','minimaliste'], sa:['printemps','ete'], f:['poisson']},
+      {nom:'Galettes bretonnes garnies (sarrasin)', b:1, st:['champetre','boheme'], sa:null, f:['lactose','oeuf']},
+      {nom:'Falafels et houmous en pita', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
+      {nom:'Croque-monsieur gourmet à la truffe', b:2, st:['chic','moderne'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Fish & chips revisité, sauce tartare maison', b:1, st:['moderne','champetre'], sa:null, f:['gluten','poisson','oeuf']},
+      {nom:'Frites de patate douce et sauces maison', b:1, st:null, sa:null, f:[]},
+    ],
+
+    // ════════════ BOISSONS (par catégorie de choix) ════════════
+    boissons: {
+      classiques: {
+        vinHonneur:['Champagne brut', 'Crémant rosé', 'Kir', 'Jus de fruits frais', 'Eaux plate et pétillante'],
+        repas:'Vins en accord (1 bouteille pour 3 personnes), eaux à volonté',
+        soft:'Sodas, jus de fruits, eaux aromatisées',
+        digestif:'Champagne, marc, eaux-de-vie'
+      },
+      premium: {
+        vinHonneur:['Champagne millésimé', 'Grand crémant', 'Cocktails au champagne', 'Jus pressés haut de gamme', 'Eaux fines'],
+        repas:'Vins d\'appellation prestigieuse en accord avec chaque plat (sommelier conseillé)',
+        soft:'Jus pressés artisanaux, limonades maison, eaux fines',
+        digestif:'Champagne millésimé, vieux rhums, cognacs'
+      },
+      sansalcool: {
+        vinHonneur:['Mocktails créatifs', 'Pétillant sans alcool', 'Jus pressés', 'Thés glacés maison', 'Kombuchas'],
+        repas:'Eaux fines plates et pétillantes, jus de raisin, jus de pomme pétillant',
+        soft:'Sodas artisanaux, limonades, infusions glacées',
+        digestif:'Infusions, thés rares, chocolat chaud (hiver)'
+      },
+      cocktailsignature: {
+        vinHonneur:['2 cocktails signature personnalisés aux prénoms des mariés', 'Champagne', 'Version sans alcool des cocktails', 'Eaux aromatisées'],
+        repas:'Vins en accord + bar à cocktails ouvert en soirée',
+        soft:'Mocktails signature, sodas premium',
+        digestif:'Bar à cocktails, shooters festifs'
+      }
+    }
+  };
+
+  // ─── HELPERS ──────────────────────────────────────────────────────────
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+  // Un plat est-il compatible avec style/saison/budget ?
+  function compatible(dish, style, saison, budgetLvl){
+    if(dish.b > budgetLvl) return false;            // trop cher pour le budget
+    if(dish.st && !dish.st.includes(style)) return false;
+    if(dish.sa && !dish.sa.includes(saison)) return false;
+    return true;
+  }
+
+  // Un plat respecte-t-il les restrictions ? (aucun flag interdit)
+  function passesRestrictions(dish, forbiddenFlags){
+    return !dish.f.some(flag => forbiddenFlags.has(flag));
+  }
+
+  // Convertit les restrictions cochées en flags interdits
+  function buildForbiddenFlags(restrictions){
+    const forbidden = new Set();
+    if(restrictions.includes('vegetarien')){ ['viande','porc','poisson','fruitsmer'].forEach(f=>forbidden.add(f)); }
+    if(restrictions.includes('vegan')){ ['viande','porc','poisson','fruitsmer','lactose','oeuf'].forEach(f=>forbidden.add(f)); }
+    if(restrictions.includes('sansgluten')) forbidden.add('gluten');
+    if(restrictions.includes('sanslactose')) forbidden.add('lactose');
+    if(restrictions.includes('halal')){ forbidden.add('porc'); forbidden.add('alcool'); }
+    if(restrictions.includes('casher')){ forbidden.add('porc'); forbidden.add('fruitsmer'); }
+    if(restrictions.includes('allergie-noix')) forbidden.add('noix');
+    return forbidden;
+  }
+
+  // Sélectionne 1 plat d'une catégorie compatible + respectant restrictions.
+  // Stratégie de repli intelligente : si rien ne respecte tout, on relâche
+  // d'abord la saison, puis le style, mais JAMAIS les restrictions.
+  function selectDish(category, style, saison, budgetLvl, forbidden, excludeNames){
+    excludeNames = excludeNames || new Set();
+    const pool = C[category];
+    // Niveau 1 : tout respecté
+    let cands = pool.filter(d => compatible(d,style,saison,budgetLvl) && passesRestrictions(d,forbidden) && !excludeNames.has(d.nom));
+    if(cands.length) return pick(cands);
+    // Niveau 2 : relâcher la saison
+    cands = pool.filter(d => (!d.st||d.st.includes(style)) && d.b<=budgetLvl && passesRestrictions(d,forbidden) && !excludeNames.has(d.nom));
+    if(cands.length) return pick(cands);
+    // Niveau 3 : relâcher le style (garder budget + restrictions)
+    cands = pool.filter(d => d.b<=budgetLvl && passesRestrictions(d,forbidden) && !excludeNames.has(d.nom));
+    if(cands.length) return pick(cands);
+    // Niveau 4 : relâcher le budget (garder restrictions — essentiel)
+    cands = pool.filter(d => passesRestrictions(d,forbidden) && !excludeNames.has(d.nom));
+    if(cands.length) return pick(cands);
+    // Niveau 5 : on autorise les déjà-utilisés (dernier recours absolu)
+    cands = pool.filter(d => passesRestrictions(d,forbidden) && !excludeNames.has(d.nom));
+    if(cands.length) return pick(cands);
+    return null; // aucune option restante distincte : la section aura moins d'items
+  }
+
+  // Sélectionne N plats distincts d'une catégorie (jamais de doublon)
+  function selectMany(category, count, style, saison, budgetLvl, forbidden){
+    const used = new Set();
+    const out = [];
+    for(let i=0;i<count;i++){
+      const d = selectDish(category, style, saison, budgetLvl, forbidden, used);
+      if(d && !used.has(d.nom)){ out.push(d.nom); used.add(d.nom); }
+    }
+    // Si on n'a pas atteint le count (pool trop petit après restrictions),
+    // on renvoie ce qu'on a, sans répéter. Mieux vaut 3 vrais plats que 6 avec doublons.
+    return out;
+  }
+
+  // ─── GÉNÉRATEUR PRINCIPAL ───────────────────────────────────────────────
+  // params: {style, saison, budget(eco/standard/luxe), format, boissons, restrictions[], invites}
+  function generate(params){
+    const style = params.style || 'romantique';
+    const saison = params.saison || 'printemps';
+    const budgetKey = params.budget || 'standard';
+    const budgetLvl = BUDGET_LEVEL[budgetKey] || 2;
+    const format = params.format || 'assiette';
+    const boissonsKey = params.boissons || 'classiques';
+    const restrictions = params.restrictions || [];
+    const invites = params.invites || 80;
+    const forbidden = buildForbiddenFlags(restrictions);
+
+    const out = { style, saison, budgetKey, format, sections: [] };
+
+    // Structure selon le FORMAT
+    if(format === 'assiette'){
+      const entree = selectDish('entrees', style, saison, budgetLvl, forbidden);
+      const plat = selectDish('plats', style, saison, budgetLvl, forbidden);
+      const dessert = selectDish('desserts', style, saison, budgetLvl, forbidden);
+      out.sections.push({titre:'Entrée', items:[entree?entree.nom:'À composer avec le traiteur']});
+      out.sections.push({titre:'Plat principal', items:[plat?plat.nom:'À composer avec le traiteur']});
+      if(budgetLvl>=2){ const fromage=selectDish('fromages',style,saison,budgetLvl,forbidden); if(fromage) out.sections.push({titre:'Fromage', items:[fromage.nom]}); }
+      out.sections.push({titre:'Dessert', items:[dessert?dessert.nom:'À composer avec le traiteur']});
+    }
+    else if(format === 'buffet'){
+      out.sections.push({titre:'Salades & entrées', items:selectMany('salades',3,style,saison,budgetLvl,forbidden).concat(selectMany('entrees',2,style,saison,budgetLvl,forbidden))});
+      out.sections.push({titre:'Plats chauds', items:selectMany('plats',3,style,saison,budgetLvl,forbidden)});
+      out.sections.push({titre:'Accompagnements', items:selectMany('accompagnements',3,style,saison,budgetLvl,forbidden)});
+      const from = selectMany('fromages',2,style,saison,budgetLvl,forbidden); if(from.length) out.sections.push({titre:'Fromages', items:from});
+      out.sections.push({titre:'Desserts', items:selectMany('desserts',4,style,saison,budgetLvl,forbidden)});
+    }
+    else if(format === 'cocktail'){
+      out.sections.push({titre:'Pièces froides', items:selectMany('bouchees_froides',6,style,saison,budgetLvl,forbidden)});
+      out.sections.push({titre:'Pièces chaudes', items:selectMany('bouchees_chaudes',6,style,saison,budgetLvl,forbidden)});
+      out.sections.push({titre:'Mini-desserts', items:selectMany('mini_desserts',5,style,saison,budgetLvl,forbidden)});
+    }
+    else if(format === 'foodtruck'){
+      out.sections.push({titre:'Stands food-truck', items:selectMany('foodtruck',4,style,saison,budgetLvl,forbidden)});
+      out.sections.push({titre:'À grignoter', items:selectMany('bouchees_froides',3,style,saison,budgetLvl,forbidden)});
+      out.sections.push({titre:'Desserts nomades', items:selectMany('mini_desserts',3,style,saison,budgetLvl,forbidden)});
+    }
+    else if(format === 'garden'){
+      out.sections.push({titre:'Buffet de salades raffinées', items:selectMany('salades',4,style,saison,budgetLvl,forbidden)});
+      out.sections.push({titre:'Pièces cocktail', items:selectMany('bouchees_froides',4,style,saison,budgetLvl,forbidden)});
+      out.sections.push({titre:'Plats à partager', items:selectMany('plats',2,style,saison,budgetLvl,forbidden).concat(selectMany('accompagnements',2,style,saison,budgetLvl,forbidden))});
+      const from = selectMany('fromages',2,style,saison,budgetLvl,forbidden); if(from.length) out.sections.push({titre:'Fromages', items:from});
+      out.sections.push({titre:'Desserts de jardin', items:selectMany('mini_desserts',3,style,saison,budgetLvl,forbidden).concat(selectMany('desserts',1,style,saison,budgetLvl,forbidden))});
+    }
+
+    // Boissons
+    out.boissons = C.boissons[boissonsKey] || C.boissons.classiques;
+
+    return out;
+  }
+
+  return { generate, _catalogue: C };
+})();
 
 const ASSIST_KB = {
   // ─── 1. MENUS — base étoffée par style × saison + adaptations ──────────
@@ -4006,14 +4423,22 @@ const ASSIST_KB = {
       'rectangle': 'Morphologie rectangle (épaules = taille = hanches) : créez des courbes avec une robe ceinturée à la taille, jupe volumineuse, bustier accentué.'
     },
     styles: [
-      {nom: 'Princesse', desc: 'Bustier ajusté + jupe ample. Effet "conte de fées". Budget : 1500-5000€.'},
-      {nom: 'Sirène', desc: 'Moulante jusqu\'aux genoux puis évasée. Très sexy, demande une morpho sablier. Budget : 1500-4500€.'},
-      {nom: 'Empire', desc: 'Ceinture sous la poitrine, jupe fluide. Confortable et romantique. Budget : 1200-3500€.'},
-      {nom: 'A-line', desc: 'Resserrée taille puis évasée. Convient à toutes morphos. Budget : 1300-4000€.'},
-      {nom: 'Fourreau', desc: 'Coupe droite près du corps. Élégant, idéal pour mariage civil. Budget : 1000-3000€.'},
-      {nom: 'Courte / asymétrique', desc: 'Robe courte devant longue derrière. Moderne et originale. Budget : 1000-3500€.'},
-      {nom: 'Robe à manches longues', desc: 'Effet "Kate Middleton". Romantique et chic. Budget : 2000-5500€.'},
-      {nom: 'Combinaison pantalon', desc: 'Pour mariées modernes / décontractées. Budget : 800-2500€.'}
+      {nom: 'A-Line', desc: 'Resserrée à la taille puis évasée en "A". La coupe la plus universelle : convient à toutes les morphologies. Élégante et confortable.', pin: 'A-line wedding dress'},
+      {nom: 'Ball Gown (Princesse)', desc: 'Bustier ajusté et jupe très ample façon robe de bal. Effet "conte de fées". Idéale pour les morphologies en poire et les grandes cérémonies.', pin: 'ball gown wedding dress'},
+      {nom: 'Empire', desc: 'Taille marquée juste sous la poitrine, jupe fluide qui tombe droit. Confortable, romantique, parfaite pour les mariées enceintes ou morphologie pomme.', pin: 'empire wedding dress'},
+      {nom: 'Drop-Waist (Taille basse)', desc: 'La taille est marquée plus bas que naturellement, sur les hanches. Allonge la silhouette, look rétro chic et élégant.', pin: 'drop waist wedding dress'},
+      {nom: 'Sheath (Gaine)', desc: 'Coupe droite et fluide qui suit la silhouette sans la serrer. Simple et élégante, idéale pour un mariage civil ou bohème.', pin: 'sheath wedding dress'},
+      {nom: 'Column (Colonne)', desc: 'Coupe droite et structurée du buste aux pieds, façon colonne. Minimaliste et moderne, allonge la silhouette.', pin: 'column wedding dress'},
+      {nom: 'Trumpet (Trompette)', desc: 'Épouse le corps jusqu\'à mi-cuisse puis s\'évase comme une trompette. Plus douce que la sirène, met les courbes en valeur.', pin: 'trumpet wedding dress'},
+      {nom: 'Mermaid (Sirène)', desc: 'Très moulante jusqu\'aux genoux puis évasée. Sublime les silhouettes en sablier, look glamour et sensuel.', pin: 'mermaid wedding dress'},
+      {nom: 'Fit-and-Flare', desc: 'Ajustée sur le buste et la taille, évasée progressivement. Compromis flatteur entre A-line et sirène, convient à beaucoup de morphologies.', pin: 'fit and flare wedding dress'},
+      {nom: 'Slip (Nuisette)', desc: 'Coupe fluide en satin, fines bretelles, inspiration lingerie années 90. Minimaliste, moderne, très tendance.', pin: 'slip wedding dress'},
+      {nom: 'Off-Shoulder (Épaules dénudées)', desc: 'Décolleté qui dégage les épaules. Romantique et féminin, met en valeur le buste et les clavicules.', pin: 'off shoulder wedding dress'},
+      {nom: 'Tea-Length (Mi-longue)', desc: 'Longueur aux mollets. Look rétro et léger, idéale pour un mariage champêtre, civil ou en été.', pin: 'tea length wedding dress'},
+      {nom: 'High-Low (Asymétrique)', desc: 'Courte devant, longue derrière. Originale et moderne, parfaite pour un mariage en plein air ou une mariée qui veut danser librement.', pin: 'high low wedding dress'},
+      {nom: 'Midi', desc: 'Longueur aux genoux ou juste en dessous. Moderne et polyvalente, idéale pour un mariage civil, une cérémonie décontractée ou un second look en soirée.', pin: 'midi wedding dress'},
+      {nom: 'Mini', desc: 'Robe courte au-dessus des genoux. Audacieuse et festive, parfaite pour un mariage champêtre, une soirée ou un second look après la cérémonie.', pin: 'mini wedding dress'},
+      {nom: 'Combinaison / Jumpsuit', desc: 'Pantalon fluide ou tailleur. Pour les mariées modernes et décontractées, ou pour la fin de soirée.', pin: 'bridal jumpsuit'}
     ],
     budget: {
       'sous-1500': 'Boutiques en ligne spécialisées, outlets, robes d\'occasion sur sites de seconde main. Compter ~500-1500€.',
@@ -4632,6 +5057,7 @@ function renderAssistant(){
         {key:'checklistAvant',label:'Check 10min avant',    icon:'✅', desc:'Tout vérifier avant cérémonie'},
         {key:'budget',        label:'Conseils budget',      icon:'💰', desc:'Répartition optimisée'},
         {key:'weddingDay',    label:'Conseils jour J',      icon:'⭐', desc:'Pas-à-pas du jour J'},
+        {key:'tenueMarie',    label:'Costume du marié',     icon:'🤵', desc:'Costumes et accessoires'},
         {key:'decoration',    label:'Décoration mariage',   icon:'🎀', desc:'Inspiration selon style'},
         {key:'discours',      label:'Discours témoin',      icon:'🎤', desc:'Trames de discours complets'},
         {key:'enfants',       label:'Enfants au mariage',   icon:'🧒', desc:'Rôles et animations'},
@@ -4648,8 +5074,7 @@ function renderAssistant(){
         {key:'prepReligieuse',label:'Préparation religieuse',icon:'⛪', desc:'Selon la religion'},
         {key:'questions',     label:'Questions prestataires',icon:'❓', desc:'Que demander à chacun'},
         {key:'remerciements', label:'Remerciements',        icon:'💌', desc:'Cartes post-mariage'},
-        {key:'tenueMariee',   label:'Tenue mariée',         icon:'👰', desc:'Robes, styles, bijoux'},
-        {key:'tenueMarie',    label:'Tenue marié',          icon:'🤵', desc:'Costumes et accessoires'},
+        {key:'tenueMariee',   label:'Robe de mariée',       icon:'👰', desc:'Modèles, styles, bijoux'},
         {key:'timeline',      label:'Timeline jour J',      icon:'⏰', desc:'Planning heure par heure'},
         {key:'voeux',         label:'Vœux personnalisés',   icon:'💞', desc:'Modèles de vœux à adapter'},
         {key:'voyageNoces',   label:'Voyage de noces',      icon:'✈️', desc:'Idées de destinations'},
@@ -4705,14 +5130,16 @@ function assistOpen(service){
 
 // ─── SERVICE 1 : MENU ───
 function assistMenu(cont){
-  const savedStyle = ld('assist_menu_style', 'romantique');
-  const savedSaison = ld('assist_menu_saison', 'printemps');
-  const savedBudget = ld('assist_menu_budget', 'standard');
-  const savedFormat = ld('assist_menu_format', 'assiette');
-  const savedInvites = ld('assist_menu_invites', 80);
-  const savedBoissons = ld('assist_menu_boissons', 'classique');
-  const savedRestric = ld('assist_menu_restric', []);
+  const gv = (k,d)=>ld('assist_menu_'+k, d);
   const RESTRIC_OPTS = ['vegetarien','vegan','sansgluten','sanslactose','halal','casher','allergie-noix'];
+  const RESTRIC_LABELS = {vegetarien:'Végétarien',vegan:'Vegan',sansgluten:'Sans gluten',sanslactose:'Sans lactose',halal:'Halal',casher:'Casher','allergie-noix':'Allergie fruits à coque'};
+  const savedRestric = gv('restric', []);
+  const savedStyle = gv('style','romantique');
+  const savedSaison = gv('saison','printemps');
+  const savedBudget = gv('budget','standard');
+  const savedFormat = gv('format','assiette');
+  const savedBoissons = gv('boissons','classiques');
+  const savedInvites = gv('invites',80);
   cont.innerHTML = `
     <div class="card" style="padding:16px;">
       <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🍽️ Menu personnalisé</div>
@@ -4721,19 +5148,13 @@ function assistMenu(cont){
         <div>
           <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
           <select id="menu-style" class="inp" style="margin-top:4px;">
-            <option value="romantique" ${savedStyle==='romantique'?'selected':''}>Romantique</option>
-            <option value="boheme" ${savedStyle==='boheme'?'selected':''}>Bohème</option>
-            <option value="chic" ${savedStyle==='chic'?'selected':''}>Chic & élégant</option>
-            <option value="nature" ${savedStyle==='nature'?'selected':''}>Nature</option>
+            ${[['romantique','Romantique'],['boheme','Bohème'],['champetre','Champêtre'],['chic','Chic / Luxe'],['moderne','Moderne'],['minimaliste','Minimaliste']].map(o=>`<option value="${o[0]}" ${savedStyle===o[0]?'selected':''}>${o[1]}</option>`).join('')}
           </select>
         </div>
         <div>
           <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Saison</label>
           <select id="menu-saison" class="inp" style="margin-top:4px;">
-            <option value="printemps" ${savedSaison==='printemps'?'selected':''}>Printemps</option>
-            <option value="ete" ${savedSaison==='ete'?'selected':''}>Été</option>
-            <option value="automne" ${savedSaison==='automne'?'selected':''}>Automne</option>
-            <option value="hiver" ${savedSaison==='hiver'?'selected':''}>Hiver</option>
+            ${[['printemps','Printemps'],['ete','Été'],['automne','Automne'],['hiver','Hiver']].map(o=>`<option value="${o[0]}" ${savedSaison===o[0]?'selected':''}>${o[1]}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -4742,51 +5163,43 @@ function assistMenu(cont){
         <div>
           <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Budget / personne</label>
           <select id="menu-budget" class="inp" style="margin-top:4px;">
-            <option value="eco" ${savedBudget==='eco'?'selected':''}>Économique (45-70 €)</option>
-            <option value="standard" ${savedBudget==='standard'?'selected':''}>Standard (70-110 €)</option>
-            <option value="premium" ${savedBudget==='premium'?'selected':''}>Premium (110-180 €)</option>
-            <option value="luxe" ${savedBudget==='luxe'?'selected':''}>Luxe (180+ €)</option>
+            ${[['eco','Économique (45-70€)'],['standard','Standard (70-120€)'],['luxe','Luxe (120€+)']].map(o=>`<option value="${o[0]}" ${savedBudget===o[0]?'selected':''}>${o[1]}</option>`).join('')}
           </select>
         </div>
         <div>
           <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Format</label>
           <select id="menu-format" class="inp" style="margin-top:4px;">
-            <option value="assiette" ${savedFormat==='assiette'?'selected':''}>Service à l'assiette</option>
-            <option value="buffet" ${savedFormat==='buffet'?'selected':''}>Buffet</option>
-            <option value="mixte" ${savedFormat==='mixte'?'selected':''}>Mixte (buffet vin d'honneur + assiette repas)</option>
+            ${[['assiette','Service à l\'assiette'],['buffet','Buffet'],['cocktail','Cocktail dînatoire'],['foodtruck','Food truck'],['garden','Garden party']].map(o=>`<option value="${o[0]}" ${savedFormat===o[0]?'selected':''}>${o[1]}</option>`).join('')}
           </select>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
-          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Nombre d'invités</label>
-          <input id="menu-invites" type="number" class="inp" value="${savedInvites}" min="10" step="5" style="margin-top:4px;">
-        </div>
-        <div>
           <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Boissons</label>
           <select id="menu-boissons" class="inp" style="margin-top:4px;">
-            <option value="classique" ${savedBoissons==='classique'?'selected':''}>Classiques (champagne, vins)</option>
-            <option value="estival" ${savedBoissons==='estival'?'selected':''}>Estivales (spritz, rosés)</option>
-            <option value="sansalcool" ${savedBoissons==='sansalcool'?'selected':''}>Sans alcool (mocktails, jus)</option>
+            ${[['classiques','Classiques'],['premium','Premium'],['sansalcool','Sans alcool'],['cocktailsignature','Cocktails signature']].map(o=>`<option value="${o[0]}" ${savedBoissons===o[0]?'selected':''}>${o[1]}</option>`).join('')}
           </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Nombre d'invités</label>
+          <input id="menu-invites" type="number" class="inp" value="${savedInvites}" min="10" step="5" style="margin-top:4px;">
         </div>
       </div>
 
       <div style="margin-bottom:14px;">
-        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Restrictions alimentaires des invités</label>
+        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Restrictions alimentaires (plusieurs possibles)</label>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           ${RESTRIC_OPTS.map(r=>{
             const checked = savedRestric.includes(r);
-            const label = ASSIST_KB.restrictions[r].label;
             return `<label style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:14px;border:1.5px solid ${checked?pk:br};background:${checked?sf:'#fff'};cursor:pointer;font-size:11px;color:${tx};font-weight:600;">
-              <input type="checkbox" value="${r}" class="menu-restric-cb" ${checked?'checked':''} style="margin:0;accent-color:${pk};"> ${label}
+              <input type="checkbox" value="${r}" class="menu-restric-cb" ${checked?'checked':''} style="margin:0;accent-color:${pk};"> ${RESTRIC_LABELS[r]}
             </label>`;
           }).join('')}
         </div>
       </div>
 
-      <button class="btn" onclick="assistGenerateMenu()" style="width:100%;">Générer mon menu personnalisé</button>
+      <button class="btn" onclick="assistGenerateMenu()" style="width:100%;">✨ Générer un menu</button>
       <div id="menu-result" style="margin-top:16px;"></div>
     </div>
   `;
@@ -4797,275 +5210,70 @@ function assistGenerateMenu(){
   const saison = el('menu-saison').value;
   const budget = el('menu-budget').value;
   const format = el('menu-format').value;
-  const invites = parseInt(el('menu-invites').value, 10) || 80;
   const boissons = el('menu-boissons').value;
+  const invites = parseInt(el('menu-invites').value,10) || 80;
   const restrictions = Array.from(document.querySelectorAll('.menu-restric-cb:checked')).map(c=>c.value);
+  sv('assist_menu_style',style); sv('assist_menu_saison',saison); sv('assist_menu_budget',budget);
+  sv('assist_menu_format',format); sv('assist_menu_boissons',boissons); sv('assist_menu_invites',invites);
+  sv('assist_menu_restric',restrictions);
 
-  sv('assist_menu_style', style);
-  sv('assist_menu_saison', saison);
-  sv('assist_menu_budget', budget);
-  sv('assist_menu_format', format);
-  sv('assist_menu_invites', invites);
-  sv('assist_menu_boissons', boissons);
-  sv('assist_menu_restric', restrictions);
+  const menu = MENU_ENGINE.generate({style,saison,budget,format,boissons,restrictions,invites});
 
-  // Trouver le menu de base
-  let key = `${style}-${saison}`;
-  if(!ASSIST_KB.menus[key]) key = Object.keys(ASSIST_KB.menus).find(k=>k.startsWith(style)) || Object.keys(ASSIST_KB.menus)[0];
-  const menu = ASSIST_KB.menus[key];
-  const budgetInfo = ASSIST_KB.budgetMenu[budget];
-  const boissonsInfo = ASSIST_KB.boissons[boissons];
-  const nbBouchees = budgetInfo.cocktailSize;
+  const FORMAT_LABELS = {assiette:'Service à l\'assiette',buffet:'Buffet',cocktail:'Cocktail dînatoire',foodtruck:'Food truck',garden:'Garden party'};
+  const BUDGET_LABELS = {eco:'Économique',standard:'Standard',luxe:'Luxe'};
+  const RESTRIC_LABELS = {vegetarien:'Végétarien',vegan:'Vegan',sansgluten:'Sans gluten',sanslactose:'Sans lactose',halal:'Halal',casher:'Casher','allergie-noix':'Allergie fruits à coque'};
 
-  // Adapter le cocktail au nombre de bouchées selon budget
-  const cocktailList = menu.cocktail.slice(0, nbBouchees);
+  const sectionsHtml = menu.sections.map(sec=>`
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">${h(sec.titre)}</div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.7;">
+        ${sec.items.length?sec.items.map(it=>`<li>${h(it)}</li>`).join(''):`<li style="color:${tl};font-style:italic;">À composer avec votre traiteur</li>`}
+      </ul>
+    </div>`).join('');
 
-  // Calcul des quantités totales en bouchées au vin d'honneur
-  const totalBouchees = nbBouchees * invites;
+  const b = menu.boissons;
+  const restricChips = restrictions.length
+    ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;justify-content:center;">${restrictions.map(r=>`<span style="background:${sf};border:1px solid ${br};border-radius:12px;padding:2px 9px;font-size:10px;color:${pk};font-weight:700;">${RESTRIC_LABELS[r]}</span>`).join('')}</div>`
+    : '';
 
-  // Construire les adaptations restrictions
-  const adaptations = restrictions.map(r => ASSIST_KB.restrictions[r]);
-
-  // ─── ADAPTATION DU MENU AU BUDGET ───
-  // Si budget économique : on remplace les produits luxueux (Saint-Jacques, foie gras,
-  // homard, caviar, ris de veau, truffe, agneau, turbot) par des alternatives accessibles.
-  // Si budget premium/luxe : on garde tout, ou on AMÉLIORE.
-  function adaptByBudget(menu, budgetKey) {
-    let m = JSON.parse(JSON.stringify(menu)); // clone
-    if (budgetKey === 'eco') {
-      // Remplacements pour budget économique
-      const repl = [
-        // Produits luxueux → alternatives plus accessibles
-        [/Saint-Jacques/gi, 'noix de Saint-Jacques de petite taille (ou crevettes roses si hors budget)'],
-        [/foie gras (mi-cuit|au pain d'épices|aux figues)?/gi, 'terrine de campagne maison'],
-        [/homard breton|homard/gi, 'grosses crevettes roses'],
-        [/caviar Osciètre|caviar/gi, 'œufs de saumon ou de truite'],
-        [/ris de veau croustillant|ris de veau/gi, 'champignons sautés au beurre persillé'],
-        [/truffe noire du Périgord|truffes? noires?|truffé/gi, 'huile parfumée aux herbes fraîches'],
-        [/filet d'agneau de printemps en croûte d'herbes/gi, 'gigot d\'agneau aux herbes (épaule plus économique)'],
-        [/filet de turbot aux morilles et beurre Champagne/gi, 'pavé de cabillaud sauce blanche aux herbes'],
-        [/Filet de bœuf Wellington/gi, 'rôti de bœuf en croûte'],
-        [/bœuf Wagyu|bœuf Rossini/gi, 'bavette ou onglet de bœuf snacké'],
-        [/turbot/gi, 'cabillaud ou colin'],
-        [/orchidées blanches/gi, 'fleurs blanches de saison'],
-        [/Champagne (Ruinart Blanc de Blancs|millésimé|brut nature aux mirabelles)/gi, 'Crémant de Loire ou de Bourgogne'],
-        [/Meursault premier cru/gi, 'Mâcon-Villages blanc'],
-        [/Pomerol|Saint-Émilion/gi, 'Bordeaux Supérieur'],
-        [/Sancerre blanc/gi, 'Touraine Sauvignon blanc'],
-        [/Chassagne-Montrachet/gi, 'Mâcon-Villages blanc'],
-        [/Sauternes/gi, 'Monbazillac'],
-        [/Pavlova aux fruits rouges/gi, 'salade de fruits rouges au sirop'],
-        [/Royal chocolat-noisette/gi, 'tarte au chocolat'],
-        [/Fraisier revisité/gi, 'fraisier classique']
-      ];
-      const apply = (s) => repl.reduce((acc, [r, t]) => acc.replace(r, t), s);
-      m.entree = apply(m.entree);
-      m.plat = apply(m.plat);
-      m.fromage = apply(m.fromage);
-      m.dessert = apply(m.dessert);
-      m.cocktail = m.cocktail.map(apply);
-    } else if (budgetKey === 'standard') {
-      // Standard : retirer le caviar et la truffe noire mais garder le foie gras
-      const repl = [
-        [/caviar Osciètre|caviar/gi, 'œufs de saumon ou tarama maison'],
-        [/truffe noire du Périgord/gi, 'huile de truffe (en touche)'],
-        [/bœuf Wagyu/gi, 'filet de bœuf']
-      ];
-      const apply = (s) => repl.reduce((acc, [r, t]) => acc.replace(r, t), s);
-      m.entree = apply(m.entree);
-      m.plat = apply(m.plat);
-      m.cocktail = m.cocktail.map(apply);
-    }
-    // premium et luxe : on garde le menu tel quel (les produits luxueux sont OK)
-    return m;
-  }
-  const adaptedMenu = adaptByBudget(menu, budget);
-
-  // ─── ADAPTATION DU MENU AUX RESTRICTIONS ALIMENTAIRES ───
-  // Si des restrictions sont cochées, on remplace certains éléments pour proposer
-  // une vraie alternative dans le menu principal (ou on signale clairement).
-  function adaptByRestrictions(menu, restrictionsList) {
-    let m = JSON.parse(JSON.stringify(menu));
-    const hasVegan = restrictionsList.includes('vegan');
-    const hasVeg = restrictionsList.includes('vegetarien');
-    const hasHalal = restrictionsList.includes('halal');
-    const hasCasher = restrictionsList.includes('casher');
-    const hasGluten = restrictionsList.includes('sansgluten');
-    const hasLactose = restrictionsList.includes('sanslactose');
-    const hasNoix = restrictionsList.includes('allergie-noix');
-
-    // Helper qui retire les viandes/poissons/produits animaux
-    const noViande = (s) => s
-      .replace(/agneau|bœuf|veau|porc|pintade|volaille|canard|pigeon|chevreuil|lapin/gi, 'légumes-racines rôtis (panais, carotte, betterave)')
-      .replace(/jambon|lardons|charcuterie|magret/gi, 'tomates séchées')
-      .replace(/Saint-Jacques|cabillaud|turbot|loup|daurade|saumon|sole|colin|poisson/gi, 'tofu fumé');
-
-    const noFromage = (s) => s
-      .replace(/chèvre|brie|comté|époisses|beaufort|brillat-savarin|crottin|mozzarella|burrata|parmesan|feta|ricotta|roquefort|camembert/gi, 'fromage végétal (cajou ou amande)')
-      .replace(/Plateau de fromages[^\.]*|Sélection de fromages[^\.]*|Plateau[^\.]*fromage[^\.]*/gi, 'Plateau de fromages végétaux artisanaux');
-
-    const noOeuf = (s) => s
-      .replace(/œuf parfait|œufs de saumon/gi, 'crème végétale')
-      .replace(/Pavlova/gi, 'Salade de fruits frais')
-      .replace(/meringue/gi, 'crème végétale')
-      .replace(/mayonnaise/gi, 'sauce végétale');
-
-    const noPorc = (s) => s
-      .replace(/jambon (cru|de Parme|ibérique|fumé)/gi, 'bœuf séché ou viande halal'  )
-      .replace(/lardons/gi, 'allumettes de bœuf séché')
-      .replace(/charcuterie/gi, 'charcuterie de bœuf');
-
-    const noGluten = (s) => s
-      .replace(/croûte d'herbes/gi, 'crumble sans gluten')
-      .replace(/en croûte feuilletée|wellington/gi, 'rôti aux herbes')
-      .replace(/blinis|toasts|tartelettes|mini-feuilletés|crackers|bagels|wraps|pain|pain perdu/gi, 'verrines')
-      .replace(/pâtes|risotto d'orge|orge perlé/gi, 'riz')
-      .replace(/feuilleté/gi, 'verrine');
-
-    const noLactose = (s) => s
-      .replace(/crème (vanille|mousseline|fraîche|au beurre|chantilly)|beurre noisette|beurre demi-sel|au beurre|mascarpone/gi, 'crème végétale')
-      .replace(/mozzarella|burrata|ricotta|fromage frais/gi, 'tofu soyeux');
-
-    const noNoix = (s) => s
-      .replace(/noisettes? torréfiées?|praliné|amandes?|noix de [a-z]+|noisette/gi, 'graines de courge ou tournesol');
-
-    if (hasVegan) {
-      m.entree = noOeuf(noFromage(noViande(m.entree)));
-      m.plat = noOeuf(noFromage(noViande(m.plat)));
-      m.fromage = 'Plateau de fromages végétaux (cajou, amande, tofu mariné) accompagné de fruits secs et confitures';
-      m.dessert = noOeuf(noFromage(m.dessert)) + ' (version vegan : crème de coco)';
-      m.cocktail = m.cocktail.map(b => noOeuf(noFromage(noViande(b))));
-    } else if (hasVeg) {
-      m.entree = noViande(m.entree);
-      m.plat = noViande(m.plat);
-      m.cocktail = m.cocktail.map(b => noViande(b));
-    }
-    if (hasHalal) {
-      m.entree = noPorc(m.entree);
-      m.plat = noPorc(m.plat);
-      m.cocktail = m.cocktail.map(b => noPorc(b));
-    }
-    if (hasCasher) {
-      m.entree = noPorc(m.entree).replace(/Saint-Jacques|crevettes|homard|fruits de mer/gi, 'poisson casher');
-      m.plat = noPorc(m.plat).replace(/Saint-Jacques|crevettes|homard|fruits de mer/gi, 'poisson casher');
-      m.cocktail = m.cocktail.map(b => noPorc(b).replace(/Saint-Jacques|crevettes|homard|fruits de mer/gi, 'poisson casher'));
-    }
-    if (hasGluten) {
-      m.entree = noGluten(m.entree);
-      m.plat = noGluten(m.plat);
-      m.dessert = noGluten(m.dessert);
-      m.cocktail = m.cocktail.map(b => noGluten(b));
-    }
-    if (hasLactose) {
-      m.entree = noLactose(m.entree);
-      m.plat = noLactose(m.plat);
-      m.fromage = 'À sauter ou alternative : sorbet ou crudités';
-      m.dessert = noLactose(m.dessert);
-      m.cocktail = m.cocktail.map(b => noLactose(b));
-    }
-    if (hasNoix) {
-      m.entree = noNoix(m.entree);
-      m.plat = noNoix(m.plat);
-      m.dessert = noNoix(m.dessert);
-      m.cocktail = m.cocktail.map(b => noNoix(b));
-    }
-    return m;
-  }
-  const finalMenu = adaptByRestrictions(adaptedMenu, restrictions);
-  // Réutiliser le menu final transformé pour le reste de la génération
-  menu.title = adaptedMenu.title; // (le titre reste inchangé)
-  const cocktailListFinal = finalMenu.cocktail.slice(0, nbBouchees);
-
-  // Format-specific notes
-  const formatNotes = {
-    'assiette': 'Service à l\'assiette : repas servi à chaque convive par les serveurs. Format chic et élégant. Compter 4-5 serveurs pour 50 invités.',
-    'buffet': 'Format buffet : convives se servent. Format convivial et économique (-25 à -35 %). Idéal pour ambiance décontractée. Compter 2-3 serveurs pour 50 invités (réapprovisionnement, débarrassage).',
-    'mixte': 'Format mixte : buffet pour le vin d\'honneur et le dessert, service à l\'assiette pour le repas. Bon compromis qualité-coût-convivialité.'
-  };
-
-  const r = el('menu-result');
-  r.innerHTML = `
+  el('menu-result').innerHTML = `
     <div style="border-top:1.5px solid ${br};padding-top:14px;">
-      <div style="font-family:Playfair Display,serif;font-style:italic;font-size:17px;color:${tm};margin-bottom:6px;text-align:center;">${menu.title}</div>
-      <div style="text-align:center;font-size:11px;color:${tl};margin-bottom:14px;font-style:italic;">${budgetInfo.label} · ${invites} invités · ${format==='assiette'?'Service à l\'assiette':format==='buffet'?'Buffet':'Format mixte'}</div>
-
-      <div style="background:${sf};padding:12px;border-radius:10px;margin-bottom:14px;font-size:12px;color:${tm};line-height:1.5;">
-        ${h(formatNotes[format])}
-      </div>
-
-      <div style="margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">🥂 Vin d'honneur — ${nbBouchees} bouchées par personne</div>
-        <div style="font-size:11px;color:${tl};margin-bottom:6px;font-style:italic;">Total à prévoir : ${totalBouchees} bouchées pour ${invites} invités</div>
-        <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.7;">${cocktailListFinal.map(c=>`<li>${h(c)}</li>`).join('')}</ul>
-      </div>
-
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Entrée</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(finalMenu.entree)}</div></div>
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Plat principal</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(finalMenu.plat)}</div></div>
-      <div style="margin-bottom:10px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Fromage</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(finalMenu.fromage)}</div></div>
-      <div style="margin-bottom:14px;"><span style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:1px;">Dessert</span><div style="font-size:13px;color:${tx};margin-top:3px;">${h(finalMenu.dessert)}</div></div>
+      <div style="text-align:center;font-size:11px;color:${tl};margin-bottom:4px;font-style:italic;">${FORMAT_LABELS[format]} · ${BUDGET_LABELS[budget]} · ${invites} invités</div>
+      ${restricChips}
+      <div style="margin:14px 0;">${sectionsHtml}</div>
 
       <div style="background:linear-gradient(135deg,#fff8ec,#fef5e0);padding:12px;border-radius:10px;margin-bottom:12px;border:1px solid ${gd}40;">
-        <div style="font-size:11px;font-weight:700;color:${gd};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🍷 ${h(boissonsInfo.title)}</div>
-        <div style="font-size:12px;color:${tx};margin-bottom:4px;"><strong>Vin d'honneur :</strong> ${boissonsInfo.vinHonneur.join(', ')}</div>
-        <div style="font-size:12px;color:${tx};margin-bottom:4px;"><strong>Repas :</strong> ${h(boissonsInfo.repas)}</div>
-        <div style="font-size:12px;color:${tx};"><strong>Digestif :</strong> ${h(boissonsInfo.digestif)}</div>
+        <div style="font-size:11px;font-weight:700;color:${gd};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🍷 Boissons</div>
+        <div style="font-size:12px;color:${tx};margin-bottom:3px;"><strong>Vin d'honneur :</strong> ${b.vinHonneur.join(', ')}</div>
+        <div style="font-size:12px;color:${tx};margin-bottom:3px;"><strong>Repas :</strong> ${h(b.repas)}</div>
+        <div style="font-size:12px;color:${tx};margin-bottom:3px;"><strong>Sans alcool :</strong> ${h(b.soft)}</div>
+        <div style="font-size:12px;color:${tx};"><strong>Digestif :</strong> ${h(b.digestif)}</div>
       </div>
 
-      ${adaptations.length>0 ? `
-        <div style="background:#fff5f8;padding:12px;border-radius:10px;margin-bottom:12px;border:1px solid ${br};">
-          <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">🥗 Adaptations restrictions alimentaires</div>
-          ${adaptations.map(a => `<div style="margin-bottom:10px;">
-            <div style="font-size:12px;color:${tx};font-weight:700;margin-bottom:3px;">${h(a.label)}</div>
-            <div style="font-size:11px;color:${tm};line-height:1.5;margin-bottom:2px;"><strong>Vin d'honneur :</strong> ${h(a.cocktail)}</div>
-            <div style="font-size:11px;color:${tm};line-height:1.5;margin-bottom:2px;"><strong>Entrée :</strong> ${h(a.entree)}</div>
-            <div style="font-size:11px;color:${tm};line-height:1.5;margin-bottom:2px;"><strong>Plat :</strong> ${h(a.plat)}</div>
-            <div style="font-size:11px;color:${pk};line-height:1.5;font-style:italic;">⚠️ ${h(a.tip)}</div>
-          </div>`).join('')}
-        </div>
-      ` : ''}
-
-      <div style="background:${sf};padding:12px;border-radius:10px;margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">💡 Conseils pour ce budget</div>
-        <ul style="margin:0;padding-left:18px;font-size:12px;color:${tm};line-height:1.7;">
-          ${budgetInfo.conseils.map(c=>`<li>${h(c)}</li>`).join('')}
-        </ul>
-        <div style="margin-top:8px;font-size:11px;color:${gd};font-style:italic;">📌 ${h(budgetInfo.noteSpeciale)}</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="assistGenerateMenu()" class="btn-sec" style="flex:1;font-size:12px;">🔄 Autre proposition</button>
+        <button onclick="assistCopyMenu()" class="btn" style="flex:1;font-size:12px;">📋 Copier</button>
       </div>
-
-      <div style="background:linear-gradient(135deg,${sf},#fff);padding:10px 12px;border-radius:10px;margin-bottom:14px;font-size:12px;color:${tm};">
-        <strong>💰 Estimation totale :</strong>
-        Repas+cocktail+boissons : ${invites*parseInt(budget==='eco'?55:budget==='standard'?90:budget==='premium'?145:200,10)} € à ${invites*parseInt(budget==='eco'?70:budget==='standard'?110:budget==='premium'?180:280,10)} € selon le traiteur
-      </div>
-
-      <button onclick="assistCopyMenu()" class="btn" style="width:100%;font-size:12px;">📋 Copier le menu complet</button>
+      <div style="font-size:10px;color:${tl};font-style:italic;text-align:center;margin-top:8px;">Chaque génération propose une variante différente.</div>
     </div>
   `;
-  // Mise à jour de la version copiable
-  window._lastMenu = {
-    title: menu.title,
-    cocktail: cocktailList,
-    entree: menu.entree,
-    plat: menu.plat,
-    fromage: menu.fromage,
-    dessert: menu.dessert,
-    boissonsTitle: boissonsInfo.title,
-    boissonsCocktail: boissonsInfo.vinHonneur.join(', '),
-    boissonsRepas: boissonsInfo.repas,
-    boissonsDigestif: boissonsInfo.digestif,
-    invites: invites,
-    nbBouchees: nbBouchees,
-    format: formatNotes[format],
-    restrictions: adaptations
-  };
+  window._lastMenu = {menu, format:FORMAT_LABELS[format], budget:BUDGET_LABELS[budget], invites, restrictions:restrictions.map(r=>RESTRIC_LABELS[r])};
 }
 
 async function assistCopyMenu(){
-  const m = window._lastMenu;
-  if(!m) return;
-  let text = `${m.title}\n${m.format}\n\nVin d'honneur (${m.nbBouchees} bouchées × ${m.invites} invités) :\n${m.cocktail.map(c=>'- '+c).join('\n')}\n\nEntrée : ${m.entree}\nPlat : ${m.plat}\nFromage : ${m.fromage}\nDessert : ${m.dessert}\n\nBoissons (${m.boissonsTitle}) :\n- Vin d'honneur : ${m.boissonsCocktail}\n- Repas : ${m.boissonsRepas}\n- Digestif : ${m.boissonsDigestif}`;
-  if(m.restrictions && m.restrictions.length){
-    text += `\n\nAdaptations restrictions :\n` + m.restrictions.map(a=>`- ${a.label} : ${a.tip}`).join('\n');
-  }
+  const data = window._lastMenu;
+  if(!data) return;
+  const m = data.menu;
+  let text = `Menu mariage — ${data.format} · ${data.budget} · ${data.invites} invités\n`;
+  if(data.restrictions.length) text += `Restrictions : ${data.restrictions.join(', ')}\n`;
+  text += '\n';
+  m.sections.forEach(sec=>{
+    text += sec.titre.toUpperCase() + '\n';
+    sec.items.forEach(it=> text += '  - ' + it + '\n');
+    text += '\n';
+  });
+  const b = m.boissons;
+  text += `BOISSONS\n  - Vin d'honneur : ${b.vinHonneur.join(', ')}\n  - Repas : ${b.repas}\n  - Sans alcool : ${b.soft}\n  - Digestif : ${b.digestif}\n`;
   try { await navigator.clipboard.writeText(text); appAlert('Menu copié dans le presse-papier !', 'Copié'); }
   catch{ appAlert(text, 'Menu (copie manuelle)'); }
 }
@@ -5438,7 +5646,7 @@ function assistTenueMariee(cont){
   const d = ASSIST_KB.tenueMariee;
   cont.innerHTML = `
     <div class="card" style="padding:16px;">
-      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">👰 Tenue de la mariée</div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">👰 Robe de mariée</div>
 
       <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">🧍 Conseils selon morphologie</div>
       ${Object.entries(d.morphologies).map(([k,v])=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
@@ -5450,7 +5658,7 @@ function assistTenueMariee(cont){
       ${d.styles.map(s=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
         <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${h(s.nom)}</div>
         <div style="font-size:12px;color:${tm};line-height:1.6;margin-bottom:8px;">${h(s.desc)}</div>
-        <a href="${pinterestUrl('robe de mariée '+s.nom)}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 11px;background:#fff;border:1.5px solid ${gd}50;border-radius:8px;text-decoration:none;color:${tx};font-size:11px;font-weight:700;font-family:Lora,serif;">📌 Voir sur Pinterest</a>
+        <a href="${pinterestUrl(s.pin || ('robe de mariée '+s.nom))}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 11px;background:#fff;border:1.5px solid ${gd}50;border-radius:8px;text-decoration:none;color:${tx};font-size:11px;font-weight:700;font-family:Lora,serif;">📌 Voir sur Pinterest</a>
       </div>`).join('')}
 
       <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">💰 Selon budget</div>
@@ -5474,7 +5682,7 @@ function assistTenueMarie(cont){
   const d = ASSIST_KB.tenueMarie;
   cont.innerHTML = `
     <div class="card" style="padding:16px;">
-      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🤵 Tenue du marié</div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🤵 Costume du marié</div>
 
       <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">👔 Styles de costume</div>
       ${d.styles.map(s=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
