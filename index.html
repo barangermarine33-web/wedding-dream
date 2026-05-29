@@ -1430,19 +1430,10 @@ function renderGuests(){
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
     <button class="btn" onclick="toggleAddGuest()">+ Ajouter un invité</button>
     <a href="https://www.canva.com/fr_fr/" target="_blank" class="btn-sec" style="text-decoration:none;display:inline-block;">Créer mes invitations</a>
-    <button class="btn-sec" onclick="showImportHelp()">📥 Importer</button>
+    <button class="btn-sec" onclick="el('guest-file').click()">📥 Importer</button>
     <button class="btn-sec" onclick="exportGuests()">📤 Exporter</button>
+    <button class="btn-sec" onclick="deleteAllGuests()" style="color:#c43a3a;border-color:#c43a3a55;">🗑️ Tout supprimer</button>
     <input type="file" id="guest-file" style="display:none" onchange="importGuests(event)">
-  </div>
-  <div id="import-help" style="display:none;background:#fff8ec;border:1px solid #c9a84c66;border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:12px;color:#5a1a30;line-height:1.6;">
-    <strong>Pour importer depuis Google Sheets :</strong><br>
-    1. Ouvre ta feuille dans l'app <strong>Google Sheets</strong><br>
-    2. Menu <strong>⋮</strong> → <strong>Partager et exporter</strong> → <strong>Enregistrer sous</strong> → choisis <strong>.xlsx</strong> ou <strong>.csv</strong><br>
-    3. Reviens ici et appuie sur <strong>« Choisir le fichier »</strong> ci-dessous, puis va le chercher dans tes <strong>Téléchargements</strong>.<br>
-    <span style="font-size:11px;color:#8a4a60;">La 1re colonne doit contenir les noms (ou des colonnes Nom / Prénom / Email / Côté).</span>
-    <div style="margin-top:10px;">
-      <button class="btn" style="font-size:12px;padding:8px 14px;" onclick="el('guest-file').click()">📂 Choisir le fichier</button>
-    </div>
   </div>
   <div id="import-msg" style="display:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;margin-bottom:10px;"></div>
   <div id="guest-add-form" style="display:none;" class="card">
@@ -1567,62 +1558,124 @@ function exportGuests(){
   GUESTS.forEach(g=>{csv+=`"${g.nom}","${g.email||''}","${g.cote==='p1'?USER.p1:USER.p2}","${g.role||''}","${g.regime||''}","${g.vinHonneur?'Oui':'Non'}","${g.invitation}","${g.presence}"\n`;});
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`invites_${USER.p1}_${USER.p2}.csv`;a.click();
 }
-function showImportHelp(){
-  const h=el('import-help');
-  if(!h)return;
-  h.style.display = h.style.display==='none' ? 'block' : 'none';
+async function deleteAllGuests(){
+  if(!GUESTS.length){ showImportMsg('Aucun invité à supprimer.','err'); return; }
+  const ok = await appConfirm(`Supprimer définitivement les ${GUESTS.length} invité(s) de la liste ? Cette action est irréversible.`, 'Tout supprimer');
+  if(!ok) return;
+  // Libérer aussi les placements de table
+  GUESTS = [];
+  saveGuests();
+  renderGuests();
+  showImportMsg('✓ Tous les invités ont été supprimés.','ok');
 }
 
 function importGuests(e){
   const file=e.target.files?.[0];if(!file)return;
   const name=(file.name||'').toLowerCase();
   e.target.value='';
+  // Formats explicitement refusés (pas des listes d'invités)
+  const refuses=['.pdf','.doc','.docx','.ppt','.pptx','.jpg','.jpeg','.png','.gif','.heic','.zip','.mp4','.mp3','.pages','.key'];
+  if(refuses.some(ext=>name.endsWith(ext))){
+    showImportMsg('❌ Ce type de fichier n\'est pas une liste d\'invités. Utilise un fichier Excel (.xlsx) ou CSV avec les noms en colonne.','err');
+    return;
+  }
   // CSV / TSV / TXT : lecture texte directe (rapide, offline)
   if(name.endsWith('.csv')||name.endsWith('.tsv')||name.endsWith('.txt')){
     importGuestsCSV(file);
-  } else {
-    // .xlsx .xls .xlsm .xlsb .ods et tout autre tableur : via SheetJS
+  } else if(name.endsWith('.xlsx')||name.endsWith('.xls')||name.endsWith('.xlsm')||name.endsWith('.xlsb')||name.endsWith('.ods')){
     importGuestsExcel(file);
+  } else {
+    showImportMsg('❌ Format non reconnu. Enregistre ta liste en Excel (.xlsx) ou CSV, avec les noms dans la 1re colonne.','err');
   }
+}
+
+// Vérifie qu'un nom ressemble à un vrai nom de personne (anti-charabia PDF)
+function looksLikeName(s){
+  if(!s) return false;
+  s=String(s).trim();
+  if(s.length<2 || s.length>60) return false;
+  // Rejeter les jetons techniques PDF (/PageLabels, <<, >>, /Nums, etc.)
+  if(/[<>\/\[\]{}|\\]/.test(s)) return false;
+  if(/^[^a-zA-ZÀ-ÿ]+$/.test(s)) return false; // que des symboles/chiffres
+  // Doit contenir au moins 2 lettres
+  const lettres=(s.match(/[a-zA-ZÀ-ÿ]/g)||[]).length;
+  if(lettres<2) return false;
+  // Trop de caractères non alphabétiques = suspect
+  const nonAlpha=(s.match(/[^a-zA-ZÀ-ÿ '\-]/g)||[]).length;
+  if(nonAlpha > s.length*0.4) return false;
+  return true;
 }
 
 // Transforme une matrice de lignes (tableau de tableaux) en invités
 function rowsToGuests(rows){
   if(!rows || rows.length<1){showImportMsg('⚠️ Fichier vide ou sans données.','err');return;}
-  // Détecter si la 1re ligne est un en-tête
+  // Nettoyer : retirer les lignes entièrement vides
+  rows = rows.filter(r => r && r.some(c => String(c==null?'':c).trim()));
+  if(rows.length<1){showImportMsg('⚠️ Fichier vide.','err');return;}
+
+  // Détecter l'en-tête
   const header = rows[0].map(c=>String(c||'').trim().toLowerCase());
-  const findCol=patterns=>header.findIndex(c=>patterns.some(p=>c.includes(p)));
-  let iNomComplet=findCol(['nom complet','nom et prénom','nom et prenom']);
-  let iNom=findCol(['nom']);
-  let iPre=findCol(['prénom','prenom']);
-  let iEmail=findCol(['email','mail','courriel']);
-  let iCote=findCol(['côté','cote','famille']);
-  const hasHeader = (iNomComplet>=0||iNom>=0||iPre>=0||iEmail>=0);
+  const findCol=patterns=>header.findIndex(c=>patterns.some(p=>c===p||c.includes(p)));
+  // Prénom d'abord (pour ne pas confondre avec "nom")
+  let iPre=header.findIndex(c=>c==='prénom'||c==='prenom'||c.includes('prénom')||c.includes('prenom')||c.includes('first name'));
+  let iNomComplet=findCol(['nom complet','nom et prénom','nom et prenom','nom & prénom','full name']);
+  // "nom" mais PAS la colonne déjà identifiée comme prénom/nom complet
+  let iNom=header.findIndex((c,idx)=>idx!==iPre&&idx!==iNomComplet&&(c==='nom'||c==='nom de famille'||c==='last name'||(c.includes('nom')&&!c.includes('prénom')&&!c.includes('prenom')&&!c.includes('complet'))));
+  let iEmail=findCol(['email','e-mail','mail','courriel']);
+  let iCote=findCol(['côté','cote','famille','side']);
+  // Si "nom complet" existe, ignorer nom/prénom séparés
+  if(iNomComplet>=0){ iNom=-1; iPre=-1; }
+
+  const hasHeader = (iNomComplet>=0||iNom>=0||iPre>=0||iEmail>=0||iCote>=0);
   const startRow = hasHeader ? 1 : 0;
+
   const imported=[];
+  let rejets=0;
   for(let i=startRow;i<rows.length;i++){
     const cols=rows[i].map(c=>String(c==null?'':c).trim());
-    if(cols.every(c=>!c)) continue; // ligne vide
+    if(cols.every(c=>!c)) continue;
     let nom='';
     if(hasHeader){
-      if(iNomComplet>=0) nom=cols[iNomComplet]||'';
-      else if(iPre>=0&&iNom>=0) nom=((cols[iPre]||'')+' '+(cols[iNom]||'')).trim();
-      else if(iNom>=0) nom=cols[iNom]||'';
-      else if(iPre>=0) nom=cols[iPre]||'';
+      if(iNomComplet>=0){ nom=cols[iNomComplet]||''; }
+      else if(iPre>=0 && iNom>=0){
+        const p=cols[iPre]||'', n=cols[iNom]||'';
+        nom = (p===n) ? p : (p+' '+n).trim();   // éviter le doublon si colonnes identiques
+      }
+      else if(iNom>=0){ nom=cols[iNom]||''; }
+      else if(iPre>=0){ nom=cols[iPre]||''; }
     } else {
-      // pas d'en-tête : on prend la 1re colonne (ou 1re+2e si 2 colonnes)
-      nom = cols.length>=2 ? (cols[0]+' '+cols[1]).trim() : (cols[0]||'');
+      // Pas d'en-tête : 1re colonne = nom (ou 1re+2e si la 2e ressemble à un nom et pas à un email)
+      const c0=cols[0]||'', c1=cols[1]||'';
+      if(c1 && looksLikeName(c1) && c1.indexOf('@')<0 && c0.indexOf('@')<0 && c0!==c1){
+        nom=(c0+' '+c1).trim();
+      } else {
+        nom=c0;
+      }
     }
-    if(!nom.trim()) continue;
+    nom=nom.trim();
+    // VALIDATION anti-charabia : on n'importe que les vrais noms
+    if(!looksLikeName(nom)){ rejets++; continue; }
+
     const email = (hasHeader&&iEmail>=0)?(cols[iEmail]||''):'';
     let cote='p1';
-    if(hasHeader&&iCote>=0){ const cv=(cols[iCote]||'').toLowerCase(); if(cv.includes('2')||cv.includes('b')||cv.includes('mari')&&cv.includes('e')) cote='p2'; }
-    imported.push({id:Date.now()+i,nom:nom.trim(),email:email.trim(),cote:cote,invitation:'non envoyée',presence:'en attente',role:'Invité·e',regime:'Aucun',vinHonneur:false,seatTableId:null,seatIdx:null});
+    if(hasHeader&&iCote>=0){ const cv=(cols[iCote]||'').toLowerCase(); if(cv.includes('2')||cv.includes('p2')||(cv.includes('mari')&&cv.includes('é'))) cote='p2'; }
+    imported.push({id:Date.now()+i,nom:nom,email:email.trim(),cote:cote,invitation:'non envoyée',presence:'en attente',role:'Invité·e',regime:'Aucun',vinHonneur:false,seatTableId:null,seatIdx:null});
   }
-  if(imported.length===0){showImportMsg('⚠️ Aucun invité trouvé. Vérifie que la 1re colonne contient les noms.','err');return;}
+
+  // Si la grande majorité des lignes a été rejetée, c'est que le fichier n'est pas une liste d'invités
+  const totalLignes = rows.length - startRow;
+  if(imported.length===0){
+    showImportMsg('❌ Aucun nom valide trouvé. Vérifie que ton fichier contient une colonne avec les noms des invités (ce n\'était peut-être pas le bon fichier).','err');
+    return;
+  }
+  if(totalLignes>=5 && imported.length < totalLignes*0.3){
+    showImportMsg('❌ Ce fichier ne ressemble pas à une liste d\'invités (trop de contenu non reconnu). Import annulé.','err');
+    return;
+  }
   GUESTS=[...GUESTS,...imported];saveGuests();renderGuests();
-  const helpBox=el('import-help'); if(helpBox) helpBox.style.display='none';
-  showImportMsg(`✓ ${imported.length} invité(s) importé(s) !`,'ok');
+  let msg=`✓ ${imported.length} invité(s) importé(s) !`;
+  if(rejets>0) msg+=` (${rejets} ligne(s) ignorée(s))`;
+  showImportMsg(msg,'ok');
 }
 
 function importGuestsCSV(file){
