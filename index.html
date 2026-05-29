@@ -1559,29 +1559,115 @@ function exportGuests(){
 }
 function importGuests(e){
   const file=e.target.files?.[0];if(!file)return;
+  const name=(file.name||'').toLowerCase();
+  const isExcel = name.endsWith('.xlsx')||name.endsWith('.xls');
+  e.target.value='';
+  if(isExcel){
+    importGuestsExcel(file);
+  } else {
+    importGuestsCSV(file);
+  }
+}
+
+// Transforme une matrice de lignes (tableau de tableaux) en invités
+function rowsToGuests(rows){
+  if(!rows || rows.length<1){showImportMsg('⚠️ Fichier vide ou sans données.','err');return;}
+  // Détecter si la 1re ligne est un en-tête
+  const header = rows[0].map(c=>String(c||'').trim().toLowerCase());
+  const findCol=patterns=>header.findIndex(c=>patterns.some(p=>c.includes(p)));
+  let iNomComplet=findCol(['nom complet','nom et prénom','nom et prenom']);
+  let iNom=findCol(['nom']);
+  let iPre=findCol(['prénom','prenom']);
+  let iEmail=findCol(['email','mail','courriel']);
+  let iCote=findCol(['côté','cote','famille']);
+  const hasHeader = (iNomComplet>=0||iNom>=0||iPre>=0||iEmail>=0);
+  const startRow = hasHeader ? 1 : 0;
+  const imported=[];
+  for(let i=startRow;i<rows.length;i++){
+    const cols=rows[i].map(c=>String(c==null?'':c).trim());
+    if(cols.every(c=>!c)) continue; // ligne vide
+    let nom='';
+    if(hasHeader){
+      if(iNomComplet>=0) nom=cols[iNomComplet]||'';
+      else if(iPre>=0&&iNom>=0) nom=((cols[iPre]||'')+' '+(cols[iNom]||'')).trim();
+      else if(iNom>=0) nom=cols[iNom]||'';
+      else if(iPre>=0) nom=cols[iPre]||'';
+    } else {
+      // pas d'en-tête : on prend la 1re colonne (ou 1re+2e si 2 colonnes)
+      nom = cols.length>=2 ? (cols[0]+' '+cols[1]).trim() : (cols[0]||'');
+    }
+    if(!nom.trim()) continue;
+    const email = (hasHeader&&iEmail>=0)?(cols[iEmail]||''):'';
+    let cote='p1';
+    if(hasHeader&&iCote>=0){ const cv=(cols[iCote]||'').toLowerCase(); if(cv.includes('2')||cv.includes('b')||cv.includes('mari')&&cv.includes('e')) cote='p2'; }
+    imported.push({id:Date.now()+i,nom:nom.trim(),email:email.trim(),cote:cote,invitation:'non envoyée',presence:'en attente',role:'Invité·e',regime:'Aucun',vinHonneur:false,seatTableId:null,seatIdx:null});
+  }
+  if(imported.length===0){showImportMsg('⚠️ Aucun invité trouvé. Vérifie que la 1re colonne contient les noms.','err');return;}
+  GUESTS=[...GUESTS,...imported];saveGuests();renderGuests();
+  showImportMsg(`✓ ${imported.length} invité(s) importé(s) !`,'ok');
+}
+
+function importGuestsCSV(file){
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
       const text=ev.target.result;
       const lines=text.split(/\r?\n/).filter(l=>l.trim());
-      if(lines.length<2){showImportMsg('⚠️ Fichier vide ou sans données.','err');return;}
-      const header=lines[0].split(',').map(c=>c.replace(/"/g,'').trim().toLowerCase());
-      const findCol=patterns=>header.findIndex(c=>patterns.some(p=>c.includes(p)));
-      const iNom=findCol(['nom complet','nom']);
-      const iPre=findCol(['prénom','prenom']);
-      const imported=[];
-      for(let i=1;i<lines.length;i++){
-        const cols=lines[i].match(/(".*?"|[^,]+)/g)||[];
-        const get=idx=>idx>=0?(cols[idx]||'').replace(/"/g,'').trim():'';
-        const nom=iNom>=0&&header[iNom].includes('complet')?get(iNom):(iPre>=0&&iNom>=0?get(iPre)+' '+get(iNom):get(iNom>=0?iNom:iPre));
-        if(!nom.trim())continue;
-        imported.push({id:Date.now()+i,nom:nom.trim(),email:'',cote:'p1',invitation:'non envoyée',presence:'en attente',role:'Invité·e',regime:'Aucun',vinHonneur:false,seatTableId:null,seatIdx:null});
-      }
-      GUESTS=[...GUESTS,...imported];saveGuests();renderGuests();
-      showImportMsg(`✓ ${imported.length} invité(s) importé(s) !`,'ok');
-    }catch{showImportMsg('❌ Erreur lors de l\'import.','err');}
+      // Détecter le séparateur (virgule ou point-virgule, fréquent en France)
+      const sep = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
+      const rows=lines.map(line=>{
+        const cols=line.match(sep===';'?/(".*?"|[^;]+)/g:/(".*?"|[^,]+)/g)||[];
+        return cols.map(c=>c.replace(/^"|"$/g,'').trim());
+      });
+      rowsToGuests(rows);
+    }catch(err){showImportMsg('❌ Erreur lors de l\'import CSV.','err');}
   };
-  reader.readAsText(file,'UTF-8');e.target.value='';
+  reader.readAsText(file,'UTF-8');
+}
+
+function importGuestsExcel(file){
+  showImportMsg('⏳ Lecture du fichier Excel…','ok');
+  // Charger SheetJS à la demande
+  loadSheetJS().then(XLSX=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const data=new Uint8Array(ev.target.result);
+        const wb=XLSX.read(data,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:''});
+        rowsToGuests(rows);
+      }catch(err){showImportMsg('❌ Impossible de lire ce fichier Excel.','err');}
+    };
+    reader.readAsArrayBuffer(file);
+  }).catch(()=>{
+    showImportMsg('❌ Lecture Excel indisponible (connexion requise la 1re fois). Convertis ton fichier en CSV et réessaie.','err');
+  });
+}
+
+// Charge SheetJS (xlsx) une seule fois, depuis CDN, avec fallback
+let _sheetJSPromise=null;
+function loadSheetJS(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(_sheetJSPromise) return _sheetJSPromise;
+  const urls=[
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ];
+  _sheetJSPromise=new Promise((resolve,reject)=>{
+    let idx=0;
+    const tryNext=()=>{
+      if(idx>=urls.length){reject(new Error('SheetJS indisponible'));return;}
+      const s=document.createElement('script');
+      s.src=urls[idx++];
+      s.onload=()=>{ if(window.XLSX) resolve(window.XLSX); else tryNext(); };
+      s.onerror=()=>{ s.remove(); tryNext(); };
+      document.head.appendChild(s);
+    };
+    tryNext();
+  });
+  return _sheetJSPromise;
 }
 function showImportMsg(msg,type){
   const m=el('import-msg');if(!m)return;
@@ -1765,7 +1851,35 @@ function addTableEl(table){
   }
   div.appendChild(surf);
 
-  // ─── PLACEMENT DES CHAISES AUTOUR DE LA TABLE (jamais dessus) ───
+  // ─── CONTRÔLE DU NOMBRE DE CHAISES (au centre de la table) ───
+  const seatCtrl=document.createElement('div');
+  seatCtrl.style.cssText=`position:absolute;left:${cx-34}px;top:${cy-11}px;width:68px;height:22px;display:flex;align-items:center;justify-content:center;gap:3px;z-index:5;`;
+  const mkBtn=(txt,fn)=>{
+    const b=document.createElement('div');
+    b.textContent=txt;
+    b.style.cssText=`width:18px;height:18px;border-radius:50%;background:#fff;border:1.5px solid ${pk};color:${pk};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;cursor:pointer;line-height:1;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,.15);`;
+    b.addEventListener('pointerdown',e=>e.stopPropagation());
+    b.addEventListener('click',e=>{e.stopPropagation();fn();});
+    return b;
+  };
+  const cntDisplay=document.createElement('div');
+  cntDisplay.textContent=table.seats;
+  cntDisplay.style.cssText=`min-width:16px;text-align:center;font-size:12px;font-weight:bold;color:${tm};`;
+  const minus=mkBtn('−',()=>{
+    const i=TABLES.findIndex(t=>t.id===table.id);if(i<0)return;
+    if(TABLES[i].seats>1){TABLES[i].seats--;
+      // nettoyer les invités placés au-delà du nouveau nombre
+      GUESTS=GUESTS.map(g=>(g.seatTableId===table.id&&g.seatIdx>=TABLES[i].seats)?{...g,seatTableId:null,seatIdx:null}:g);
+      TABLES[i].hiddenSeats=(TABLES[i].hiddenSeats||[]).filter(x=>x<TABLES[i].seats);
+      saveTables();renderTablePlan();}
+  });
+  const plus=mkBtn('+',()=>{
+    const i=TABLES.findIndex(t=>t.id===table.id);if(i<0)return;
+    if(TABLES[i].seats<12){TABLES[i].seats++;saveTables();renderTablePlan();}
+  });
+  seatCtrl.appendChild(minus);seatCtrl.appendChild(cntDisplay);seatCtrl.appendChild(plus);
+  div.appendChild(seatCtrl);
+
   const n = Math.min(table.seats, 12);
   for(let i=0;i<n;i++){
     let sx, sy;
@@ -3411,79 +3525,120 @@ const MENU_ENGINE = (function(){
 
     // ════════════ ENTRÉES (par style fort) ════════════
     entrees: [
-      // ROMANTIQUE
+      // ══ ROMANTIQUE ══
       {nom:'Velouté de petits pois à la menthe et chantilly salée', b:1, st:['romantique','champetre'], sa:['printemps'], f:['lactose']},
+      {nom:'Asperges blanches, mousseline légère et copeaux de jambon cru', b:2, st:['romantique','chic'], sa:['printemps'], f:['porc']},
+      {nom:'Tartare de tomates du jardin, burrata crémeuse et basilic', b:2, st:['romantique','champetre'], sa:['ete'], f:['lactose']},
+      {nom:'Melon, jambon de pays et perles de porto', b:1, st:['romantique','champetre'], sa:['ete'], f:['porc','alcool']},
       {nom:'Œuf parfait, crème de champignons et émulsion truffée', b:2, st:['romantique','chic','moderne'], sa:['automne','hiver'], f:['oeuf','lactose']},
+      {nom:'Velouté de châtaignes, chantilly et éclats de marrons', b:1, st:['romantique','champetre'], sa:['automne','hiver'], f:['lactose']},
       {nom:'Carpaccio de Saint-Jacques aux agrumes et fleurs comestibles', b:3, st:['romantique','chic'], sa:['automne','hiver'], f:['fruitsmer']},
       {nom:'Tartelette fine de légumes confits et pesto rouge', b:1, st:['romantique','champetre','boheme'], sa:['ete'], f:['gluten','noix']},
-      // BOHÈME
+      // ══ BOHÈME ══
+      {nom:'Assiette mezze de printemps : houmous, fèves, radis, pain plat', b:1, st:['boheme'], sa:['printemps'], f:['gluten']},
       {nom:'Buddha bowl de légumes grillés, quinoa et tahini', b:1, st:['boheme','moderne','minimaliste'], sa:['ete','printemps'], f:[]},
-      {nom:'Assiette mezze : houmous, caviar d\'aubergine, falafels', b:1, st:['boheme'], sa:null, f:[]},
+      {nom:'Gaspacho de pastèque et tomate, feta émiettée', b:1, st:['boheme','moderne'], sa:['ete'], f:['lactose']},
+      {nom:'Assiette mezze : houmous, caviar d\'aubergine, falafels', b:1, st:['boheme'], sa:['ete','automne'], f:[]},
       {nom:'Salade de lentilles corail, grenade et herbes fraîches', b:1, st:['boheme','nature','minimaliste'], sa:['automne','hiver'], f:[]},
+      {nom:'Velouté de courge butternut, lait de coco et graines torréfiées', b:1, st:['boheme','nature'], sa:['automne','hiver'], f:[]},
       {nom:'Caponata sicilienne et burrata crémeuse', b:2, st:['boheme','moderne'], sa:['ete','automne'], f:['lactose']},
-      // CHAMPÊTRE
-      {nom:'Salade de chèvre chaud, miel et noix', b:1, st:['champetre','romantique'], sa:['printemps','automne'], f:['gluten','lactose','noix']},
+      {nom:'Soupe thaï épicée aux légumes croquants', b:1, st:['boheme','moderne'], sa:['hiver'], f:[]},
+      // ══ CHAMPÊTRE ══
+      {nom:'Salade printanière, asperges, radis et vinaigrette aux herbes', b:1, st:['champetre','nature','minimaliste'], sa:['printemps'], f:[]},
+      {nom:'Œufs cocotte à la crème et asperges', b:1, st:['champetre'], sa:['printemps'], f:['oeuf','lactose']},
+      {nom:'Salade de chèvre chaud, melon et jambon cru', b:1, st:['champetre','romantique'], sa:['ete'], f:['gluten','lactose','porc']},
+      {nom:'Tartine de pain de campagne, ricotta et légumes du potager', b:1, st:['champetre','nature','boheme'], sa:['printemps','ete'], f:['gluten','lactose']},
+      {nom:'Salade de chèvre chaud, miel et noix', b:1, st:['champetre','romantique'], sa:['automne'], f:['gluten','lactose','noix']},
       {nom:'Terrine de campagne maison et pickles de légumes', b:1, st:['champetre','boheme'], sa:['automne','hiver'], f:['viande','porc']},
       {nom:'Œufs cocotte à la crème et lardons', b:1, st:['champetre'], sa:['automne','hiver'], f:['oeuf','lactose','porc']},
-      {nom:'Tartine de pain de campagne, ricotta et légumes du potager', b:1, st:['champetre','nature','boheme'], sa:['printemps','ete'], f:['gluten','lactose']},
-      // CHIC / LUXE
-      {nom:'Foie gras mi-cuit, chutney de figues et pain brioché', b:2, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten']},
+      {nom:'Velouté de potiron et croûtons à l\'ail', b:1, st:['champetre','nature'], sa:['automne','hiver'], f:['gluten','lactose']},
+      // ══ CHIC / LUXE ══
+      {nom:'Asperges vertes, œuf mollet, mousseline au caviar', b:3, st:['chic'], sa:['printemps'], f:['oeuf','fruitsmer']},
       {nom:'Langoustines rôties, émulsion d\'agrumes et caviar', b:3, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer']},
       {nom:'Tourteau décortiqué, fine gelée de tomate et avocat', b:3, st:['chic','moderne','minimaliste'], sa:['ete'], f:['fruitsmer']},
+      {nom:'Homard breton tiède et vinaigrette aux agrumes', b:3, st:['chic'], sa:['ete'], f:['fruitsmer']},
+      {nom:'Foie gras mi-cuit, chutney de figues et pain brioché', b:2, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten']},
       {nom:'Foie gras poêlé, pain d\'épices et réduction de Sauternes', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten','alcool']},
-      // MODERNE
-      {nom:'Tartare de daurade, mangue, avocat et tuile de sésame', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:['poisson']},
-      {nom:'Carpaccio de betterave multicolore, roquette et vinaigrette balsamique', b:1, st:['moderne','minimaliste','boheme'], sa:null, f:[]},
+      {nom:'Carpaccio de Saint-Jacques, caviar et huile vierge', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['fruitsmer']},
+      // ══ MODERNE ══
       {nom:'Ceviche de bar aux agrumes et lait de tigre', b:2, st:['moderne','chic'], sa:['printemps','ete'], f:['poisson']},
-      {nom:'Tataki de thon mi-cuit, sésame et soja', b:2, st:['moderne','chic','minimaliste'], sa:null, f:['poisson','gluten']},
-      // MINIMALISTE
+      {nom:'Tartare de daurade, mangue, avocat et tuile de sésame', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:['poisson']},
+      {nom:'Gaspacho vert, huile de basilic et croûtons', b:1, st:['moderne','minimaliste'], sa:['ete'], f:['gluten']},
+      {nom:'Tataki de thon mi-cuit, sésame et soja', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','automne'], f:['poisson','gluten']},
+      {nom:'Carpaccio de betterave multicolore, roquette et balsamique', b:1, st:['moderne','minimaliste','boheme'], sa:['automne','hiver'], f:[]},
+      {nom:'Velouté de panais, huile de noisette et chips de légumes', b:1, st:['moderne','minimaliste'], sa:['hiver'], f:['noix']},
+      // ══ MINIMALISTE ══
       {nom:'Asperges vertes, œuf mollet et copeaux de parmesan', b:2, st:['minimaliste','moderne','chic'], sa:['printemps'], f:['oeuf','lactose']},
-      {nom:'Velouté de saison, huile parfumée et croûtons', b:1, st:['minimaliste','champetre','nature'], sa:['automne','hiver'], f:['gluten']},
       {nom:'Salade de pousses, agrumes, avocat et graines', b:1, st:['minimaliste','moderne'], sa:['printemps','hiver'], f:[]},
-      // Végétal / repli restrictions
-      {nom:'Assiette de légumes grillés, houmous et graines torréfiées', b:1, st:['boheme','moderne','minimaliste','nature'], sa:['ete','printemps'], f:[]},
+      {nom:'Tomate cœur de bœuf, huile d\'olive et fleur de sel', b:1, st:['minimaliste','nature'], sa:['ete'], f:[]},
+      {nom:'Velouté de saison, huile parfumée et croûtons', b:1, st:['minimaliste','champetre','nature'], sa:['automne','hiver'], f:['gluten']},
+      // ══ VÉGÉTAL (repli restrictions, toutes saisons couvertes) ══
+      {nom:'Assiette de légumes grillés de printemps, houmous et graines', b:1, st:['boheme','moderne','minimaliste','nature'], sa:['printemps'], f:[]},
       {nom:'Tartare d\'avocat, mangue et tomate, tuile croustillante', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:[]},
-      {nom:'Velouté de potimarron, éclats de châtaigne et huile de courge', b:1, st:['champetre','romantique','nature'], sa:['automne','hiver'], f:[]},
-      {nom:'Salade printanière, asperges, radis et vinaigrette légère', b:1, st:['minimaliste','nature','champetre'], sa:['printemps'], f:[]},
+      {nom:'Velouté de potimarron, éclats de châtaigne et huile de courge', b:1, st:['champetre','romantique','nature'], sa:['automne'], f:[]},
+      {nom:'Velouté de céleri-rave, huile de truffe et croûtons', b:1, st:['minimaliste','moderne','nature'], sa:['hiver'], f:['gluten']},
+      {nom:'Salade tiède de lentilles, betterave et roquette', b:1, st:['boheme','nature','minimaliste'], sa:['automne','hiver'], f:[]},
     ],
 
-    // ════════════ PLATS (par style fort) ════════════
+    // ════════════ PLATS (par style fort, couverture saisonnière) ════════════
     plats: [
-      // ROMANTIQUE
-      {nom:'Suprême de volaille fermière, sauce suprême et purée vanillée', b:2, st:['romantique','chic'], sa:null, f:['viande','lactose']},
+      // ══ ROMANTIQUE ══
+      {nom:'Suprême de volaille fermière, jus aux herbes et jeunes légumes', b:2, st:['romantique','chic'], sa:['printemps'], f:['viande']},
+      {nom:'Dos de cabillaud, beurre blanc et asperges vertes', b:2, st:['romantique','chic','moderne'], sa:['printemps'], f:['poisson','lactose']},
+      {nom:'Loup de mer, fenouil confit et tomates cerises rôties', b:2, st:['romantique','moderne'], sa:['ete'], f:['poisson']},
+      {nom:'Filet mignon de veau, jus corsé et légumes d\'été glacés', b:2, st:['romantique','chic'], sa:['ete'], f:['viande']},
+      {nom:'Magret de canard, sauce au miel et purée de patate douce', b:2, st:['romantique','champetre','chic'], sa:['automne'], f:['viande']},
       {nom:'Filet mignon de veau, jus corsé et gratin dauphinois', b:2, st:['romantique','chic','champetre'], sa:['automne','hiver'], f:['viande','lactose']},
-      {nom:'Dos de cabillaud, beurre blanc et fondue de poireaux', b:2, st:['romantique','chic','moderne'], sa:['printemps','hiver'], f:['poisson','lactose']},
       {nom:'Filet de bœuf Rossini, sauce périgueux et gratin truffé', b:3, st:['romantique','chic'], sa:['automne','hiver'], f:['viande','lactose','alcool']},
-      // BOHÈME
-      {nom:'Tajine de poulet aux abricots, amandes et semoule parfumée', b:1, st:['boheme','champetre'], sa:['automne'], f:['viande','noix']},
-      {nom:'Curry de légumes et pois chiches au lait de coco, riz basmati', b:1, st:['boheme','moderne'], sa:null, f:[]},
-      {nom:'Couscous royal aux légumes et merguez', b:2, st:['boheme','champetre'], sa:null, f:['viande','gluten']},
-      {nom:'Aubergine rôtie entière, grenade, herbes et boulgour', b:1, st:['boheme','moderne','nature'], sa:['ete','automne'], f:['gluten']},
-      // CHAMPÊTRE
-      {nom:'Sauté de porc fermier aux pruneaux et pommes de terre fondantes', b:1, st:['champetre'], sa:['automne','hiver'], f:['viande','porc']},
-      {nom:'Magret de canard, sauce au miel et purée de patate douce', b:2, st:['champetre','chic','romantique'], sa:['automne','hiver'], f:['viande']},
-      {nom:'Poulet rôti fermier aux herbes, légumes anciens du marché', b:1, st:['champetre','nature','boheme'], sa:null, f:['viande']},
-      {nom:'Daube de bœuf aux carottes et pommes de terre vapeur', b:1, st:['champetre'], sa:['automne','hiver'], f:['viande','alcool']},
-      // CHIC / LUXE
-      {nom:'Turbot rôti aux morilles et beurre Champagne', b:3, st:['chic','moderne'], sa:['printemps','hiver'], f:['poisson','lactose','alcool']},
-      {nom:'Ris de veau croustillant, jus réduit et légumes anciens glacés', b:3, st:['chic','romantique'], sa:['automne'], f:['viande','lactose']},
-      {nom:'Homard rôti au beurre demi-sel et risotto crémeux', b:3, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer','lactose']},
-      {nom:'Pigeon rôti, jus corsé et purée de céleri à la truffe', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose']},
-      // MODERNE
-      {nom:'Pavé de bœuf, sauce au poivre de Sichuan et pommes grenailles', b:2, st:['moderne','chic'], sa:null, f:['viande']},
-      {nom:'Loup de mer en croûte d\'herbes, fenouil confit et émulsion citron', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','ete'], f:['poisson']},
-      {nom:'Wok de légumes croquants, tofu mariné et nouilles soba', b:1, st:['moderne','boheme','minimaliste'], sa:null, f:['gluten']},
-      {nom:'Risotto crémeux aux cèpes et copeaux de parmesan', b:2, st:['moderne','romantique','chic'], sa:['automne'], f:['lactose']},
-      // MINIMALISTE
-      {nom:'Filet de poisson blanc vapeur, écrasé de pommes de terre à l\'huile d\'olive', b:1, st:['minimaliste','moderne','nature'], sa:null, f:['poisson']},
-      {nom:'Suprême de volaille basse température, légumes glacés', b:2, st:['minimaliste','chic','moderne'], sa:null, f:['viande']},
-      {nom:'Risotto d\'orge perlé aux légumes verts', b:1, st:['minimaliste','moderne','boheme'], sa:['printemps'], f:['gluten','lactose']},
-      // Végétal / vegan / sans gluten (repli restrictions)
-      {nom:'Wellington de légumes vegan sans gluten, sauce aux herbes', b:2, st:['moderne','boheme'], sa:null, f:[]},
-      {nom:'Risotto crémeux aux champignons (sans produits laitiers)', b:1, st:['boheme','moderne','minimaliste'], sa:['automne','hiver'], f:[]},
-      {nom:'Légumes rôtis du marché, quinoa aux herbes et tahini', b:1, st:['boheme','moderne','minimaliste','nature'], sa:null, f:[]},
-      {nom:'Pavé de tofu mariné, légumes sautés au wok et riz parfumé', b:1, st:['moderne','minimaliste','boheme'], sa:null, f:['gluten']},
+      {nom:'Risotto crémeux aux cèpes et copeaux de parmesan', b:2, st:['romantique','moderne','chic'], sa:['automne'], f:['lactose']},
+      {nom:'Chapon farci aux marrons, sauce suprême et purée maison', b:2, st:['romantique','chic'], sa:['hiver'], f:['viande','lactose']},
+      {nom:'Filet de biche, sauce grand veneur et poêlée de champignons', b:3, st:['romantique','chic'], sa:['hiver'], f:['viande','lactose']},
+      {nom:'Suprême de pintade aux écrevisses et riz sauvage', b:2, st:['romantique','chic'], sa:['hiver'], f:['viande','fruitsmer']},
+      // ══ BOHÈME ══
+      {nom:'Légumes primeurs rôtis, boulgour aux herbes et tahini', b:1, st:['boheme','nature','moderne'], sa:['printemps'], f:['gluten']},
       {nom:'Curry de légumes verts au lait de coco et riz thaï', b:1, st:['boheme','moderne','nature'], sa:['printemps','ete'], f:[]},
+      {nom:'Aubergine rôtie entière, grenade, herbes et boulgour', b:1, st:['boheme','moderne','nature'], sa:['ete','automne'], f:['gluten']},
+      {nom:'Tajine de poulet aux abricots, amandes et semoule parfumée', b:1, st:['boheme','champetre'], sa:['automne'], f:['viande','noix']},
+      {nom:'Couscous royal aux légumes et merguez', b:2, st:['boheme','champetre'], sa:['automne','hiver'], f:['viande','gluten']},
+      {nom:'Curry de légumes et pois chiches au lait de coco, riz basmati', b:1, st:['boheme','moderne'], sa:['hiver'], f:[]},
+      {nom:'Tajine de légumes d\'hiver aux épices douces et semoule', b:1, st:['boheme','nature'], sa:['hiver'], f:['gluten']},
+      // ══ CHAMPÊTRE ══
+      {nom:'Poulet rôti fermier aux herbes, jeunes légumes de printemps', b:1, st:['champetre','nature','boheme'], sa:['printemps'], f:['viande']},
+      {nom:'Épaule d\'agneau confite aux herbes, flageolets et légumes nouveaux', b:2, st:['champetre','romantique'], sa:['printemps'], f:['viande']},
+      {nom:'Filet mignon de porc aux herbes, gratin de légumes printaniers', b:1, st:['champetre'], sa:['printemps'], f:['viande','porc','lactose']},
+      {nom:'Brochettes de volaille marinée, légumes grillés et semoule', b:1, st:['champetre','boheme'], sa:['ete'], f:['viande']},
+      {nom:'Souris d\'agneau confite, ratatouille et pommes de terre', b:2, st:['champetre','romantique'], sa:['ete'], f:['viande']},
+      {nom:'Côte de porc fermière grillée, ratatouille et pommes de terre', b:1, st:['champetre'], sa:['ete'], f:['viande','porc']},
+      {nom:'Magret de canard, sauce au miel et purée de patate douce', b:2, st:['champetre','chic'], sa:['automne'], f:['viande']},
+      {nom:'Sauté de porc fermier aux pruneaux et pommes de terre fondantes', b:1, st:['champetre'], sa:['automne','hiver'], f:['viande','porc']},
+      {nom:'Daube de bœuf aux carottes et pommes de terre vapeur', b:1, st:['champetre'], sa:['automne','hiver'], f:['viande','alcool']},
+      {nom:'Poulet rôti fermier aux herbes, légumes anciens du marché', b:1, st:['champetre','nature','boheme'], sa:['automne','hiver'], f:['viande']},
+      // ══ CHIC / LUXE ══
+      {nom:'Turbot rôti aux asperges et beurre Champagne', b:3, st:['chic','moderne'], sa:['printemps'], f:['poisson','lactose','alcool']},
+      {nom:'Homard rôti au beurre demi-sel et risotto crémeux', b:3, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer','lactose']},
+      {nom:'Bar de ligne en croûte d\'herbes, légumes d\'été et émulsion citron', b:3, st:['chic','moderne'], sa:['ete'], f:['poisson']},
+      {nom:'Ris de veau croustillant, jus réduit et légumes anciens glacés', b:3, st:['chic','romantique'], sa:['automne'], f:['viande','lactose']},
+      {nom:'Pigeon rôti, jus corsé et purée de céleri à la truffe', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Turbot rôti aux morilles et beurre Champagne', b:3, st:['chic','moderne'], sa:['hiver'], f:['poisson','lactose','alcool']},
+      // ══ MODERNE ══
+      {nom:'Wok de légumes croquants de printemps, tofu mariné et nouilles soba', b:1, st:['moderne','boheme','minimaliste'], sa:['printemps'], f:['gluten']},
+      {nom:'Poisson du marché grillé, légumes d\'été et huile vierge', b:2, st:['moderne','minimaliste','chic'], sa:['ete'], f:['poisson']},
+      {nom:'Pavé de bœuf, sauce au poivre de Sichuan et pommes grenailles', b:2, st:['moderne','chic'], sa:['automne'], f:['viande']},
+      {nom:'Risotto crémeux aux champignons et noisettes torréfiées', b:2, st:['moderne','romantique'], sa:['automne'], f:['lactose','noix']},
+      {nom:'Loup de mer en croûte d\'herbes, fenouil confit et émulsion citron', b:2, st:['moderne','chic','minimaliste'], sa:['hiver'], f:['poisson']},
+      {nom:'Suprême de volaille basse température, purée truffée', b:2, st:['moderne','chic'], sa:['hiver','automne'], f:['viande','lactose']},
+      // ══ MINIMALISTE ══
+      {nom:'Filet de poisson blanc vapeur, jeunes légumes et huile d\'olive', b:1, st:['minimaliste','moderne','nature'], sa:['printemps'], f:['poisson']},
+      {nom:'Poisson grillé, salade de saison et écrasé de pommes de terre', b:1, st:['minimaliste','moderne'], sa:['ete'], f:['poisson']},
+      {nom:'Suprême de volaille basse température, légumes glacés', b:2, st:['minimaliste','chic','moderne'], sa:['automne','hiver'], f:['viande']},
+      {nom:'Risotto d\'orge perlé aux légumes verts', b:1, st:['minimaliste','moderne','boheme'], sa:['printemps'], f:['gluten','lactose']},
+      // ══ VÉGÉTAL / VEGAN / SG (repli restrictions, par saison) ══
+      {nom:'Wellington de légumes de printemps vegan sans gluten, sauce aux herbes', b:2, st:['moderne','boheme'], sa:['printemps'], f:[]},
+      {nom:'Légumes d\'été rôtis, quinoa aux herbes et sauce tahini', b:1, st:['boheme','moderne','minimaliste','nature'], sa:['ete'], f:[]},
+      {nom:'Risotto crémeux aux champignons (sans produits laitiers)', b:1, st:['boheme','moderne','minimaliste'], sa:['automne'], f:[]},
+      {nom:'Curry de légumes d\'hiver au lait de coco et riz parfumé', b:1, st:['boheme','moderne','nature'], sa:['hiver'], f:[]},
+      {nom:'Pavé de tofu mariné, légumes sautés au wok et riz parfumé', b:1, st:['moderne','minimaliste','boheme'], sa:['automne','hiver'], f:['gluten']},
+      {nom:'Légumes-racines rôtis, polenta crémeuse et jus corsé végétal', b:1, st:['champetre','nature','boheme'], sa:['automne','hiver'], f:[]},
     ],
 
     // ════════════ ACCOMPAGNEMENTS ════════════
@@ -4395,6 +4550,83 @@ const ASSIST_KB = {
       details: ['Glaçage : ganache chocolat noir ou drip cake chocolat', 'Étages : 2 à 3 niveaux', 'Décor : copeaux de chocolat, truffes, perles dorées', 'Fleurs : peu (roses rouges/foncées pour contraste)', 'Topper : feuilles d\'or comestible ou cœur en chocolat'],
       saveurs: 'Chocolat noir 70%, praliné, chocolat blanc framboise, café',
       pinterest: 'chocolate wedding cake ganache'
+    },
+    'minimaliste': {
+      title: 'Wedding cake minimaliste',
+      description: 'Lignes pures, glaçage lisse immaculé, décoration très épurée. Élégance discrète et contemporaine.',
+      details: ['Glaçage : lissage parfait blanc ou ton pastel uni', 'Étages : 1 à 3 niveaux nets', 'Décor : une seule fleur ou un trait doré', 'Fleurs : minimalistes (1 ou 2 fleurs maximum)', 'Topper : aucun ou typographie fine'],
+      saveurs: 'Vanille, citron, fruits rouges',
+      pinterest: 'minimalist wedding cake'
+    },
+    'aquarelle': {
+      title: 'Wedding cake aquarelle',
+      description: 'Glaçage peint à la main façon aquarelle, dégradés de couleurs doux et artistiques.',
+      details: ['Glaçage : effet peinture aquarelle en dégradé', 'Étages : 2 à 4 niveaux', 'Couleurs : pastel fondus (rose, bleu, lavande)', 'Décor : touches dorées, fleurs fraîches', 'Topper : minimal pour laisser la peinture s\'exprimer'],
+      saveurs: 'Vanille fruits rouges, fruits de la passion, pistache',
+      pinterest: 'watercolor wedding cake'
+    },
+    'dripcake': {
+      title: 'Wedding cake drip cake',
+      description: 'Coulures gourmandes (chocolat, caramel) sur les bords, look moderne et gourmand.',
+      details: ['Glaçage : crème au beurre avec coulures (drip)', 'Étages : 2 à 3 niveaux', 'Décor : macarons, fruits frais, meringues, copeaux', 'Couleurs : au choix selon le thème', 'Topper : fleurs fraîches ou cake topper graphique'],
+      saveurs: 'Caramel beurre salé, chocolat, vanille gourmande',
+      pinterest: 'drip wedding cake'
+    },
+    'florale': {
+      title: 'Wedding cake tout en fleurs',
+      description: 'Recouvert de fleurs fraîches ou en sucre, véritable bouquet comestible. Spectaculaire.',
+      details: ['Glaçage : pâte à sucre ou crème lissée', 'Étages : 3 à 5 niveaux', 'Fleurs : cascade abondante de fleurs fraîches', 'Couleurs : selon votre palette florale', 'Topper : couronne de fleurs'],
+      saveurs: 'Vanille, fruits rouges, fleur d\'oranger',
+      pinterest: 'floral wedding cake fresh flowers'
+    },
+    'doree': {
+      title: 'Wedding cake doré / métallisé',
+      description: 'Touches de feuilles d\'or, effets métallisés, look luxueux et glamour.',
+      details: ['Glaçage : blanc ou coloré avec feuilles d\'or comestible', 'Étages : 3 à 5 niveaux', 'Décor : feuilles d\'or, effet marbré or, géométrie dorée', 'Fleurs : blanches en contraste', 'Topper : monogramme doré'],
+      saveurs: 'Chocolat grand cru, vanille bourbon, praliné',
+      pinterest: 'gold metallic wedding cake'
+    },
+    'geometrique': {
+      title: 'Wedding cake géométrique',
+      description: 'Motifs géométriques, formes hexagonales ou angulaires, design architectural moderne.',
+      details: ['Glaçage : pâte à sucre nette avec motifs géométriques', 'Étages : formes variées (hexagones, prismes)', 'Décor : lignes dorées, terrazzo, motifs Art déco', 'Couleurs : contrastées et graphiques', 'Topper : géométrique ou typographique'],
+      saveurs: 'Citron yuzu, chocolat blanc, fruits exotiques',
+      pinterest: 'geometric wedding cake'
+    },
+    'dentelle': {
+      title: 'Wedding cake dentelle',
+      description: 'Motifs de dentelle en sucre délicats, inspiration de la robe de mariée. Très raffiné.',
+      details: ['Glaçage : pâte à sucre avec dentelle de sucre appliquée', 'Étages : 3 à 4 niveaux', 'Décor : dentelle reproduisant la robe, perles de sucre', 'Couleurs : blanc, ivoire, poudré', 'Topper : discret, fleurs en sucre'],
+      saveurs: 'Vanille, amande, framboise',
+      pinterest: 'lace wedding cake'
+    },
+    'rustique': {
+      title: 'Wedding cake rustique',
+      description: 'Aspect brut et naturel, crème texturée à la spatule, idéal pour mariage champêtre.',
+      details: ['Glaçage : crème au beurre texturée façon "rustic"', 'Étages : 2 à 3 niveaux', 'Décor : fruits frais, fleurs des champs, branchages', 'Couleurs : naturelles, crème, vert', 'Topper : bois gravé ou branchage'],
+      saveurs: 'Carrot cake, vanille fruits des bois, miel',
+      pinterest: 'rustic wedding cake'
+    },
+    'pastel': {
+      title: 'Wedding cake pastel',
+      description: 'Tons doux et poudrés (rose, menthe, lavande, pêche), douceur et romantisme.',
+      details: ['Glaçage : couleurs pastel unies ou ombré', 'Étages : 2 à 4 niveaux', 'Décor : fleurs assorties, macarons pastel', 'Couleurs : rose poudré, menthe, lavande, pêche', 'Topper : fleurs ou typographie douce'],
+      saveurs: 'Pistache framboise, fleur d\'oranger, vanille',
+      pinterest: 'pastel wedding cake'
+    },
+    'noir': {
+      title: 'Wedding cake noir élégant',
+      description: 'Glaçage noir mat ou brillant, audacieux et ultra-chic, contrastes saisissants.',
+      details: ['Glaçage : noir mat ou laqué', 'Étages : 2 à 4 niveaux', 'Décor : feuilles d\'or, fleurs blanches ou rouges en contraste', 'Couleurs : noir + or ou noir + blanc', 'Topper : doré ou minimaliste'],
+      saveurs: 'Chocolat noir intense, fruits rouges, café',
+      pinterest: 'black wedding cake elegant'
+    },
+    'naked': {
+      title: 'Wedding cake naked cake',
+      description: 'Gâteau "nu" sans glaçage extérieur, étages de génoise visibles avec crème apparente.',
+      details: ['Glaçage : aucun à l\'extérieur, crème entre les couches', 'Étages : 2 à 3 niveaux de génoise visible', 'Décor : fruits frais, fleurs, sucre glace', 'Couleurs : naturelles', 'Topper : fleurs fraîches ou fruits'],
+      saveurs: 'Vanille fruits rouges, citron, fruits frais',
+      pinterest: 'naked wedding cake'
     }
   },
 
@@ -4526,14 +4758,14 @@ const ASSIST_KB = {
   // ─── 12. TENUE MARIÉ ─────────────────────────────────────────────────────
   tenueMarie: {
     styles: [
-      {nom: 'Costume trois-pièces classique', desc: 'Veste + gilet + pantalon, cravate ou nœud papillon. Élégant, intemporel. Budget : 400-1500€.'},
-      {nom: 'Smoking', desc: 'Pour mariage chic / soirée. Noir avec col cranté ou châle. Nœud pap noir. Budget : 500-2000€.'},
-      {nom: 'Costume couleur (bleu nuit, bordeaux)', desc: 'Plus original. Très tendance. Budget : 500-1500€.'},
-      {nom: 'Costume bohème / lin', desc: 'Léger, décontracté. Idéal mariage été ou plage. Budget : 300-1200€.'},
-      {nom: 'Frac / queue de pie', desc: 'Très formel. Pour mariage très chic. Budget : 700-2500€.'},
-      {nom: 'Costume traditionnel régional', desc: 'Kilt écossais, costume basque, traditionnel africain. À adapter selon origines.'},
-      {nom: 'Tenue casual chic', desc: 'Chino + chemise + veste. Pour mariage très décontracté. Budget : 200-800€.'},
-      {nom: 'Sur-mesure', desc: 'Costume fait sur mesure pour ajustement parfait. Compter 6-8 séances. Budget : 1500-4500€.'}
+      {nom: 'Costume trois-pièces classique', desc: 'Veste + gilet + pantalon, cravate ou nœud papillon. Élégant et intemporel.'},
+      {nom: 'Smoking', desc: 'Pour mariage chic ou soirée. Noir avec col cranté ou châle, nœud papillon noir.'},
+      {nom: 'Costume couleur (bleu nuit, bordeaux)', desc: 'Plus original et très tendance. Apporte du caractère à la silhouette.'},
+      {nom: 'Costume bohème / lin', desc: 'Léger et décontracté. Idéal pour un mariage en été ou sur la plage.'},
+      {nom: 'Frac / queue de pie', desc: 'Très formel. Pour un mariage très chic et solennel.'},
+      {nom: 'Costume traditionnel régional', desc: 'Kilt écossais, costume basque, tenue traditionnelle africaine. À adapter selon vos origines.'},
+      {nom: 'Tenue casual chic', desc: 'Chino + chemise + veste. Pour un mariage très décontracté.'},
+      {nom: 'Sur-mesure', desc: 'Costume fait sur mesure pour un ajustement parfait. Compter plusieurs séances d\'essayage.'}
     ],
     accessoires: ['Nœud papillon ou cravate (assortis au thème)', 'Pochette de costume colorée', 'Boutons de manchette personnalisés', 'Montre élégante', 'Boutonnière florale (assortie au bouquet de la mariée)', 'Chaussures cuir cirées (richelieu, derby ou monk)', 'Ceinture assortie aux chaussures', 'Chaussettes "fantaisie" pour la photo'],
     couleurs: 'Pour un mariage en intérieur : marine, anthracite, noir. Pour extérieur en journée : beige, bleu clair, gris perle. Pour mariage d\'hiver : tons foncés (bordeaux, vert sapin).'
@@ -5132,7 +5364,7 @@ function renderAssistant(){
         {key:'checklistAvant',label:'Check 10min avant',    icon:'✅', desc:'Tout vérifier avant cérémonie'},
         {key:'budget',        label:'Conseils budget',      icon:'💰', desc:'Répartition optimisée'},
         {key:'weddingDay',    label:'Conseils jour J',      icon:'⭐', desc:'Pas-à-pas du jour J'},
-        {key:'tenueMarie',    label:'Costume du marié',     icon:'🤵', desc:'Costumes et accessoires'},
+        {key:'tenueMarie',    label:'Costume',              icon:'🤵', desc:'Costumes et accessoires'},
         {key:'decoration',    label:'Décoration mariage',   icon:'🎀', desc:'Inspiration selon style'},
         {key:'discours',      label:'Discours témoin',      icon:'🎤', desc:'Trames de discours complets'},
         {key:'enfants',       label:'Enfants au mariage',   icon:'🧒', desc:'Rôles et animations'},
@@ -5141,7 +5373,7 @@ function renderAssistant(){
         {key:'problemes',     label:'Imprévus & solutions', icon:'🆘', desc:'Comment réagir'},
         {key:'invitesLoin',   label:'Invités de loin',      icon:'🧳', desc:'Logement, attentions, infos'},
         {key:'listeCadeaux',  label:'Liste / Cagnotte',     icon:'🎀', desc:'Sites, idées, conseils'},
-        {key:'menu',          label:'Menu repas',           icon:'🍽️', desc:'Menu adapté au style et à la saison'},
+        {key:'menu',          label:'Menu personnalisé',    icon:'🍽️', desc:'Menu adapté au style et à la saison'},
         {key:'emotion',       label:'Moments-émotion',      icon:'💖', desc:'Instants à ne pas manquer'},
         {key:'photos',        label:'Photos à prévoir',     icon:'📸', desc:'Checklist photographe'},
         {key:'playlistAmbi',  label:'Playlist par ambiance',icon:'🎶', desc:'Cérémonie, cocktail, soirée'},
@@ -5735,19 +5967,6 @@ function assistTenueMariee(cont){
         <div style="font-size:12px;color:${tm};line-height:1.6;margin-bottom:8px;">${h(s.desc)}</div>
         <a href="${pinterestUrl(s.pin || ('robe de mariée '+s.nom))}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 11px;background:#fff;border:1.5px solid ${gd}50;border-radius:8px;text-decoration:none;color:${tx};font-size:11px;font-weight:700;font-family:Lora,serif;">📌 Voir sur Pinterest</a>
       </div>`).join('')}
-
-      <div style="font-size:13px;font-weight:700;color:${pk};margin:18px 0 8px;">💰 Selon budget</div>
-      ${Object.entries(d.budget).map(([k,v])=>{
-        const label = k==='sous-1500'?'< 1500€':k==='1500-3000'?'1500-3000€':k==='3000-6000'?'3000-6000€':'> 6000€';
-        return `<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
-          <div style="font-weight:700;color:${tx};font-size:13px;margin-bottom:4px;">${label}</div>
-          <div style="font-size:12px;color:${tm};line-height:1.6;">${h(v)}</div>
-        </div>`;
-      }).join('')}
-
-      <a href="${pinterestUrl('robe de mariée 2027')}" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;padding:10px 16px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:10px;text-decoration:none;color:${tx};font-size:12px;font-weight:700;font-family:Lora,serif;">
-        📌 Voir des robes sur Pinterest
-      </a>
     </div>
   `;
 }
@@ -5757,7 +5976,7 @@ function assistTenueMarie(cont){
   const d = ASSIST_KB.tenueMarie;
   cont.innerHTML = `
     <div class="card" style="padding:16px;">
-      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🤵 Costume du marié</div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🤵 Costume</div>
 
       <div style="font-size:13px;font-weight:700;color:${pk};margin-bottom:8px;">👔 Styles de costume</div>
       ${d.styles.map(s=>`<div class="card" style="padding:12px;margin-bottom:8px;background:${sf};">
@@ -5775,10 +5994,6 @@ function assistTenueMarie(cont){
         <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">🎨 Choix des couleurs</div>
         <div style="font-size:13px;color:${tx};line-height:1.6;">${h(d.couleurs)}</div>
       </div>
-
-      <a href="${pinterestUrl('costume marié mariage')}" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;padding:10px 16px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:10px;text-decoration:none;color:${tx};font-size:12px;font-weight:700;font-family:Lora,serif;">
-        📌 Voir des costumes sur Pinterest
-      </a>
     </div>
   `;
 }
