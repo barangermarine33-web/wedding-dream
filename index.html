@@ -1432,7 +1432,7 @@ function renderGuests(){
     <a href="https://www.canva.com/fr_fr/" target="_blank" class="btn-sec" style="text-decoration:none;display:inline-block;">Créer mes invitations</a>
     <button class="btn-sec" onclick="el('guest-file').click()">📥 Importer</button>
     <button class="btn-sec" onclick="exportGuests()">📤 Exporter</button>
-    <input type="file" id="guest-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importGuests(event)">
+    <input type="file" id="guest-file" accept=".xlsx,.xls,.xlsm,.xlsb,.ods,.csv,.tsv,.txt,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet" style="display:none" onchange="importGuests(event)">
   </div>
   <div id="import-msg" style="display:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;margin-bottom:10px;"></div>
   <div id="guest-add-form" style="display:none;" class="card">
@@ -1560,12 +1560,13 @@ function exportGuests(){
 function importGuests(e){
   const file=e.target.files?.[0];if(!file)return;
   const name=(file.name||'').toLowerCase();
-  const isExcel = name.endsWith('.xlsx')||name.endsWith('.xls');
   e.target.value='';
-  if(isExcel){
-    importGuestsExcel(file);
-  } else {
+  // CSV / TSV / TXT : lecture texte directe (rapide, offline)
+  if(name.endsWith('.csv')||name.endsWith('.tsv')||name.endsWith('.txt')){
     importGuestsCSV(file);
+  } else {
+    // .xlsx .xls .xlsm .xlsb .ods et tout autre tableur : via SheetJS
+    importGuestsExcel(file);
   }
 }
 
@@ -1613,10 +1614,17 @@ function importGuestsCSV(file){
     try{
       const text=ev.target.result;
       const lines=text.split(/\r?\n/).filter(l=>l.trim());
-      // Détecter le séparateur (virgule ou point-virgule, fréquent en France)
-      const sep = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
+      if(!lines.length){showImportMsg('⚠️ Fichier vide.','err');return;}
+      // Détecter le séparateur : tabulation, point-virgule ou virgule
+      const first=lines[0];
+      let sep=',';
+      const counts={'\t':(first.split('\t').length),';':(first.split(';').length),',':(first.split(',').length)};
+      if(counts['\t']>=counts[';']&&counts['\t']>=counts[','])sep='\t';
+      else if(counts[';']>=counts[','])sep=';';
+      const splitRe = sep==='\t'?/\t/ : (sep===';'?/(".*?"|[^;]+)/g : /(".*?"|[^,]+)/g);
       const rows=lines.map(line=>{
-        const cols=line.match(sep===';'?/(".*?"|[^;]+)/g:/(".*?"|[^,]+)/g)||[];
+        if(sep==='\t') return line.split('\t').map(c=>c.replace(/^"|"$/g,'').trim());
+        const cols=line.match(splitRe)||[];
         return cols.map(c=>c.replace(/^"|"$/g,'').trim());
       });
       rowsToGuests(rows);
@@ -3490,302 +3498,355 @@ const MENU_ENGINE = (function(){
   const C = {
     // ════════════ BOUCHÉES DE VIN D'HONNEUR (nourriture) ════════════
     vinhonneur: [
-      // Économique - variées par style
-      {nom:'Tartare de tomates anciennes et basilic', b:1, st:['champetre','boheme','minimaliste','nature'], sa:['ete'], f:[]},
-      {nom:'Houmous maison et bâtonnets de légumes croquants', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
-      {nom:'Mini-brochettes tomate-mozzarella-basilic', b:1, st:['champetre','romantique','boheme'], sa:['ete'], f:['lactose']},
-      {nom:'Verrines de guacamole et tortillas', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
-      {nom:'Mini-quiches lorraines dorées', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','porc']},
-      {nom:'Cake salé olives-chèvre en cubes', b:1, st:['champetre','boheme'], sa:null, f:['gluten','lactose','oeuf']},
-      {nom:'Pissaladière niçoise en bouchées', b:1, st:['champetre','boheme'], sa:['ete'], f:['gluten']},
-      {nom:'Gougères au comté tièdes', b:1, st:['champetre','romantique','chic'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
-      {nom:'Verrines de gaspacho andalou', b:1, st:['boheme','moderne','minimaliste'], sa:['ete'], f:[]},
-      {nom:'Roulés de courgette à la ricotta et menthe', b:1, st:['moderne','minimaliste','boheme'], sa:['ete','printemps'], f:['lactose']},
-      {nom:'Bruschettas tomate-basilic-mozzarella', b:1, st:['champetre','boheme','romantique'], sa:['ete'], f:['gluten','lactose']},
-      {nom:'Falafels et sauce au sésame', b:1, st:['boheme','moderne'], sa:null, f:[]},
-      // Standard
-      {nom:'Cuillères de tartare de saumon à l\'aneth', b:2, st:['chic','moderne','romantique'], sa:null, f:['poisson']},
-      {nom:'Mini-bagels saumon fumé et fromage frais', b:2, st:['moderne','chic'], sa:null, f:['gluten','poisson','lactose']},
-      {nom:'Verrines d\'avocat, crevettes et mangue', b:2, st:['moderne','chic','romantique'], sa:['printemps','ete'], f:['fruitsmer']},
-      {nom:'Brochettes de poulet mariné au citron et thym', b:2, st:['champetre','romantique','moderne'], sa:null, f:['viande']},
-      {nom:'Mini-burgers de bœuf au cheddar affiné', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande','lactose']},
-      {nom:'Tartelettes fines aux figues et magret fumé', b:2, st:['chic','romantique','champetre'], sa:['automne'], f:['gluten','viande']},
-      {nom:'Cuillères de céviche de daurade au citron vert', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:['poisson']},
-      {nom:'Mini-club sandwichs au poulet et avocat', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande']},
-      {nom:'Verrines de mousse de betterave et chèvre frais', b:2, st:['moderne','chic','minimaliste'], sa:['automne','hiver'], f:['lactose']},
-      {nom:'Arancini croustillants au parmesan', b:2, st:['moderne','boheme','chic'], sa:null, f:['gluten','lactose']},
-      // Luxe
-      {nom:'Cuillères de Saint-Jacques marinées aux agrumes', b:3, st:['chic','moderne','romantique'], sa:['automne','hiver'], f:['fruitsmer']},
-      {nom:'Macarons salés au foie gras et figue', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['oeuf','noix']},
-      {nom:'Tartelettes au caviar et crème de citron', b:3, st:['chic','moderne'], sa:null, f:['gluten','poisson','lactose']},
-      {nom:'Gambas snackées au beurre d\'herbes', b:3, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer','lactose']},
-      {nom:'Mini-cônes de tartare de thon rouge au sésame', b:3, st:['chic','moderne','minimaliste'], sa:['ete'], f:['gluten','poisson']},
-      {nom:'Cuillères de homard et émulsion truffée', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['fruitsmer']},
+      // ── Ajouts ──
+      {nom:'Mini-focaccia garnie aux légumes du soleil', b:1, st:['boheme','champetre','moderne'], sa:['ete'], f:['gluten']},
+      {nom:'Cuillère de burrata et tomates anciennes', b:2, st:['chic','romantique','moderne'], sa:['ete'], f:['lactose']},
+      // ── Froides ──
+      {nom:'Verrine saumon-avocat', b:1, st:['moderne','chic','romantique','minimaliste'], sa:null, f:['poisson']},
+      {nom:'Verrine crevettes et agrumes', b:2, st:['chic','moderne','romantique'], sa:['printemps','ete'], f:['fruitsmer']},
+      {nom:'Cuillère de tartare de saumon à l\'aneth', b:2, st:['chic','moderne','romantique'], sa:null, f:['poisson']},
+      {nom:'Cuillère de tartare de thon au sésame', b:2, st:['moderne','chic'], sa:['ete'], f:['poisson']},
+      {nom:'Mini wraps au poulet', b:1, st:['moderne','champetre','boheme'], sa:null, f:['gluten','viande']},
+      {nom:'Blinis au saumon fumé', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten','poisson','lactose']},
+      {nom:'Toast foie gras et figues', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten']},
+      {nom:'Toast chèvre et miel', b:1, st:['champetre','romantique','boheme'], sa:null, f:['gluten','lactose']},
+      {nom:'Toast avocat et feta', b:1, st:['moderne','minimaliste','boheme'], sa:['printemps','ete'], f:['gluten','lactose']},
+      {nom:'Mini-bagels au saumon', b:2, st:['moderne','chic'], sa:null, f:['gluten','poisson','lactose']},
+      {nom:'Mini-sandwich gourmet', b:1, st:['moderne','champetre'], sa:null, f:['gluten']},
+      {nom:'Club sandwich miniature', b:1, st:['moderne','champetre'], sa:null, f:['gluten','viande']},
+      {nom:'Canapé tomate-mozzarella', b:1, st:['champetre','romantique','boheme'], sa:['ete'], f:['gluten','lactose']},
+      {nom:'Bruschetta tomate-basilic', b:1, st:['champetre','boheme','moderne'], sa:['ete'], f:['gluten']},
+      {nom:'Tartine burrata et tomates confites', b:2, st:['chic','moderne','romantique'], sa:['ete','automne'], f:['gluten','lactose']},
+      {nom:'Mini-brochettes melon et jambon cru', b:1, st:['champetre','romantique'], sa:['ete'], f:['porc']},
+      {nom:'Carpaccio de bœuf et parmesan', b:2, st:['chic','moderne','romantique'], sa:null, f:['viande','lactose']},
+      {nom:'Mini-tartare de légumes', b:1, st:['moderne','minimaliste','boheme','nature'], sa:['printemps','ete'], f:[]},
+      {nom:'Houmous et pita miniatures', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
+      {nom:'Guacamole et chips artisanales', b:1, st:['boheme','moderne'], sa:null, f:[]},
+      {nom:'Tapenade sur crostini', b:1, st:['champetre','boheme','minimaliste'], sa:['ete'], f:['gluten']},
+      {nom:'Rillettes de poisson sur toast', b:1, st:['champetre','moderne'], sa:null, f:['gluten','poisson']},
+      {nom:'Verrine de gaspacho andalou', b:1, st:['boheme','moderne','minimaliste'], sa:['ete'], f:[]},
+      {nom:'Cuillère de betterave et chèvre frais', b:1, st:['moderne','minimaliste','nature'], sa:['automne','hiver'], f:['lactose']},
+      // ── Chaudes ──
+      {nom:'Mini-burgers gourmet', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande','lactose']},
+      {nom:'Mini-croque-monsieur à la truffe', b:2, st:['chic','moderne'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Gougères au fromage', b:1, st:['champetre','romantique','chic'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Mini-quiches', b:1, st:['champetre','romantique'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Feuilletés chèvre-épinards', b:1, st:['champetre','boheme','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Tempura de légumes', b:1, st:['moderne','minimaliste'], sa:null, f:['gluten']},
+      {nom:'Mini-brochettes satay de poulet', b:2, st:['moderne','boheme'], sa:null, f:['viande','noix']},
+      {nom:'Arancini croustillants', b:1, st:['moderne','boheme','chic'], sa:null, f:['gluten','lactose']},
+      {nom:'Mini-pizzas artisanales', b:1, st:['champetre','boheme','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Beignets de crevettes', b:2, st:['moderne','chic'], sa:null, f:['gluten','fruitsmer']},
+      {nom:'Cromesquis au fromage', b:1, st:['champetre','moderne'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Mini-tacos', b:1, st:['boheme','moderne'], sa:null, f:['gluten','viande']},
+      {nom:'Gyozas vapeur', b:1, st:['moderne'], sa:null, f:['gluten']},
+      {nom:'Falafels et sauce sésame', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
+      {nom:'Saint-Jacques snackées', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['fruitsmer']},
+      {nom:'Crevettes croustillantes', b:2, st:['moderne','chic','boheme'], sa:null, f:['gluten','fruitsmer']},
+      {nom:'Mini-fish & chips', b:1, st:['moderne','champetre'], sa:null, f:['gluten','poisson']},
+      {nom:'Yakitori de poulet', b:2, st:['moderne'], sa:null, f:['viande','gluten']},
+      {nom:'Macarons salés au foie gras', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['oeuf','noix']},
+      {nom:'Polenta croustillante aux herbes', b:1, st:['champetre','boheme','minimaliste','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Boulettes de pois chiches épicées', b:1, st:['boheme','moderne','nature'], sa:null, f:[]},
     ],
 
-    // ════════════ ENTRÉES (par style fort) ════════════
     entrees: [
-      // ══ ROMANTIQUE ══
-      {nom:'Velouté de petits pois à la menthe et chantilly salée', b:1, st:['romantique','champetre'], sa:['printemps'], f:['lactose']},
-      {nom:'Asperges blanches, mousseline légère et copeaux de jambon cru', b:2, st:['romantique','chic'], sa:['printemps'], f:['porc']},
-      {nom:'Tartare de tomates du jardin, burrata crémeuse et basilic', b:2, st:['romantique','champetre'], sa:['ete'], f:['lactose']},
-      {nom:'Melon, jambon de pays et perles de porto', b:1, st:['romantique','champetre'], sa:['ete'], f:['porc','alcool']},
-      {nom:'Œuf parfait, crème de champignons et émulsion truffée', b:2, st:['romantique','chic','moderne'], sa:['automne','hiver'], f:['oeuf','lactose']},
-      {nom:'Velouté de châtaignes, chantilly et éclats de marrons', b:1, st:['romantique','champetre'], sa:['automne','hiver'], f:['lactose']},
-      {nom:'Carpaccio de Saint-Jacques aux agrumes et fleurs comestibles', b:3, st:['romantique','chic'], sa:['automne','hiver'], f:['fruitsmer']},
-      {nom:'Tartelette fine de légumes confits et pesto rouge', b:1, st:['romantique','champetre','boheme'], sa:['ete'], f:['gluten','noix']},
-      // ══ BOHÈME ══
-      {nom:'Assiette mezze de printemps : houmous, fèves, radis, pain plat', b:1, st:['boheme'], sa:['printemps'], f:['gluten']},
-      {nom:'Buddha bowl de légumes grillés, quinoa et tahini', b:1, st:['boheme','moderne','minimaliste'], sa:['ete','printemps'], f:[]},
-      {nom:'Gaspacho de pastèque et tomate, feta émiettée', b:1, st:['boheme','moderne'], sa:['ete'], f:['lactose']},
-      {nom:'Assiette mezze : houmous, caviar d\'aubergine, falafels', b:1, st:['boheme'], sa:['ete','automne'], f:[]},
-      {nom:'Salade de lentilles corail, grenade et herbes fraîches', b:1, st:['boheme','nature','minimaliste'], sa:['automne','hiver'], f:[]},
-      {nom:'Velouté de courge butternut, lait de coco et graines torréfiées', b:1, st:['boheme','nature'], sa:['automne','hiver'], f:[]},
-      {nom:'Caponata sicilienne et burrata crémeuse', b:2, st:['boheme','moderne'], sa:['ete','automne'], f:['lactose']},
-      {nom:'Soupe thaï épicée aux légumes croquants', b:1, st:['boheme','moderne'], sa:['hiver'], f:[]},
-      // ══ CHAMPÊTRE ══
-      {nom:'Salade printanière, asperges, radis et vinaigrette aux herbes', b:1, st:['champetre','nature','minimaliste'], sa:['printemps'], f:[]},
-      {nom:'Œufs cocotte à la crème et asperges', b:1, st:['champetre'], sa:['printemps'], f:['oeuf','lactose']},
-      {nom:'Salade de chèvre chaud, melon et jambon cru', b:1, st:['champetre','romantique'], sa:['ete'], f:['gluten','lactose','porc']},
-      {nom:'Tartine de pain de campagne, ricotta et légumes du potager', b:1, st:['champetre','nature','boheme'], sa:['printemps','ete'], f:['gluten','lactose']},
-      {nom:'Salade de chèvre chaud, miel et noix', b:1, st:['champetre','romantique'], sa:['automne'], f:['gluten','lactose','noix']},
-      {nom:'Terrine de campagne maison et pickles de légumes', b:1, st:['champetre','boheme'], sa:['automne','hiver'], f:['viande','porc']},
-      {nom:'Œufs cocotte à la crème et lardons', b:1, st:['champetre'], sa:['automne','hiver'], f:['oeuf','lactose','porc']},
-      {nom:'Velouté de potiron et croûtons à l\'ail', b:1, st:['champetre','nature'], sa:['automne','hiver'], f:['gluten','lactose']},
-      // ══ CHIC / LUXE ══
-      {nom:'Asperges vertes, œuf mollet, mousseline au caviar', b:3, st:['chic'], sa:['printemps'], f:['oeuf','fruitsmer']},
-      {nom:'Langoustines rôties, émulsion d\'agrumes et caviar', b:3, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer']},
-      {nom:'Tourteau décortiqué, fine gelée de tomate et avocat', b:3, st:['chic','moderne','minimaliste'], sa:['ete'], f:['fruitsmer']},
-      {nom:'Homard breton tiède et vinaigrette aux agrumes', b:3, st:['chic'], sa:['ete'], f:['fruitsmer']},
-      {nom:'Foie gras mi-cuit, chutney de figues et pain brioché', b:2, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten']},
-      {nom:'Foie gras poêlé, pain d\'épices et réduction de Sauternes', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten','alcool']},
-      {nom:'Carpaccio de Saint-Jacques, caviar et huile vierge', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['fruitsmer']},
-      // ══ MODERNE ══
-      {nom:'Ceviche de bar aux agrumes et lait de tigre', b:2, st:['moderne','chic'], sa:['printemps','ete'], f:['poisson']},
-      {nom:'Tartare de daurade, mangue, avocat et tuile de sésame', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:['poisson']},
-      {nom:'Gaspacho vert, huile de basilic et croûtons', b:1, st:['moderne','minimaliste'], sa:['ete'], f:['gluten']},
-      {nom:'Tataki de thon mi-cuit, sésame et soja', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','automne'], f:['poisson','gluten']},
-      {nom:'Carpaccio de betterave multicolore, roquette et balsamique', b:1, st:['moderne','minimaliste','boheme'], sa:['automne','hiver'], f:[]},
-      {nom:'Velouté de panais, huile de noisette et chips de légumes', b:1, st:['moderne','minimaliste'], sa:['hiver'], f:['noix']},
-      // ══ MINIMALISTE ══
-      {nom:'Asperges vertes, œuf mollet et copeaux de parmesan', b:2, st:['minimaliste','moderne','chic'], sa:['printemps'], f:['oeuf','lactose']},
-      {nom:'Salade de pousses, agrumes, avocat et graines', b:1, st:['minimaliste','moderne'], sa:['printemps','hiver'], f:[]},
-      {nom:'Tomate cœur de bœuf, huile d\'olive et fleur de sel', b:1, st:['minimaliste','nature'], sa:['ete'], f:[]},
-      {nom:'Velouté de saison, huile parfumée et croûtons', b:1, st:['minimaliste','champetre','nature'], sa:['automne','hiver'], f:['gluten']},
-      // ══ VÉGÉTAL (repli restrictions, toutes saisons couvertes) ══
-      {nom:'Assiette de légumes grillés de printemps, houmous et graines', b:1, st:['boheme','moderne','minimaliste','nature'], sa:['printemps'], f:[]},
-      {nom:'Tartare d\'avocat, mangue et tomate, tuile croustillante', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:[]},
-      {nom:'Velouté de potimarron, éclats de châtaigne et huile de courge', b:1, st:['champetre','romantique','nature'], sa:['automne'], f:[]},
-      {nom:'Velouté de céleri-rave, huile de truffe et croûtons', b:1, st:['minimaliste','moderne','nature'], sa:['hiver'], f:['gluten']},
-      {nom:'Salade tiède de lentilles, betterave et roquette', b:1, st:['boheme','nature','minimaliste'], sa:['automne','hiver'], f:[]},
+      // ── Ajouts gastronomiques ──
+      {nom:'Foie gras poêlé, figues rôties et réduction balsamique', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten']},
+      {nom:'Foie gras mi-cuit, chutney mangue-passion et pain d\'épices', b:3, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten']},
+      {nom:'Œuf parfait, crème de parmesan, émulsion truffée et noisettes', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['oeuf','lactose','noix']},
+      {nom:'Volaille fermière confite, crème de maïs fumé et pickles', b:2, st:['chic','moderne','champetre'], sa:['automne'], f:['viande','lactose']},
+      {nom:'Tartare de bœuf maturé, jaune confit et croustillant parmesan', b:2, st:['chic','moderne'], sa:null, f:['viande','oeuf','lactose']},
+      {nom:'Carpaccio de canard fumé, betteraves rôties et chèvre fouetté', b:2, st:['chic','romantique','champetre'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Velouté truffé de saison', b:2, st:['chic','romantique'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Tartare de saumon aux agrumes, avocat et sésame noir', b:2, st:['moderne','chic'], sa:['printemps','ete'], f:['poisson']},
+      {nom:'Gravlax de saumon, crème aneth-citron et concombre', b:2, st:['chic','moderne','romantique'], sa:['printemps','hiver'], f:['poisson','lactose']},
+      {nom:'Langoustines snackées, bisque légère et espuma de crustacés', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['fruitsmer']},
+      {nom:'Ceviche de daurade, leche de tigre passion-coriandre', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:['poisson']},
+      {nom:'Ravioles ouvertes de légumes, beurre noisette et sauge', b:2, st:['romantique','moderne','chic'], sa:['printemps','automne'], f:['gluten','lactose']},
+      {nom:'Tarte fine de légumes oubliés, crème de chèvre et miel', b:1, st:['champetre','boheme','moderne'], sa:['automne'], f:['gluten','lactose']},
+      {nom:'Risotto crémeux aux asperges, citron confit et parmesan', b:2, st:['romantique','moderne','chic'], sa:['printemps'], f:['lactose']},
+      {nom:'Antipasti raffinés (légumes grillés, mozzarella, olives)', b:1, st:['boheme','champetre','moderne'], sa:['ete'], f:['lactose']},
+      {nom:'Salade caprese premium (burrata, tomates anciennes, pesto)', b:2, st:['romantique','champetre','moderne','chic'], sa:['ete'], f:['lactose']},
+      {nom:'Saumon gravlax à l\'aneth', b:2, st:['chic','moderne','romantique'], sa:['printemps','hiver'], f:['poisson']},
+      {nom:'Tartare de saumon à la mangue', b:2, st:['moderne','chic'], sa:['printemps','ete'], f:['poisson']},
+      {nom:'Carpaccio de Saint-Jacques aux agrumes', b:3, st:['chic','moderne','romantique'], sa:['automne','hiver'], f:['fruitsmer']},
+      {nom:'Burrata et tomates anciennes', b:2, st:['chic','romantique','champetre','moderne'], sa:['ete'], f:['lactose']},
+      {nom:'Salade de chèvre chaud chic', b:1, st:['champetre','romantique','boheme'], sa:['printemps','automne'], f:['gluten','lactose']},
+      {nom:'Salade de homard aux agrumes', b:3, st:['chic'], sa:['printemps','ete'], f:['fruitsmer']},
+      {nom:'Carpaccio de bœuf et parmesan', b:2, st:['chic','moderne','romantique'], sa:null, f:['viande','lactose']},
+      {nom:'Duo avocat-crevettes', b:2, st:['moderne','chic','romantique'], sa:['printemps','ete'], f:['fruitsmer']},
+      {nom:'Terrine maison et pickles', b:1, st:['champetre','boheme'], sa:['automne','hiver'], f:['viande','porc']},
+      {nom:'Tartare de légumes grillés', b:1, st:['boheme','moderne','minimaliste','nature'], sa:['ete'], f:[]},
+      {nom:'Assiette méditerranéenne (mezze)', b:1, st:['boheme','moderne'], sa:['ete'], f:[]},
+      {nom:'Salade italienne raffinée (mozzarella, roquette, tomates)', b:1, st:['romantique','champetre','moderne'], sa:['ete'], f:['lactose']},
+      {nom:'Velouté froid de saison', b:1, st:['moderne','minimaliste','boheme'], sa:['ete'], f:[]},
+      {nom:'Ceviche de poisson au citron vert', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','ete'], f:['poisson']},
+      {nom:'Carpaccio de betterave, roquette et balsamique', b:1, st:['moderne','minimaliste','nature'], sa:['automne','hiver'], f:[]},
+      // ── Chaudes ──
+      {nom:'Velouté de potimarron à la truffe', b:2, st:['chic','romantique','champetre'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Ravioles à la crème de parmesan', b:2, st:['romantique','chic','moderne'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Risotto crémeux aux champignons', b:2, st:['romantique','moderne','chic'], sa:['automne'], f:['lactose']},
+      {nom:'Saint-Jacques poêlées, purée de céleri', b:3, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['fruitsmer','lactose']},
+      {nom:'Feuilleté de saumon à l\'oseille', b:2, st:['chic','romantique'], sa:['printemps','hiver'], f:['gluten','poisson','lactose']},
+      {nom:'Tatin de légumes et chèvre', b:1, st:['champetre','boheme','moderne'], sa:['automne'], f:['gluten','lactose']},
+      {nom:'Cassolette de fruits de mer', b:3, st:['chic','romantique'], sa:['hiver'], f:['fruitsmer','lactose']},
+      {nom:'Gratin raffiné de légumes', b:1, st:['champetre','romantique','nature'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Œuf parfait, crème de champignons', b:2, st:['moderne','chic','romantique','minimaliste'], sa:['automne','hiver'], f:['oeuf','lactose']},
+      {nom:'Soupe à l\'oignon revisitée', b:1, st:['champetre','moderne'], sa:['hiver'], f:['gluten','lactose']},
+      {nom:'Asperges vertes, œuf mollet et parmesan', b:2, st:['minimaliste','moderne','chic','romantique'], sa:['printemps'], f:['oeuf','lactose']},
+      {nom:'Velouté de petits pois à la menthe', b:1, st:['romantique','champetre','minimaliste'], sa:['printemps'], f:['lactose']},
+      // ── Végétal (repli restrictions) ──
+      {nom:'Buddha bowl de légumes grillés et tahini', b:1, st:['boheme','moderne','minimaliste','nature'], sa:['printemps','ete'], f:[]},
+      {nom:'Salade de lentilles, grenade et herbes fraîches', b:1, st:['boheme','nature','minimaliste'], sa:['automne','hiver'], f:[]},
+      {nom:'Velouté de légumes de saison, huile parfumée', b:1, st:['minimaliste','champetre','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Tartare d\'avocat, mangue et tomate', b:2, st:['moderne','chic','minimaliste'], sa:['ete'], f:[]},
     ],
 
-    // ════════════ PLATS (par style fort, couverture saisonnière) ════════════
     plats: [
-      // ══ ROMANTIQUE ══
-      {nom:'Suprême de volaille fermière, jus aux herbes et jeunes légumes', b:2, st:['romantique','chic'], sa:['printemps'], f:['viande']},
-      {nom:'Dos de cabillaud, beurre blanc et asperges vertes', b:2, st:['romantique','chic','moderne'], sa:['printemps'], f:['poisson','lactose']},
-      {nom:'Loup de mer, fenouil confit et tomates cerises rôties', b:2, st:['romantique','moderne'], sa:['ete'], f:['poisson']},
-      {nom:'Filet mignon de veau, jus corsé et légumes d\'été glacés', b:2, st:['romantique','chic'], sa:['ete'], f:['viande']},
-      {nom:'Magret de canard, sauce au miel et purée de patate douce', b:2, st:['romantique','champetre','chic'], sa:['automne'], f:['viande']},
-      {nom:'Filet mignon de veau, jus corsé et gratin dauphinois', b:2, st:['romantique','chic','champetre'], sa:['automne','hiver'], f:['viande','lactose']},
-      {nom:'Filet de bœuf Rossini, sauce périgueux et gratin truffé', b:3, st:['romantique','chic'], sa:['automne','hiver'], f:['viande','lactose','alcool']},
-      {nom:'Risotto crémeux aux cèpes et copeaux de parmesan', b:2, st:['romantique','moderne','chic'], sa:['automne'], f:['lactose']},
-      {nom:'Chapon farci aux marrons, sauce suprême et purée maison', b:2, st:['romantique','chic'], sa:['hiver'], f:['viande','lactose']},
-      {nom:'Filet de biche, sauce grand veneur et poêlée de champignons', b:3, st:['romantique','chic'], sa:['hiver'], f:['viande','lactose']},
-      {nom:'Suprême de pintade aux écrevisses et riz sauvage', b:2, st:['romantique','chic'], sa:['hiver'], f:['viande','fruitsmer']},
-      // ══ BOHÈME ══
-      {nom:'Légumes primeurs rôtis, boulgour aux herbes et tahini', b:1, st:['boheme','nature','moderne'], sa:['printemps'], f:['gluten']},
-      {nom:'Curry de légumes verts au lait de coco et riz thaï', b:1, st:['boheme','moderne','nature'], sa:['printemps','ete'], f:[]},
-      {nom:'Aubergine rôtie entière, grenade, herbes et boulgour', b:1, st:['boheme','moderne','nature'], sa:['ete','automne'], f:['gluten']},
-      {nom:'Tajine de poulet aux abricots, amandes et semoule parfumée', b:1, st:['boheme','champetre'], sa:['automne'], f:['viande','noix']},
-      {nom:'Couscous royal aux légumes et merguez', b:2, st:['boheme','champetre'], sa:['automne','hiver'], f:['viande','gluten']},
-      {nom:'Curry de légumes et pois chiches au lait de coco, riz basmati', b:1, st:['boheme','moderne'], sa:['hiver'], f:[]},
-      {nom:'Tajine de légumes d\'hiver aux épices douces et semoule', b:1, st:['boheme','nature'], sa:['hiver'], f:['gluten']},
-      // ══ CHAMPÊTRE ══
-      {nom:'Poulet rôti fermier aux herbes, jeunes légumes de printemps', b:1, st:['champetre','nature','boheme'], sa:['printemps'], f:['viande']},
-      {nom:'Épaule d\'agneau confite aux herbes, flageolets et légumes nouveaux', b:2, st:['champetre','romantique'], sa:['printemps'], f:['viande']},
-      {nom:'Filet mignon de porc aux herbes, gratin de légumes printaniers', b:1, st:['champetre'], sa:['printemps'], f:['viande','porc','lactose']},
-      {nom:'Brochettes de volaille marinée, légumes grillés et semoule', b:1, st:['champetre','boheme'], sa:['ete'], f:['viande']},
-      {nom:'Souris d\'agneau confite, ratatouille et pommes de terre', b:2, st:['champetre','romantique'], sa:['ete'], f:['viande']},
-      {nom:'Côte de porc fermière grillée, ratatouille et pommes de terre', b:1, st:['champetre'], sa:['ete'], f:['viande','porc']},
-      {nom:'Magret de canard, sauce au miel et purée de patate douce', b:2, st:['champetre','chic'], sa:['automne'], f:['viande']},
-      {nom:'Sauté de porc fermier aux pruneaux et pommes de terre fondantes', b:1, st:['champetre'], sa:['automne','hiver'], f:['viande','porc']},
-      {nom:'Daube de bœuf aux carottes et pommes de terre vapeur', b:1, st:['champetre'], sa:['automne','hiver'], f:['viande','alcool']},
-      {nom:'Poulet rôti fermier aux herbes, légumes anciens du marché', b:1, st:['champetre','nature','boheme'], sa:['automne','hiver'], f:['viande']},
-      // ══ CHIC / LUXE ══
-      {nom:'Turbot rôti aux asperges et beurre Champagne', b:3, st:['chic','moderne'], sa:['printemps'], f:['poisson','lactose','alcool']},
-      {nom:'Homard rôti au beurre demi-sel et risotto crémeux', b:3, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer','lactose']},
-      {nom:'Bar de ligne en croûte d\'herbes, légumes d\'été et émulsion citron', b:3, st:['chic','moderne'], sa:['ete'], f:['poisson']},
-      {nom:'Ris de veau croustillant, jus réduit et légumes anciens glacés', b:3, st:['chic','romantique'], sa:['automne'], f:['viande','lactose']},
-      {nom:'Pigeon rôti, jus corsé et purée de céleri à la truffe', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose']},
-      {nom:'Turbot rôti aux morilles et beurre Champagne', b:3, st:['chic','moderne'], sa:['hiver'], f:['poisson','lactose','alcool']},
-      // ══ MODERNE ══
-      {nom:'Wok de légumes croquants de printemps, tofu mariné et nouilles soba', b:1, st:['moderne','boheme','minimaliste'], sa:['printemps'], f:['gluten']},
-      {nom:'Poisson du marché grillé, légumes d\'été et huile vierge', b:2, st:['moderne','minimaliste','chic'], sa:['ete'], f:['poisson']},
-      {nom:'Pavé de bœuf, sauce au poivre de Sichuan et pommes grenailles', b:2, st:['moderne','chic'], sa:['automne'], f:['viande']},
-      {nom:'Risotto crémeux aux champignons et noisettes torréfiées', b:2, st:['moderne','romantique'], sa:['automne'], f:['lactose','noix']},
-      {nom:'Loup de mer en croûte d\'herbes, fenouil confit et émulsion citron', b:2, st:['moderne','chic','minimaliste'], sa:['hiver'], f:['poisson']},
-      {nom:'Suprême de volaille basse température, purée truffée', b:2, st:['moderne','chic'], sa:['hiver','automne'], f:['viande','lactose']},
-      // ══ MINIMALISTE ══
-      {nom:'Filet de poisson blanc vapeur, jeunes légumes et huile d\'olive', b:1, st:['minimaliste','moderne','nature'], sa:['printemps'], f:['poisson']},
-      {nom:'Poisson grillé, salade de saison et écrasé de pommes de terre', b:1, st:['minimaliste','moderne'], sa:['ete'], f:['poisson']},
-      {nom:'Suprême de volaille basse température, légumes glacés', b:2, st:['minimaliste','chic','moderne'], sa:['automne','hiver'], f:['viande']},
-      {nom:'Risotto d\'orge perlé aux légumes verts', b:1, st:['minimaliste','moderne','boheme'], sa:['printemps'], f:['gluten','lactose']},
-      // ══ VÉGÉTAL / VEGAN / SG (repli restrictions, par saison) ══
-      {nom:'Wellington de légumes de printemps vegan sans gluten, sauce aux herbes', b:2, st:['moderne','boheme'], sa:['printemps'], f:[]},
-      {nom:'Légumes d\'été rôtis, quinoa aux herbes et sauce tahini', b:1, st:['boheme','moderne','minimaliste','nature'], sa:['ete'], f:[]},
-      {nom:'Risotto crémeux aux champignons (sans produits laitiers)', b:1, st:['boheme','moderne','minimaliste'], sa:['automne'], f:[]},
-      {nom:'Curry de légumes d\'hiver au lait de coco et riz parfumé', b:1, st:['boheme','moderne','nature'], sa:['hiver'], f:[]},
-      {nom:'Pavé de tofu mariné, légumes sautés au wok et riz parfumé', b:1, st:['moderne','minimaliste','boheme'], sa:['automne','hiver'], f:['gluten']},
-      {nom:'Légumes-racines rôtis, polenta crémeuse et jus corsé végétal', b:1, st:['champetre','nature','boheme'], sa:['automne','hiver'], f:[]},
+      // ── Ajouts gastronomiques ──
+      {nom:'Filet de bœuf Rossini, foie gras poêlé et jus au porto', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose','alcool']},
+      {nom:'Filet de bœuf, sauce morilles et purée truffée', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Joue de bœuf braisée au vin rouge, mousseline de pommes de terre', b:2, st:['champetre','romantique','chic'], sa:['automne','hiver'], f:['viande','lactose','alcool']},
+      {nom:'Veau basse température, jus aux girolles et gratin dauphinois', b:2, st:['chic','romantique','champetre'], sa:['automne'], f:['viande','lactose']},
+      {nom:'Médaillon de veau, sauce forestière et primeurs rôtis', b:2, st:['chic','romantique'], sa:['printemps','automne'], f:['viande','lactose']},
+      {nom:'Suprême de volaille farci aux morilles, mousseline de céleri', b:2, st:['chic','romantique','champetre'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Suprême de volaille aux cèpes, jus crémé', b:2, st:['chic','champetre','romantique'], sa:['automne'], f:['viande','lactose']},
+      {nom:'Ballotine de volaille aux champignons, sauce vin jaune', b:2, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose','alcool']},
+      {nom:'Pintade rôtie, purée de panais et sauce foie gras légère', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Volaille jaune sauce champagne, asperges vertes rôties', b:2, st:['chic','romantique','moderne'], sa:['printemps'], f:['viande','lactose','alcool']},
+      {nom:'Magret de canard, réduction fruits rouges-poivre timut, patate douce', b:2, st:['chic','champetre','romantique'], sa:['automne','hiver'], f:['viande']},
+      {nom:'Canette rôtie, figues caramélisées et jus épicé', b:2, st:['chic','romantique'], sa:['automne'], f:['viande']},
+      {nom:'Carré d\'agneau en croûte d\'herbes, jus au thym et gratin', b:3, st:['chic','romantique'], sa:['printemps','hiver'], f:['viande','gluten','lactose']},
+      {nom:'Agneau confit 12 heures, légumes racines glacés, jus au romarin', b:2, st:['chic','champetre','romantique'], sa:['hiver','automne'], f:['viande']},
+      {nom:'Bar rôti sur peau, beurre blanc au champagne et risotto citronné', b:3, st:['chic','moderne','romantique'], sa:['printemps','hiver'], f:['poisson','lactose','alcool']},
+      {nom:'Dos de cabillaud nacré, émulsion crustacés et primeurs', b:2, st:['chic','moderne','romantique'], sa:['printemps','hiver'], f:['poisson','fruitsmer']},
+      {nom:'Saint-Pierre rôti, mousseline de chou-fleur et sauce safranée', b:3, st:['chic','romantique','moderne'], sa:['hiver','automne'], f:['poisson','lactose']},
+      {nom:'Lotte rôtie au beurre noisette, risotto crémeux parmesan', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['poisson','lactose']},
+      {nom:'Saumon mi-cuit, crème citron-aneth, asperges et grenaille', b:2, st:['moderne','chic','romantique','minimaliste'], sa:['printemps'], f:['poisson','lactose']},
+      {nom:'Gambas flambées, bisque légère et riz noir croustillant', b:3, st:['chic','moderne'], sa:['ete','automne'], f:['fruitsmer','alcool']},
+      {nom:'Homard rôti, beurre citronné et mousseline truffée', b:3, st:['chic','romantique'], sa:['printemps','ete'], f:['fruitsmer','lactose']},
+      {nom:'Wellington végétal aux champignons et épinards', b:2, st:['moderne','boheme','chic'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Gnocchis maison, crème de sauge, noisettes grillées et parmesan', b:1, st:['romantique','moderne','champetre'], sa:['automne','hiver'], f:['gluten','lactose','noix']},
+      {nom:'Aubergine rôtie miso-miel, yaourt citronné et herbes fraîches', b:1, st:['moderne','boheme','minimaliste','nature'], sa:['ete','automne'], f:['lactose']},
+      {nom:'Polenta crémeuse, légumes grillés et sauce champignons', b:1, st:['champetre','moderne','nature'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Osso buco à la milanaise, risotto safrané', b:2, st:['chic','champetre','romantique'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Linguine aux fruits de mer', b:2, st:['moderne','romantique','chic'], sa:['ete'], f:['gluten','fruitsmer']},
+      {nom:'Ravioli ricotta-épinards, sauce tomate-basilic', b:1, st:['romantique','champetre','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Aubergines alla parmigiana', b:1, st:['champetre','boheme','moderne'], sa:['ete','automne'], f:['lactose']},
+      {nom:'Risotto à la truffe, champignons sauvages et parmesan affiné', b:3, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Magret de canard au miel et épices', b:2, st:['chic','champetre','romantique'], sa:['automne','hiver'], f:['viande']},
+      {nom:'Suprême de volaille, crème truffée', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Poulet rôti gastronomique aux herbes', b:1, st:['champetre','nature','romantique'], sa:null, f:['viande']},
+      {nom:'Veau, sauce forestière', b:2, st:['chic','romantique','champetre'], sa:['automne','hiver'], f:['viande','lactose']},
+      {nom:'Agneau confit aux herbes', b:2, st:['chic','champetre','romantique'], sa:['printemps','hiver'], f:['viande']},
+      {nom:'Porc fermier basse température', b:1, st:['champetre','moderne'], sa:['automne','hiver'], f:['viande','porc']},
+      {nom:'Bœuf bourguignon chic', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['viande','alcool']},
+      {nom:'Blanquette de veau revisitée', b:1, st:['champetre','romantique'], sa:['hiver'], f:['viande','lactose']},
+      {nom:'Filet mignon, sauce moutarde à l\'ancienne', b:2, st:['champetre','chic','moderne'], sa:null, f:['viande','lactose']},
+      {nom:'Ballotine de volaille farcie', b:2, st:['chic','romantique','champetre'], sa:['printemps','automne'], f:['viande']},
+      {nom:'Canette rôtie, jus réduit', b:2, st:['chic','romantique'], sa:['automne','hiver'], f:['viande']},
+      {nom:'Souris d\'agneau confite, ratatouille', b:2, st:['champetre','romantique'], sa:['ete'], f:['viande']},
+      {nom:'Côte de porc grillée, légumes d\'été', b:1, st:['champetre'], sa:['ete'], f:['viande','porc']},
+      {nom:'Brochettes de volaille marinée, semoule', b:1, st:['champetre','boheme'], sa:['ete'], f:['viande']},
+      // ── Poissons ──
+      {nom:'Saumon rôti, citron et aneth', b:2, st:['moderne','chic','romantique','minimaliste'], sa:['printemps','hiver'], f:['poisson']},
+      {nom:'Cabillaud, beurre blanc et légumes glacés', b:2, st:['chic','romantique','moderne'], sa:['printemps','hiver'], f:['poisson','lactose']},
+      {nom:'Bar de ligne rôti aux herbes', b:3, st:['chic','moderne'], sa:['ete','printemps'], f:['poisson']},
+      {nom:'Dorade grillée, légumes méditerranéens', b:2, st:['moderne','boheme','minimaliste'], sa:['ete'], f:['poisson']},
+      {nom:'Saint-Pierre, sauce champagne', b:3, st:['chic','romantique'], sa:['hiver'], f:['poisson','lactose','alcool']},
+      {nom:'Homard rôti au beurre demi-sel', b:3, st:['chic'], sa:['printemps','ete'], f:['fruitsmer','lactose']},
+      {nom:'Gambas grillées, riz parfumé', b:2, st:['moderne','boheme','chic'], sa:['ete'], f:['fruitsmer']},
+      {nom:'Lotte, sauce safranée', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['poisson']},
+      {nom:'Thon snacké au sésame', b:2, st:['moderne','chic','minimaliste'], sa:['ete','printemps'], f:['poisson']},
+      {nom:'Turbot rôti aux morilles', b:3, st:['chic','moderne'], sa:['hiver','printemps'], f:['poisson','lactose']},
+      // ── Végétarien / vegan ──
+      {nom:'Risotto à la truffe et champignons', b:2, st:['romantique','moderne','chic'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Ravioles de légumes, bouillon parfumé', b:1, st:['moderne','romantique','boheme'], sa:['printemps','automne'], f:['gluten']},
+      {nom:'Curry de légumes au lait de coco, riz basmati', b:1, st:['boheme','moderne','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Aubergine farcie aux légumes et herbes', b:1, st:['boheme','moderne','nature','minimaliste'], sa:['ete','automne'], f:[]},
+      {nom:'Wellington végétal en croûte', b:2, st:['moderne','boheme','chic'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Gnocchis, sauce crémeuse au parmesan', b:1, st:['romantique','moderne','champetre'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Lasagnes de légumes gratinées', b:1, st:['champetre','boheme','moderne'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Tajine de légumes aux épices douces', b:1, st:['boheme','nature'], sa:['hiver','automne'], f:[]},
+      {nom:'Buddha bowl premium aux légumes de saison', b:1, st:['moderne','minimaliste','boheme','nature'], sa:['printemps','ete'], f:[]},
+      {nom:'Steak de chou-fleur rôti, condiment herbes', b:1, st:['moderne','minimaliste','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Polenta crémeuse aux champignons', b:1, st:['champetre','moderne','nature'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Burger végétarien gourmet', b:1, st:['moderne','boheme'], sa:null, f:['gluten','lactose']},
+      {nom:'Légumes primeurs rôtis, boulgour et tahini', b:1, st:['boheme','nature','moderne','minimaliste'], sa:['printemps'], f:['gluten']},
+      {nom:'Wok de légumes croquants et tofu mariné', b:1, st:['moderne','minimaliste','boheme'], sa:['printemps','ete'], f:['gluten']},
+      {nom:'Légumes d\'été rôtis, quinoa aux herbes', b:1, st:['boheme','moderne','minimaliste','nature'], sa:['ete'], f:[]},
     ],
 
-    // ════════════ ACCOMPAGNEMENTS ════════════
     accompagnements: [
-      {nom:'Gratin dauphinois maison', b:1, st:['romantique','champetre','chic'], sa:['automne','hiver'], f:['lactose']},
-      {nom:'Légumes rôtis aux herbes de Provence', b:1, st:null, sa:null, f:[]},
+      // ── Ajouts gastronomiques ──
+      {nom:'Mousseline de panais', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Mousseline de céleri-rave', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Pommes Anna', b:2, st:['chic','romantique'], sa:null, f:['lactose']},
+      {nom:'Mini-légumes rôtis au miel et thym', b:2, st:['chic','moderne','champetre'], sa:null, f:[]},
+      {nom:'Risotto parmesan-citron', b:2, st:['romantique','moderne','chic'], sa:['printemps','ete'], f:['lactose']},
+      {nom:'Écrasé de pommes de terre à l\'huile de truffe', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:[]},
+      {nom:'Poêlée de girolles et champignons sauvages', b:2, st:['chic','champetre','romantique'], sa:['automne'], f:['lactose']},
+      {nom:'Gratin dauphinois', b:1, st:['champetre','romantique','chic'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Pommes grenaille rôties au thym', b:1, st:null, sa:null, f:[]},
+      {nom:'Légumes glacés', b:1, st:['chic','romantique','moderne'], sa:null, f:['lactose']},
+      {nom:'Ratatouille raffinée', b:1, st:['champetre','boheme','nature'], sa:['ete'], f:[]},
+      {nom:'Asperges rôties', b:2, st:['chic','moderne','minimaliste'], sa:['printemps'], f:[]},
+      {nom:'Riz parfumé', b:1, st:['boheme','moderne'], sa:null, f:[]},
+      {nom:'Risotto au parmesan', b:2, st:['romantique','chic','moderne'], sa:null, f:['lactose']},
       {nom:'Écrasé de pommes de terre à l\'huile d\'olive', b:1, st:['minimaliste','moderne','nature'], sa:null, f:[]},
-      {nom:'Riz pilaf aux petits légumes', b:1, st:['boheme','moderne'], sa:null, f:[]},
-      {nom:'Poêlée de légumes de saison au beurre d\'herbes', b:1, st:['champetre','romantique'], sa:null, f:['lactose']},
-      {nom:'Purée de patate douce au cumin', b:1, st:['boheme','moderne'], sa:['automne','hiver'], f:[]},
-      {nom:'Tian de légumes provençal', b:1, st:['champetre','boheme','nature'], sa:['ete'], f:[]},
-      {nom:'Risotto crémeux au parmesan', b:2, st:['chic','romantique','moderne'], sa:null, f:['lactose']},
-      {nom:'Gratin de légumes anciens à la crème', b:2, st:['chic','champetre'], sa:['automne','hiver'], f:['lactose']},
-      {nom:'Pommes grenailles rôties au thym et fleur de sel', b:1, st:null, sa:null, f:[]},
-      {nom:'Quinoa aux herbes fraîches et grenade', b:1, st:['moderne','boheme','minimaliste'], sa:null, f:[]},
+      {nom:'Purée de patate douce', b:1, st:['boheme','moderne'], sa:['automne','hiver'], f:[]},
+      {nom:'Poêlée de légumes de saison', b:1, st:null, sa:null, f:[]},
+      {nom:'Haricots verts fins persillés', b:1, st:['chic','romantique','champetre'], sa:['ete'], f:['lactose']},
+      {nom:'Tagliatelles fraîches', b:1, st:['romantique','moderne','champetre'], sa:null, f:['gluten','oeuf']},
+      {nom:'Légumes méditerranéens grillés', b:1, st:['boheme','moderne','nature'], sa:['ete'], f:[]},
+      {nom:'Quinoa aux herbes et grenade', b:1, st:['moderne','boheme','minimaliste','nature'], sa:null, f:[]},
       {nom:'Polenta crémeuse aux herbes', b:1, st:['champetre','moderne'], sa:['automne','hiver'], f:['lactose']},
-      {nom:'Boulgour aux légumes croquants et menthe', b:1, st:['boheme','nature'], sa:['ete'], f:['gluten']},
-      {nom:'Fagots de haricots verts au lard', b:2, st:['chic','champetre'], sa:null, f:['porc']},
     ],
 
-    // ════════════ SALADES ════════════
     salades: [
-      {nom:'Salade César revisitée au poulet croustillant', b:1, st:['moderne','champetre'], sa:null, f:['gluten','lactose','oeuf','viande']},
+      {nom:'Salade César revisitée au poulet', b:1, st:['moderne','champetre'], sa:null, f:['gluten','lactose','oeuf','viande']},
       {nom:'Taboulé libanais aux herbes fraîches', b:1, st:['boheme','champetre','nature'], sa:['printemps','ete'], f:['gluten']},
       {nom:'Salade de quinoa, légumes croquants et feta', b:1, st:['moderne','boheme'], sa:['printemps','ete'], f:['lactose']},
-      {nom:'Salade de tomates anciennes et mozzarella di bufala', b:2, st:['chic','romantique','champetre'], sa:['ete'], f:['lactose']},
-      {nom:'Salade de lentilles, échalotes et vinaigrette moutarde', b:1, st:['champetre','boheme','nature'], sa:['automne','hiver'], f:[]},
-      {nom:'Roquette, poire, copeaux de parmesan et noix', b:2, st:['chic','romantique'], sa:['automne'], f:['lactose','noix']},
+      {nom:'Salade de tomates anciennes et mozzarella', b:2, st:['chic','romantique','champetre'], sa:['ete'], f:['lactose']},
+      {nom:'Salade de lentilles et vinaigrette moutarde', b:1, st:['champetre','boheme','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Roquette, poire, parmesan et noix', b:2, st:['chic','romantique'], sa:['automne'], f:['lactose','noix']},
       {nom:'Salade de pousses, agrumes et avocat', b:1, st:['moderne','minimaliste'], sa:['printemps','hiver'], f:[]},
-      {nom:'Salade grecque (concombre, feta, olives, origan)', b:1, st:['boheme','champetre'], sa:['ete'], f:['lactose']},
+      {nom:'Salade grecque (concombre, feta, olives)', b:1, st:['boheme','champetre'], sa:['ete'], f:['lactose']},
       {nom:'Coleslaw maison croquant', b:1, st:['champetre','moderne'], sa:null, f:['oeuf']},
-      {nom:'Salade de riz sauvage, mangue et noix de cajou', b:1, st:['boheme','moderne'], sa:['ete'], f:['noix']},
-      {nom:'Salade de betteraves rôties, agrumes et roquette', b:1, st:['moderne','minimaliste','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Salade de riz sauvage, mangue et cajou', b:1, st:['boheme','moderne'], sa:['ete'], f:['noix']},
+      {nom:'Salade de betteraves rôties et roquette', b:1, st:['moderne','minimaliste','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Salade méditerranéenne aux légumes grillés', b:1, st:['boheme','moderne','nature'], sa:['ete'], f:[]},
     ],
 
-    // ════════════ DESSERTS ════════════
     desserts: [
-      // ROMANTIQUE
-      {nom:'Fraisier à la crème mousseline vanille', b:2, st:['romantique','chic','champetre'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
-      {nom:'Pavlova aux fruits rouges et chantilly', b:2, st:['romantique','moderne','minimaliste'], sa:['printemps','ete'], f:['lactose','oeuf']},
-      {nom:'Charlotte aux framboises et biscuits roses', b:2, st:['romantique','champetre'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
-      // BOHÈME
-      {nom:'Verrines de compote de fruits et granola maison', b:1, st:['boheme','champetre','nature'], sa:null, f:['gluten']},
-      {nom:'Cheesecake aux fruits de la passion', b:2, st:['boheme','moderne'], sa:['ete'], f:['gluten','lactose','oeuf']},
-      {nom:'Salade de fruits exotiques au sirop de gingembre', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
-      // CHAMPÊTRE
-      {nom:'Tarte rustique aux fruits de saison', b:1, st:['champetre','boheme','nature'], sa:null, f:['gluten','lactose','oeuf']},
-      {nom:'Crumble pommes-cannelle et crème anglaise', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
-      {nom:'Tarte tatin et sa boule de glace vanille', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
-      // CHIC / LUXE
-      {nom:'Pièce montée de choux croustillants et caramel', b:3, st:['chic','romantique'], sa:null, f:['gluten','lactose','oeuf']},
-      {nom:'Vacherin glacé vanille-marrons et meringue', b:3, st:['chic','romantique'], sa:['hiver'], f:['lactose','oeuf']},
-      {nom:'Sphère chocolat grand cru, cœur coulant et glace praliné', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['lactose','oeuf','noix']},
-      {nom:'Assiette gourmande : déclinaison de mignardises maison', b:3, st:['chic','romantique','moderne'], sa:null, f:['gluten','lactose','oeuf']},
-      // MODERNE
-      {nom:'Tarte au citron meringuée revisitée en assiette', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
-      {nom:'Dôme vanille-fruits de la passion et insert mangue', b:2, st:['moderne','chic'], sa:['ete','hiver'], f:['lactose','oeuf']},
-      {nom:'Cylindre chocolat-yuzu et croustillant', b:2, st:['moderne','chic'], sa:null, f:['gluten','lactose','oeuf']},
-      // MINIMALISTE
-      {nom:'Mousse au chocolat noir intense', b:1, st:['minimaliste','moderne'], sa:['automne','hiver'], f:['lactose','oeuf']},
-      {nom:'Panna cotta vanille et coulis de fruits rouges', b:1, st:['minimaliste','romantique','moderne'], sa:null, f:['lactose']},
-      {nom:'Tiramisu classique', b:1, st:['minimaliste','romantique','moderne'], sa:null, f:['gluten','lactose','oeuf']},
-      // Vegan / sans gluten / repli
+      // ── Ajouts gastronomiques ──
+      {nom:'Entremets vanille-tonka, insert framboise', b:2, st:['chic','romantique','moderne'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Sphère chocolat, cœur coulant caramel', b:3, st:['chic','moderne','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Millefeuille minute à la vanille bourbon', b:2, st:['chic','romantique','moderne'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Dôme chocolat-praliné croustillant', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','noix']},
+      {nom:'Tarte citron-yuzu meringuée revisitée', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Vacherin glacé aux fruits rouges', b:3, st:['chic','romantique'], sa:['ete','hiver'], f:['lactose','oeuf']},
+      {nom:'Opéra revisité café-noisette', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','noix']},
+      {nom:'Poire pochée aux épices, mousse vanille', b:1, st:['romantique','champetre','minimaliste'], sa:['automne','hiver'], f:['lactose']},
+      {nom:'Fraisier premium à la vanille bourbon', b:2, st:['romantique','chic','champetre'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Entremets chocolat-noisette', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','noix']},
+      {nom:'Cannoli siciliens à la ricotta', b:1, st:['boheme','champetre','moderne'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Tarte au citron à l\'italienne', b:1, st:['romantique','moderne','champetre'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Millefeuille vanille', b:2, st:['chic','romantique'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Opéra café-chocolat', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','noix']},
+      {nom:'Pavlova aux fruits rouges', b:2, st:['romantique','moderne','minimaliste','champetre'], sa:['printemps','ete'], f:['lactose','oeuf']},
+      {nom:'Moelleux au chocolat', b:1, st:['romantique','moderne','minimaliste'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Entremets vanille-framboise', b:2, st:['romantique','chic','moderne'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Cheesecake premium aux fruits', b:2, st:['moderne','boheme','chic'], sa:['ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Tiramisu chic', b:1, st:['romantique','moderne','minimaliste'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Profiteroles, sauce chocolat', b:2, st:['romantique','champetre','chic'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Panna cotta aux fruits rouges', b:1, st:['minimaliste','romantique','moderne'], sa:['printemps','ete'], f:['lactose']},
+      {nom:'Crème brûlée à la vanille', b:1, st:['romantique','chic','champetre'], sa:['automne','hiver'], f:['lactose','oeuf']},
+      {nom:'Fraisier à la crème mousseline', b:2, st:['romantique','chic','champetre'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Paris-Brest revisité', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','noix']},
+      {nom:'Fondant chocolat cœur coulant', b:2, st:['romantique','chic','moderne'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Charlotte aux framboises', b:2, st:['romantique','champetre'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Tarte tatin et glace vanille', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Vacherin glacé vanille-marrons', b:3, st:['chic','romantique'], sa:['hiver'], f:['lactose','oeuf']},
+      {nom:'Sphère chocolat grand cru, cœur coulant', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['lactose','oeuf','noix']},
+      {nom:'Assiette de mignardises maison', b:3, st:['chic','romantique','moderne'], sa:null, f:['gluten','lactose','oeuf']},
+      // ── Vegan / SG (repli) ──
       {nom:'Salade de fruits frais de saison au sirop léger', b:1, st:['minimaliste','moderne','boheme','champetre','nature'], sa:null, f:[]},
       {nom:'Sorbet plein fruit et fruits frais', b:1, st:['minimaliste','moderne','boheme'], sa:['printemps','ete'], f:[]},
-      {nom:'Mousse au chocolat noir vegan (sans œuf ni lait)', b:1, st:['moderne','boheme','minimaliste'], sa:['automne','hiver'], f:[]},
+      {nom:'Mousse au chocolat noir vegan', b:1, st:['moderne','boheme','minimaliste'], sa:['automne','hiver'], f:[]},
       {nom:'Crumble de fruits sans gluten et coulis', b:1, st:['champetre','boheme','nature'], sa:['automne','hiver'], f:[]},
       {nom:'Panna cotta vegan au lait de coco et fruits rouges', b:2, st:['moderne','chic','minimaliste'], sa:['printemps','ete'], f:[]},
-      {nom:'Tarte fine aux pommes sans gluten et caramel', b:1, st:['champetre','romantique','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Tarte fine aux pommes sans gluten', b:1, st:['champetre','romantique','nature'], sa:['automne','hiver'], f:[]},
     ],
 
-    // ════════════ FROMAGES ════════════
     fromages: [
-      {nom:'Plateau de fromages affinés et fruits secs', b:2, st:null, sa:null, f:['lactose','noix']},
-      {nom:'Sélection de fromages fermiers régionaux et pain aux noix', b:1, st:['champetre','boheme','nature'], sa:null, f:['lactose','gluten','noix']},
-      {nom:'Trilogie de fromages d\'exception et confiture de figues', b:3, st:['chic','romantique'], sa:null, f:['lactose']},
-      {nom:'Chèvres frais et secs, miel et roquette', b:1, st:['champetre','minimaliste','nature'], sa:null, f:['lactose']},
+      {nom:'Plateau de fromages français classiques', b:2, st:null, sa:null, f:['lactose']},
+      {nom:'Plateau de fromages affinés premium et fruits secs', b:3, st:['chic','romantique'], sa:null, f:['lactose','noix']},
+      {nom:'Plateau de chèvres frais, secs et cendrés', b:1, st:['champetre','minimaliste','nature','boheme'], sa:null, f:['lactose']},
+      {nom:'Plateau de fromages italiens (parmesan, burrata, mozzarella)', b:2, st:['moderne','chic','romantique'], sa:null, f:['lactose']},
+      {nom:'Plateau de fromages fermiers régionaux et pain aux noix', b:1, st:['champetre','boheme','nature'], sa:null, f:['lactose','gluten','noix']},
+      {nom:'Plateau mixte international d\'exception', b:3, st:['chic','moderne'], sa:null, f:['lactose']},
     ],
 
-    // ════════════ BOUCHÉES (cocktail dînatoire) ════════════
     bouchees_froides: [
-      {nom:'Verrines de gaspacho et billes de melon', b:1, st:['boheme','moderne','minimaliste'], sa:['ete'], f:[]},
-      {nom:'Cuillères de tartare de saumon à l\'aneth', b:2, st:['chic','moderne','romantique'], sa:null, f:['poisson']},
-      {nom:'Mini-tartelettes chèvre-miel', b:1, st:['champetre','romantique','boheme'], sa:null, f:['gluten','lactose']},
-      {nom:'Brochettes tomate-mozzarella-basilic', b:1, st:['champetre','romantique'], sa:['ete'], f:['lactose']},
-      {nom:'Macarons salés au foie gras', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['oeuf','noix']},
-      {nom:'Cuillères de Saint-Jacques marinées aux agrumes', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['fruitsmer']},
-      {nom:'Mini-bagels saumon fumé et fromage frais', b:2, st:['moderne','chic'], sa:null, f:['gluten','poisson','lactose']},
-      {nom:'Verrines d\'avocat, crevettes et mangue', b:2, st:['moderne','chic'], sa:['printemps','ete'], f:['fruitsmer']},
-      {nom:'Houmous et bâtonnets de légumes croquants', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
-      {nom:'Wraps végétariens aux légumes grillés', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
-      {nom:'Mini-cônes au tarama maison', b:2, st:['moderne','chic'], sa:null, f:['gluten','poisson']},
-      {nom:'Tartare de tomates anciennes et basilic', b:1, st:['champetre','boheme','minimaliste','nature'], sa:['ete'], f:[]},
-      {nom:'Verrines de guacamole et légumes croquants', b:1, st:['boheme','moderne'], sa:null, f:[]},
-      {nom:'Billes de melon et concombre à la menthe', b:1, st:['minimaliste','moderne','boheme'], sa:['ete'], f:[]},
-      {nom:'Mini-brochettes de légumes grillés marinés', b:1, st:['boheme','champetre','minimaliste','nature'], sa:['ete','printemps'], f:[]},
-      {nom:'Verrines de caviar d\'aubergine et grenade', b:1, st:['boheme','moderne'], sa:['ete','automne'], f:[]},
-      {nom:'Rouleaux de printemps aux légumes croquants', b:1, st:['moderne','minimaliste','boheme'], sa:['printemps','ete'], f:[]},
-      {nom:'Cuillères de betterave marinée et pomme verte', b:1, st:['moderne','minimaliste','nature'], sa:['automne','hiver'], f:[]},
+      {nom:'Mini-focaccia garnie aux légumes du soleil', b:1, st:['boheme','champetre','moderne'], sa:['ete'], f:['gluten']},
+      {nom:'Cuillère de burrata et tomates anciennes', b:2, st:['chic','romantique','moderne'], sa:['ete'], f:['lactose']},
+      {nom:'Verrine crevettes et agrumes', b:2, st:['chic','moderne'], sa:['printemps','ete'], f:['fruitsmer']},
+      {nom:'Cuillère de tartare de saumon', b:2, st:['chic','moderne','romantique'], sa:null, f:['poisson']},
+      {nom:'Cuillère de tartare de thon au sésame', b:2, st:['moderne','chic'], sa:['ete'], f:['poisson']},
+      {nom:'Blinis au saumon fumé', b:2, st:['chic','romantique','moderne'], sa:['automne','hiver'], f:['gluten','poisson','lactose']},
+      {nom:'Toast foie gras et figues', b:3, st:['chic','romantique'], sa:['automne','hiver'], f:['gluten']},
+      {nom:'Toast chèvre et miel', b:1, st:['champetre','romantique','boheme'], sa:null, f:['gluten','lactose']},
+      {nom:'Toast avocat et feta', b:1, st:['moderne','minimaliste','boheme'], sa:['printemps','ete'], f:['gluten','lactose']},
+      {nom:'Canapé tomate-mozzarella', b:1, st:['champetre','romantique','boheme'], sa:['ete'], f:['gluten','lactose']},
+      {nom:'Bruschetta tomate-basilic', b:1, st:['champetre','boheme','moderne'], sa:['ete'], f:['gluten']},
+      {nom:'Tartine burrata et tomates confites', b:2, st:['chic','moderne','romantique'], sa:['ete','automne'], f:['gluten','lactose']},
+      {nom:'Mini-brochettes melon et jambon cru', b:1, st:['champetre','romantique'], sa:['ete'], f:['porc']},
+      {nom:'Carpaccio de bœuf et parmesan', b:2, st:['chic','moderne','romantique'], sa:null, f:['viande','lactose']},
+      {nom:'Houmous et pita miniatures', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:['gluten']},
+      {nom:'Guacamole et chips artisanales', b:1, st:['boheme','moderne'], sa:null, f:[]},
+      {nom:'Tapenade sur crostini', b:1, st:['champetre','boheme','minimaliste'], sa:['ete'], f:['gluten']},
+      {nom:'Mini-tartare de légumes', b:1, st:['moderne','minimaliste','boheme','nature'], sa:['printemps','ete'], f:[]},
+      {nom:'Verrine de gaspacho andalou', b:1, st:['boheme','moderne','minimaliste'], sa:['ete'], f:[]},
+      {nom:'Mini-wraps végétariens', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
+      {nom:'Cuillère de betterave et pomme verte', b:1, st:['moderne','minimaliste','nature'], sa:['automne','hiver'], f:[]},
     ],
     bouchees_chaudes: [
-      {nom:'Mini-croque-monsieur dorés', b:1, st:['champetre','moderne'], sa:['automne','hiver'], f:['gluten','lactose']},
-      {nom:'Beignets de légumes croustillants et sauce yaourt', b:1, st:['boheme','champetre'], sa:null, f:['gluten','lactose']},
-      {nom:'Brochettes de poulet mariné au citron', b:1, st:['champetre','romantique','moderne'], sa:null, f:['viande']},
-      {nom:'Mini-quiches lorraines', b:1, st:['champetre','romantique'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','porc']},
-      {nom:'Accras de morue antillais', b:1, st:['boheme'], sa:['ete'], f:['gluten','poisson']},
-      {nom:'Gambas snackées au beurre d\'herbes', b:3, st:['chic','moderne'], sa:null, f:['fruitsmer','lactose']},
-      {nom:'Bouchées de risotto pané (arancini)', b:1, st:['moderne','boheme'], sa:null, f:['gluten','lactose']},
-      {nom:'Mini-burgers de bœuf au fromage fondu', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande','lactose']},
-      {nom:'Samoussas de légumes épicés', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
-      {nom:'Brochettes d\'agneau mariné aux épices douces', b:2, st:['chic','boheme'], sa:null, f:['viande']},
-      {nom:'Falafels croustillants et sauce sésame', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
-      {nom:'Légumes tempura et sauce ponzu', b:1, st:['moderne','minimaliste'], sa:null, f:['gluten']},
+      {nom:'Mini-burgers gourmet', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande','lactose']},
+      {nom:'Mini-croque-monsieur à la truffe', b:2, st:['chic','moderne'], sa:['automne','hiver'], f:['gluten','lactose']},
+      {nom:'Gougères au fromage', b:1, st:['champetre','romantique','chic'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
+      {nom:'Mini-quiches', b:1, st:['champetre','romantique'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Feuilletés chèvre-épinards', b:1, st:['champetre','boheme','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Tempura de légumes', b:1, st:['moderne','minimaliste'], sa:null, f:['gluten']},
+      {nom:'Mini-brochettes satay de poulet', b:2, st:['moderne','boheme'], sa:null, f:['viande','noix']},
+      {nom:'Arancini croustillants', b:1, st:['moderne','boheme','chic'], sa:null, f:['gluten','lactose']},
+      {nom:'Mini-pizzas artisanales', b:1, st:['champetre','boheme','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Beignets de crevettes', b:2, st:['moderne','chic'], sa:null, f:['gluten','fruitsmer']},
+      {nom:'Mini-tacos', b:1, st:['boheme','moderne'], sa:null, f:['gluten','viande']},
+      {nom:'Gyozas vapeur', b:1, st:['moderne'], sa:null, f:['gluten']},
+      {nom:'Falafels et sauce sésame', b:1, st:['boheme','moderne','minimaliste'], sa:null, f:[]},
+      {nom:'Saint-Jacques snackées', b:3, st:['chic','moderne'], sa:['automne','hiver'], f:['fruitsmer']},
+      {nom:'Crevettes croustillantes', b:2, st:['moderne','chic','boheme'], sa:null, f:['gluten','fruitsmer']},
+      {nom:'Yakitori de poulet', b:2, st:['moderne'], sa:null, f:['viande','gluten']},
       {nom:'Polenta croustillante aux herbes', b:1, st:['champetre','boheme','minimaliste','nature'], sa:['automne','hiver'], f:[]},
-      {nom:'Champignons farcis aux herbes et chapelure', b:1, st:['champetre','boheme'], sa:['automne'], f:['gluten']},
-      {nom:'Boulettes de légumes et pois chiches épicées', b:1, st:['boheme','moderne','nature'], sa:null, f:[]},
+      {nom:'Boulettes de pois chiches épicées', b:1, st:['boheme','moderne','nature'], sa:null, f:[]},
     ],
     mini_desserts: [
-      {nom:'Verrines de mousse au chocolat', b:1, st:['romantique','moderne','minimaliste'], sa:null, f:['lactose','oeuf']},
-      {nom:'Mini-tartelettes au citron meringuées', b:2, st:['chic','moderne','romantique'], sa:null, f:['gluten','lactose','oeuf']},
       {nom:'Macarons assortis', b:2, st:['chic','romantique','moderne'], sa:null, f:['lactose','oeuf','noix']},
-      {nom:'Verrines de fruits frais et chantilly', b:1, st:['champetre','romantique'], sa:['printemps','ete'], f:['lactose']},
-      {nom:'Mini-choux à la crème vanille', b:2, st:['romantique','chic'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Cupcakes décorés', b:1, st:['moderne','boheme','champetre'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Mini-tartes au citron', b:2, st:['chic','moderne','romantique'], sa:['printemps','ete'], f:['gluten','lactose','oeuf']},
+      {nom:'Brownies', b:1, st:['moderne','champetre','boheme'], sa:['automne','hiver'], f:['gluten','lactose','oeuf','noix']},
+      {nom:'Cookies premium', b:1, st:['moderne','champetre','boheme'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Choux garnis vanille', b:2, st:['romantique','chic'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Mini-cheesecakes', b:2, st:['moderne','boheme','chic'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Mignardises françaises', b:2, st:['chic','romantique'], sa:null, f:['gluten','lactose','oeuf']},
       {nom:'Cake pops chocolatés', b:1, st:['moderne','boheme'], sa:null, f:['gluten','lactose','oeuf']},
+      {nom:'Verrines de mousse au chocolat', b:1, st:['romantique','moderne','minimaliste'], sa:null, f:['lactose','oeuf']},
+      {nom:'Verrines de fruits frais et chantilly', b:1, st:['champetre','romantique'], sa:['printemps','ete'], f:['lactose']},
       {nom:'Brochettes de fruits frais', b:1, st:['minimaliste','moderne','boheme','nature'], sa:['printemps','ete'], f:[]},
-      {nom:'Verrines de compote et granola maison', b:1, st:['champetre','boheme','nature'], sa:null, f:['gluten']},
-      {nom:'Salade de fruits exotiques en verrine', b:1, st:['moderne','minimaliste','boheme'], sa:null, f:[]},
-      {nom:'Sorbets plein fruit (citron, fruits rouges, mangue)', b:1, st:['minimaliste','moderne','nature'], sa:['printemps','ete'], f:[]},
+      {nom:'Sorbets plein fruit', b:1, st:['minimaliste','moderne','nature'], sa:['printemps','ete'], f:[]},
       {nom:'Mousse de coco et fruits de la passion', b:1, st:['moderne','boheme','minimaliste'], sa:['ete'], f:[]},
+      {nom:'Mini-fondants au chocolat', b:1, st:['romantique','moderne'], sa:['automne','hiver'], f:['gluten','lactose','oeuf']},
     ],
 
-    // ════════════ FOOD TRUCK ════════════
     foodtruck: [
-      {nom:'Burgers gourmets (bœuf Angus, cheddar affiné, oignons confits)', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande','lactose']},
-      {nom:'Bao buns vapeur au porc effiloché et pickles', b:2, st:['moderne'], sa:null, f:['gluten','viande','porc']},
-      {nom:'Tacos mexicains au poulet mariné et guacamole', b:1, st:['boheme','moderne'], sa:null, f:['gluten','viande']},
-      {nom:'Pizzas napolitaines cuites au feu de bois', b:1, st:['champetre','boheme','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Burgers gourmets (bœuf Angus, cheddar affiné)', b:2, st:['moderne','champetre'], sa:null, f:['gluten','viande','lactose']},
+      {nom:'Bao buns au porc effiloché et pickles', b:2, st:['moderne'], sa:null, f:['gluten','viande','porc']},
+      {nom:'Tacos mexicains au poulet et guacamole', b:1, st:['boheme','moderne'], sa:null, f:['gluten','viande']},
+      {nom:'Pizzas napolitaines au feu de bois', b:1, st:['champetre','boheme','moderne'], sa:null, f:['gluten','lactose']},
       {nom:'Bowls poke saumon-avocat-edamame', b:2, st:['moderne','minimaliste'], sa:['printemps','ete'], f:['poisson']},
       {nom:'Galettes bretonnes garnies (sarrasin)', b:1, st:['champetre','boheme'], sa:null, f:['lactose','oeuf']},
       {nom:'Falafels et houmous en pita', b:1, st:['boheme','moderne'], sa:null, f:['gluten']},
       {nom:'Croque-monsieur gourmet à la truffe', b:2, st:['chic','moderne'], sa:['automne','hiver'], f:['gluten','lactose']},
-      {nom:'Fish & chips revisité, sauce tartare maison', b:1, st:['moderne','champetre'], sa:null, f:['gluten','poisson','oeuf']},
+      {nom:'Fish & chips, sauce tartare maison', b:1, st:['moderne','champetre'], sa:null, f:['gluten','poisson','oeuf']},
       {nom:'Frites de patate douce et sauces maison', b:1, st:null, sa:null, f:[]},
-      {nom:'Wok de nouilles sautées aux légumes croquants', b:1, st:['moderne','boheme'], sa:null, f:['gluten']},
+      {nom:'Wok de nouilles sautées aux légumes', b:1, st:['moderne','boheme'], sa:null, f:['gluten']},
       {nom:'Kebab gourmet à l\'agneau et légumes grillés', b:2, st:['boheme','moderne'], sa:null, f:['gluten','viande']},
       {nom:'Arepas vénézuéliennes garnies (sans gluten)', b:1, st:['boheme','moderne'], sa:null, f:[]},
-      {nom:'Quesadillas végétariennes au fromage fondu', b:1, st:['boheme','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Quesadillas végétariennes au fromage', b:1, st:['boheme','moderne'], sa:null, f:['gluten','lactose']},
+      {nom:'Hot-dogs premium', b:1, st:['moderne','champetre'], sa:null, f:['gluten','viande']},
+      {nom:'Raclette en cône', b:2, st:['champetre','moderne'], sa:['hiver'], f:['lactose']},
     ],
 
     // ════════════ BOISSONS ════════════
@@ -4488,145 +4549,123 @@ const ASSIST_KB = {
 
   // ─── 7. WEDDING CAKE — STYLES DE DÉCORATION ───────────────────────────────
   weddingCake: {
-    'romantique': {
-      title: 'Wedding cake romantique',
-      description: 'Pièce montée à plusieurs étages, glaçage blanc satiné, décoré de roses fraîches et de pétales. Effet vintage chic.',
-      details: ['Glaçage : crème au beurre lisse blanc cassé', 'Étages : 3 à 4 niveaux superposés', 'Fleurs : roses David Austin, pivoines blanches/poudrées', 'Touches : feuilles de gypsophile, perles de sucre', 'Topper : initiales en bois doré ou couronne de fleurs miniature'],
-      saveurs: 'Vanille bourbon, framboise, citron yuzu',
-      pinterest: 'romantic wedding cake roses'
+    'classiques': {
+      label: 'Classiques & populaires',
+      items: [
+        {nom:'Wedding cake classique élégant', pin:'classic elegant wedding cake'},
+        {nom:'Wedding cake romantique', pin:'romantic wedding cake'},
+        {nom:'Wedding cake traditionnel à étages', pin:'traditional tiered wedding cake'},
+        {nom:'Wedding cake luxe / chic', pin:'luxury chic wedding cake'},
+        {nom:'Wedding cake moderne', pin:'modern wedding cake'},
+        {nom:'Wedding cake minimaliste', pin:'minimalist wedding cake'},
+        {nom:'Wedding cake contemporain', pin:'contemporary wedding cake'}
+      ]
     },
-    'boheme': {
-      title: 'Wedding cake bohème',
-      description: 'Naked cake ou semi-naked, étages apparents, décoré de fleurs séchées et feuillage. Très tendance.',
-      details: ['Glaçage : semi-naked, crème entre les étages visible', 'Étages : 2 à 3 niveaux rustiques', 'Fleurs : pampas, eucalyptus, fleurs séchées', 'Touches : copeaux de bois, blé séché, ruban en lin', 'Topper : "Mr & Mrs" en bois découpé'],
-      saveurs: 'Carrot cake épicé, vanille amande, miel orange',
-      pinterest: 'boho wedding cake dried flowers'
+    'rustiques': {
+      label: 'Rustiques & naturels',
+      items: [
+        {nom:'Naked cake (sans glaçage visible)', pin:'naked wedding cake'},
+        {nom:'Semi-naked cake', pin:'semi naked wedding cake'},
+        {nom:'Rustic / champêtre wedding cake', pin:'rustic wedding cake'},
+        {nom:'Woodland / forêt wedding cake', pin:'woodland forest wedding cake'},
+        {nom:'Garden party wedding cake', pin:'garden party wedding cake'},
+        {nom:'Cottagecore wedding cake', pin:'cottagecore wedding cake'}
+      ]
     },
-    'chic': {
-      title: 'Wedding cake chic',
-      description: 'Pièce élégante avec finitions métalliques (or, argent), motifs géométriques ou marbrures.',
-      details: ['Glaçage : pâte à sucre lissée parfaite, blanc immaculé', 'Étages : 4 à 5 niveaux', 'Décoration : feuilles d\'or comestible, motifs géométriques peints', 'Fleurs : orchidées blanches, calla', 'Topper : monogramme métallique ou cristal'],
-      saveurs: 'Chocolat noir grand cru, praliné noisette, vanille tahitienne',
-      pinterest: 'luxury elegant wedding cake gold'
+    'floraux': {
+      label: 'Floraux',
+      items: [
+        {nom:'Floral wedding cake (fleurs fraîches)', pin:'fresh flower wedding cake'},
+        {nom:'Sugar flower wedding cake (fleurs en sucre)', pin:'sugar flower wedding cake'},
+        {nom:'Pressed flower wedding cake (fleurs pressées)', pin:'pressed flower wedding cake'},
+        {nom:'Dried flower wedding cake (fleurs séchées)', pin:'dried flower wedding cake'},
+        {nom:'Wildflower wedding cake (fleurs sauvages)', pin:'wildflower wedding cake'},
+        {nom:'Cascade floral wedding cake (cascade de fleurs)', pin:'cascading floral wedding cake'},
+        {nom:'Botanical / greenery cake (feuillage, eucalyptus)', pin:'greenery botanical wedding cake'}
+      ]
     },
-    'champetre': {
-      title: 'Wedding cake champêtre',
-      description: 'Aspect "fait maison", buttercream texturé, fruits frais et fleurs des champs.',
-      details: ['Glaçage : crème au beurre vanille texturée à la spatule', 'Étages : 2 à 3 niveaux', 'Fruits : framboises, mûres, figues, raisins', 'Fleurs : marguerites, lavande, fleurs de cerisier', 'Topper : couple en bois découpé ou bouquet champêtre'],
-      saveurs: 'Fraise basilic, vanille fruits rouges, citron fleur de sureau',
-      pinterest: 'rustic country wedding cake berries'
-    },
-    'moderne': {
-      title: 'Wedding cake moderne',
-      description: 'Lignes épurées, formes géométriques, palettes monochromes, parfois aspect "drip cake".',
-      details: ['Glaçage : pâte à sucre nette ou drip cake coloré', 'Étages : 2 à 4 niveaux contemporains', 'Style : monochrome, terracotta, sage green, marbré', 'Touches : macarons assortis, chocolats artisanaux', 'Topper : néon LED ou typographie graphique'],
-      saveurs: 'Matcha framboise, chocolat blanc passion, café Tonka',
-      pinterest: 'modern minimalist wedding cake'
+    'bohemes': {
+      label: 'Bohèmes',
+      items: [
+        {nom:'Boho wedding cake', pin:'boho wedding cake'},
+        {nom:'Pampas wedding cake', pin:'pampas grass wedding cake'},
+        {nom:'Terracotta boho wedding cake', pin:'terracotta boho wedding cake'},
+        {nom:'Desert / earthy wedding cake', pin:'desert earthy wedding cake'}
+      ]
     },
     'vintage': {
-      title: 'Wedding cake vintage',
-      description: 'Inspiration années 50-60, glaçage à motifs dentelle, perles de sucre, couleurs pastels.',
-      details: ['Glaçage : pâte à sucre avec motifs dentelle ou broderie', 'Étages : 3 niveaux étagés type rétro', 'Couleurs : rose poudré, ivoire, bleu pastel', 'Touches : perles de sucre, rubans en satin', 'Topper : figurines vintage ou bouquet de fleurs en sucre'],
-      saveurs: 'Vanille Madagascar, framboise rose, fruits exotiques',
-      pinterest: 'vintage wedding cake lace pearls'
+      label: 'Vintage & rétro',
+      items: [
+        {nom:'Lambeth wedding cake (glaçage rétro travaillé)', pin:'lambeth wedding cake'},
+        {nom:'Vintage piping cake', pin:'vintage piping wedding cake'},
+        {nom:'Victorian wedding cake', pin:'victorian wedding cake'},
+        {nom:'Regency / Bridgerton wedding cake', pin:'bridgerton regency wedding cake'},
+        {nom:'Retro wedding cake (années 50-80)', pin:'retro wedding cake'},
+        {nom:'Heart wedding cake (vintage/coquette)', pin:'heart shaped wedding cake'}
+      ]
     },
-    'tropical': {
-      title: 'Wedding cake tropical',
-      description: 'Idéal mariage destination ou été. Feuilles de palmier, fleurs exotiques, fruits.',
-      details: ['Glaçage : crème blanche ou colorée corail/turquoise', 'Étages : 2 à 3 niveaux', 'Fleurs : orchidées, bird of paradise, hibiscus', 'Fruits : ananas, mangue, fruits de la passion', 'Touches : feuilles de monstera, sable comestible'],
-      saveurs: 'Coco passion, mangue lime, ananas vanille',
-      pinterest: 'tropical wedding cake palm leaves'
+    'artistiques': {
+      label: 'Artistiques & design',
+      items: [
+        {nom:'Marble wedding cake (effet marbre)', pin:'marble wedding cake'},
+        {nom:'Textured buttercream cake (texture crème)', pin:'textured buttercream wedding cake'},
+        {nom:'Palette knife cake (effet peinture)', pin:'palette knife wedding cake'},
+        {nom:'Watercolor wedding cake (aquarelle)', pin:'watercolor wedding cake'},
+        {nom:'Brushstroke wedding cake', pin:'brushstroke wedding cake'},
+        {nom:'Geometric wedding cake', pin:'geometric wedding cake'},
+        {nom:'Architectural wedding cake', pin:'architectural wedding cake'},
+        {nom:'Sculptural / statement wedding cake', pin:'sculptural statement wedding cake'},
+        {nom:'Asymmetrical wedding cake', pin:'asymmetrical wedding cake'},
+        {nom:'3D embossed cake (relief 3D)', pin:'3d embossed wedding cake'},
+        {nom:'Metallic wedding cake (doré, argenté, chrome)', pin:'metallic wedding cake'},
+        {nom:'Concrete effect cake (effet béton)', pin:'concrete effect wedding cake'}
+      ]
     },
-    'fruite': {
-      title: 'Wedding cake aux fruits frais',
-      description: 'Décoration luxuriante de fruits frais empilés, semi-naked, look gourmand et naturel.',
-      details: ['Glaçage : semi-naked, crème entre étages', 'Fruits : figues, raisins, framboises, mûres, kumquats, fraises', 'Étages : 2 à 4 niveaux', 'Touches : feuilles de menthe, romarin, fleurs comestibles', 'Topper : minimaliste (initiales en bois)'],
-      saveurs: 'Fruits rouges vanille, citron mascarpone, pêche basilic',
-      pinterest: 'fresh fruit wedding cake'
+    'glamour': {
+      label: 'Glamour / couture',
+      items: [
+        {nom:'Pearl wedding cake (perles)', pin:'pearl wedding cake'},
+        {nom:'Gold luxe wedding cake', pin:'gold luxe wedding cake'},
+        {nom:'Lace wedding cake (effet dentelle)', pin:'lace wedding cake'},
+        {nom:'Haute couture / fashion-inspired cake', pin:'haute couture wedding cake'},
+        {nom:'Draped fabric cake (effet tissu drapé)', pin:'draped fabric wedding cake'},
+        {nom:'Black tie wedding cake (très chic)', pin:'black tie wedding cake'},
+        {nom:'Quiet luxury wedding cake', pin:'quiet luxury wedding cake'}
+      ]
     },
-    'chocolat': {
-      title: 'Wedding cake chocolat',
-      description: 'Pour les amateurs, glaçage chocolat brillant ou ganache, copeaux et décorations cacao.',
-      details: ['Glaçage : ganache chocolat noir ou drip cake chocolat', 'Étages : 2 à 3 niveaux', 'Décor : copeaux de chocolat, truffes, perles dorées', 'Fleurs : peu (roses rouges/foncées pour contraste)', 'Topper : feuilles d\'or comestible ou cœur en chocolat'],
-      saveurs: 'Chocolat noir 70%, praliné, chocolat blanc framboise, café',
-      pinterest: 'chocolate wedding cake ganache'
+    'tendance': {
+      label: 'Tendance',
+      items: [
+        {nom:'Korean minimalist cake', pin:'korean minimalist wedding cake'},
+        {nom:'Coquette wedding cake', pin:'coquette wedding cake'},
+        {nom:'Bow cake (avec nœuds)', pin:'bow wedding cake'},
+        {nom:'Vintage pearl cake', pin:'vintage pearl wedding cake'},
+        {nom:'Monochrome wedding cake', pin:'monochrome wedding cake'},
+        {nom:'Ombré wedding cake', pin:'ombre wedding cake'},
+        {nom:'Maximalist wedding cake', pin:'maximalist wedding cake'}
+      ]
     },
-    'minimaliste': {
-      title: 'Wedding cake minimaliste',
-      description: 'Lignes pures, glaçage lisse immaculé, décoration très épurée. Élégance discrète et contemporaine.',
-      details: ['Glaçage : lissage parfait blanc ou ton pastel uni', 'Étages : 1 à 3 niveaux nets', 'Décor : une seule fleur ou un trait doré', 'Fleurs : minimalistes (1 ou 2 fleurs maximum)', 'Topper : aucun ou typographie fine'],
-      saveurs: 'Vanille, citron, fruits rouges',
-      pinterest: 'minimalist wedding cake'
+    'destination': {
+      label: 'Destination / ambiance',
+      items: [
+        {nom:'Coastal / beach wedding cake', pin:'coastal beach wedding cake'},
+        {nom:'Tropical wedding cake', pin:'tropical wedding cake'},
+        {nom:'Italian wedding cake (Dolce Vita)', pin:'italian dolce vita wedding cake'},
+        {nom:'Mediterranean wedding cake', pin:'mediterranean wedding cake'},
+        {nom:'Parisian / French wedding cake', pin:'parisian french wedding cake'},
+        {nom:'Winter wedding cake', pin:'winter wedding cake'},
+        {nom:'Autumn wedding cake', pin:'autumn wedding cake'}
+      ]
     },
-    'aquarelle': {
-      title: 'Wedding cake aquarelle',
-      description: 'Glaçage peint à la main façon aquarelle, dégradés de couleurs doux et artistiques.',
-      details: ['Glaçage : effet peinture aquarelle en dégradé', 'Étages : 2 à 4 niveaux', 'Couleurs : pastel fondus (rose, bleu, lavande)', 'Décor : touches dorées, fleurs fraîches', 'Topper : minimal pour laisser la peinture s\'exprimer'],
-      saveurs: 'Vanille fruits rouges, fruits de la passion, pistache',
-      pinterest: 'watercolor wedding cake'
-    },
-    'dripcake': {
-      title: 'Wedding cake drip cake',
-      description: 'Coulures gourmandes (chocolat, caramel) sur les bords, look moderne et gourmand.',
-      details: ['Glaçage : crème au beurre avec coulures (drip)', 'Étages : 2 à 3 niveaux', 'Décor : macarons, fruits frais, meringues, copeaux', 'Couleurs : au choix selon le thème', 'Topper : fleurs fraîches ou cake topper graphique'],
-      saveurs: 'Caramel beurre salé, chocolat, vanille gourmande',
-      pinterest: 'drip wedding cake'
-    },
-    'florale': {
-      title: 'Wedding cake tout en fleurs',
-      description: 'Recouvert de fleurs fraîches ou en sucre, véritable bouquet comestible. Spectaculaire.',
-      details: ['Glaçage : pâte à sucre ou crème lissée', 'Étages : 3 à 5 niveaux', 'Fleurs : cascade abondante de fleurs fraîches', 'Couleurs : selon votre palette florale', 'Topper : couronne de fleurs'],
-      saveurs: 'Vanille, fruits rouges, fleur d\'oranger',
-      pinterest: 'floral wedding cake fresh flowers'
-    },
-    'doree': {
-      title: 'Wedding cake doré / métallisé',
-      description: 'Touches de feuilles d\'or, effets métallisés, look luxueux et glamour.',
-      details: ['Glaçage : blanc ou coloré avec feuilles d\'or comestible', 'Étages : 3 à 5 niveaux', 'Décor : feuilles d\'or, effet marbré or, géométrie dorée', 'Fleurs : blanches en contraste', 'Topper : monogramme doré'],
-      saveurs: 'Chocolat grand cru, vanille bourbon, praliné',
-      pinterest: 'gold metallic wedding cake'
-    },
-    'geometrique': {
-      title: 'Wedding cake géométrique',
-      description: 'Motifs géométriques, formes hexagonales ou angulaires, design architectural moderne.',
-      details: ['Glaçage : pâte à sucre nette avec motifs géométriques', 'Étages : formes variées (hexagones, prismes)', 'Décor : lignes dorées, terrazzo, motifs Art déco', 'Couleurs : contrastées et graphiques', 'Topper : géométrique ou typographique'],
-      saveurs: 'Citron yuzu, chocolat blanc, fruits exotiques',
-      pinterest: 'geometric wedding cake'
-    },
-    'dentelle': {
-      title: 'Wedding cake dentelle',
-      description: 'Motifs de dentelle en sucre délicats, inspiration de la robe de mariée. Très raffiné.',
-      details: ['Glaçage : pâte à sucre avec dentelle de sucre appliquée', 'Étages : 3 à 4 niveaux', 'Décor : dentelle reproduisant la robe, perles de sucre', 'Couleurs : blanc, ivoire, poudré', 'Topper : discret, fleurs en sucre'],
-      saveurs: 'Vanille, amande, framboise',
-      pinterest: 'lace wedding cake'
-    },
-    'rustique': {
-      title: 'Wedding cake rustique',
-      description: 'Aspect brut et naturel, crème texturée à la spatule, idéal pour mariage champêtre.',
-      details: ['Glaçage : crème au beurre texturée façon "rustic"', 'Étages : 2 à 3 niveaux', 'Décor : fruits frais, fleurs des champs, branchages', 'Couleurs : naturelles, crème, vert', 'Topper : bois gravé ou branchage'],
-      saveurs: 'Carrot cake, vanille fruits des bois, miel',
-      pinterest: 'rustic wedding cake'
-    },
-    'pastel': {
-      title: 'Wedding cake pastel',
-      description: 'Tons doux et poudrés (rose, menthe, lavande, pêche), douceur et romantisme.',
-      details: ['Glaçage : couleurs pastel unies ou ombré', 'Étages : 2 à 4 niveaux', 'Décor : fleurs assorties, macarons pastel', 'Couleurs : rose poudré, menthe, lavande, pêche', 'Topper : fleurs ou typographie douce'],
-      saveurs: 'Pistache framboise, fleur d\'oranger, vanille',
-      pinterest: 'pastel wedding cake'
-    },
-    'noir': {
-      title: 'Wedding cake noir élégant',
-      description: 'Glaçage noir mat ou brillant, audacieux et ultra-chic, contrastes saisissants.',
-      details: ['Glaçage : noir mat ou laqué', 'Étages : 2 à 4 niveaux', 'Décor : feuilles d\'or, fleurs blanches ou rouges en contraste', 'Couleurs : noir + or ou noir + blanc', 'Topper : doré ou minimaliste'],
-      saveurs: 'Chocolat noir intense, fruits rouges, café',
-      pinterest: 'black wedding cake elegant'
-    },
-    'naked': {
-      title: 'Wedding cake naked cake',
-      description: 'Gâteau "nu" sans glaçage extérieur, étages de génoise visibles avec crème apparente.',
-      details: ['Glaçage : aucun à l\'extérieur, crème entre les couches', 'Étages : 2 à 3 niveaux de génoise visible', 'Décor : fruits frais, fleurs, sucre glace', 'Couleurs : naturelles', 'Topper : fleurs fraîches ou fruits'],
-      saveurs: 'Vanille fruits rouges, citron, fruits frais',
-      pinterest: 'naked wedding cake'
+    'audacieux': {
+      label: 'Audacieux',
+      items: [
+        {nom:'Gothic wedding cake', pin:'gothic wedding cake'},
+        {nom:'Dark romance wedding cake', pin:'dark romance wedding cake'},
+        {nom:'Black wedding cake', pin:'black wedding cake'},
+        {nom:'Colorful wedding cake', pin:'colorful wedding cake'},
+        {nom:'Jewel tones wedding cake', pin:'jewel tones wedding cake'}
+      ]
     }
   },
 
@@ -5822,48 +5861,26 @@ function assistGenerateDeco(){
 
 // ─── SERVICE 7 : WEDDING CAKE ───
 function assistWeddingCake(cont){
-  const savedStyle = ld('assist_cake_style', 'romantique');
-  const styles = ASSIST_KB.weddingCake;
+  const saved = ld('assist_cake_cat', 'classiques');
+  const cats = ASSIST_KB.weddingCake;
+  const catKeys = Object.keys(cats);
+  const current = cats[saved] || cats[catKeys[0]];
   cont.innerHTML = `
     <div class="card" style="padding:16px;">
-      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🎂 Wedding cake — styles & inspirations</div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
-        <select id="cake-style" class="inp" style="margin-top:4px;">
-          ${Object.keys(styles).map(k=>`<option value="${k}" ${savedStyle===k?'selected':''}>${h(styles[k].title)}</option>`).join('')}
-        </select>
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:6px;font-weight:700;">🎂 Wedding cake — styles & inspirations</div>
+      <div style="font-size:11px;color:${tl};font-style:italic;margin-bottom:14px;">Choisis une famille de styles, puis ouvre Pinterest pour chaque inspiration.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+        ${catKeys.map(k=>`<button onclick="sv('assist_cake_cat','${k}');assistWeddingCake(el('assist-content'));" class="btn-sec" style="font-size:11px;padding:7px 12px;${saved===k?'background:'+pk+';color:#fff;border-color:'+pk+';':''}">${h(cats[k].label)}</button>`).join('')}
       </div>
-      <button class="btn" onclick="assistGenerateCake()" style="width:100%;">Voir les détails</button>
-      <div id="cake-result" style="margin-top:16px;"></div>
+      <div style="font-family:Playfair Display,serif;font-style:italic;font-size:16px;color:${tm};margin-bottom:12px;text-align:center;">${h(current.label)}</div>
+      <div style="display:grid;gap:8px;">
+        ${current.items.map(it=>`<div style="display:flex;align-items:center;gap:10px;background:${sf};border-radius:10px;padding:11px 12px;">
+          <span style="flex:1;font-size:13px;color:${tx};font-weight:600;line-height:1.4;">${h(it.nom)}</span>
+          <a href="${pinterestUrl(it.pin)}" target="_blank" rel="noopener" style="flex-shrink:0;padding:6px 11px;background:#fff;border:1.5px solid ${gd}50;border-radius:8px;text-decoration:none;color:${tx};font-size:11px;font-weight:700;font-family:Lora,serif;white-space:nowrap;">📌 Pinterest</a>
+        </div>`).join('')}
+      </div>
     </div>
   `;
-}
-function assistGenerateCake(){
-  const styleKey = el('cake-style').value;
-  sv('assist_cake_style', styleKey);
-  const d = ASSIST_KB.weddingCake[styleKey];
-  if(!d) return;
-  const r = el('cake-result');
-  r.innerHTML = `<div style="border-top:1.5px solid ${br};padding-top:14px;">
-    <div style="font-family:Playfair Display,serif;font-style:italic;font-size:17px;color:${tm};margin-bottom:6px;text-align:center;">${h(d.title)}</div>
-    <p style="font-size:13px;color:${tx};line-height:1.6;margin-bottom:14px;">${h(d.description)}</p>
-
-    <div style="margin-bottom:12px;">
-      <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Caractéristiques</div>
-      <ul style="margin:0;padding-left:18px;font-size:13px;color:${tx};line-height:1.7;">
-        ${d.details.map(x=>`<li>${h(x)}</li>`).join('')}
-      </ul>
-    </div>
-
-    <div style="background:${sf};padding:12px;border-radius:10px;margin-bottom:12px;">
-      <div style="font-size:11px;font-weight:700;color:${pk};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">🍰 Saveurs recommandées</div>
-      <div style="font-size:13px;color:${tx};">${h(d.saveurs)}</div>
-    </div>
-
-    <a href="${pinterestUrl(d.pinterest)}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 16px;background:linear-gradient(135deg,#fff8ec,#fef5e0);border:1.5px solid ${gd}50;border-radius:10px;text-decoration:none;color:${tx};font-size:12px;font-weight:700;font-family:Lora,serif;">
-      📌 Voir des photos sur Pinterest
-    </a>
-  </div>`;
 }
 
 // ─── SERVICE 8 : ANIMATIONS ───
