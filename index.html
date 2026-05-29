@@ -1430,9 +1430,19 @@ function renderGuests(){
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
     <button class="btn" onclick="toggleAddGuest()">+ Ajouter un invité</button>
     <a href="https://www.canva.com/fr_fr/" target="_blank" class="btn-sec" style="text-decoration:none;display:inline-block;">Créer mes invitations</a>
-    <button class="btn-sec" onclick="el('guest-file').click()">📥 Importer</button>
+    <button class="btn-sec" onclick="showImportHelp()">📥 Importer</button>
     <button class="btn-sec" onclick="exportGuests()">📤 Exporter</button>
-    <input type="file" id="guest-file" accept=".xlsx,.xls,.xlsm,.xlsb,.ods,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet,text/csv,text/plain,*/*" style="display:none" onchange="importGuests(event)">
+    <input type="file" id="guest-file" style="display:none" onchange="importGuests(event)">
+  </div>
+  <div id="import-help" style="display:none;background:#fff8ec;border:1px solid #c9a84c66;border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:12px;color:#5a1a30;line-height:1.6;">
+    <strong>Pour importer depuis Google Sheets :</strong><br>
+    1. Ouvre ta feuille dans l'app <strong>Google Sheets</strong><br>
+    2. Menu <strong>⋮</strong> → <strong>Partager et exporter</strong> → <strong>Enregistrer sous</strong> → choisis <strong>.xlsx</strong> ou <strong>.csv</strong><br>
+    3. Reviens ici et appuie sur <strong>« Choisir le fichier »</strong> ci-dessous, puis va le chercher dans tes <strong>Téléchargements</strong>.<br>
+    <span style="font-size:11px;color:#8a4a60;">La 1re colonne doit contenir les noms (ou des colonnes Nom / Prénom / Email / Côté).</span>
+    <div style="margin-top:10px;">
+      <button class="btn" style="font-size:12px;padding:8px 14px;" onclick="el('guest-file').click()">📂 Choisir le fichier</button>
+    </div>
   </div>
   <div id="import-msg" style="display:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;margin-bottom:10px;"></div>
   <div id="guest-add-form" style="display:none;" class="card">
@@ -1557,6 +1567,12 @@ function exportGuests(){
   GUESTS.forEach(g=>{csv+=`"${g.nom}","${g.email||''}","${g.cote==='p1'?USER.p1:USER.p2}","${g.role||''}","${g.regime||''}","${g.vinHonneur?'Oui':'Non'}","${g.invitation}","${g.presence}"\n`;});
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`invites_${USER.p1}_${USER.p2}.csv`;a.click();
 }
+function showImportHelp(){
+  const h=el('import-help');
+  if(!h)return;
+  h.style.display = h.style.display==='none' ? 'block' : 'none';
+}
+
 function importGuests(e){
   const file=e.target.files?.[0];if(!file)return;
   const name=(file.name||'').toLowerCase();
@@ -1605,6 +1621,7 @@ function rowsToGuests(rows){
   }
   if(imported.length===0){showImportMsg('⚠️ Aucun invité trouvé. Vérifie que la 1re colonne contient les noms.','err');return;}
   GUESTS=[...GUESTS,...imported];saveGuests();renderGuests();
+  const helpBox=el('import-help'); if(helpBox) helpBox.style.display='none';
   showImportMsg(`✓ ${imported.length} invité(s) importé(s) !`,'ok');
 }
 
