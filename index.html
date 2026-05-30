@@ -1484,7 +1484,7 @@ function guestRow(g){
       <span onclick="pickGuestAge(${g.id})" style="color:${g.age==='Enfant'?am:tl};font-size:11px;cursor:pointer;font-weight:700;padding:3px 9px;border-radius:20px;background:${sf};border:1px solid ${br};display:inline-block;">${g.age==='Enfant'?'Enfant':'Adulte'} ▾</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
-      <span onclick="pickGuestInvitation(${g.id})" style="color:${g.invitation==='envoyée'?gn:rd};font-size:11px;cursor:pointer;font-weight:700;padding:3px 9px;border-radius:20px;background:${sf};border:1px solid ${br};display:inline-block;">${g.invitation==='envoyée'?'✓ Envoyée':'✗ Non envoyée'} ▾</span>
+      <span onclick="toggleInvitation(${g.id})" style="color:${g.invitation==='envoyée'?gn:rd};font-size:11px;cursor:pointer;font-weight:700;padding:3px 9px;border-radius:20px;background:${sf};border:1px solid ${br};display:inline-block;">${g.invitation==='envoyée'?'✓ Envoyée':'✗ Non envoyée'}</span>
     </td>
     <td style="padding:8px 9px;background:#fff;border:1.5px solid ${br};border-left:none;border-right:none;">
       <span onclick="pickGuestPresence(${g.id})" style="color:${sc[g.presence]||'#888'};font-size:11px;cursor:pointer;font-weight:700;padding:3px 9px;border-radius:20px;background:${sf};border:1px solid ${br};display:inline-block;">${g.presence==='confirmée'?'✓ Confirmée':g.presence==='déclinée'?'✗ Déclinée':'En attente'} ▾</span>
@@ -1517,6 +1517,10 @@ async function pickGuestAge(id){
     {value:'Enfant', label:'Enfant', icon:'🧒'}
   ], g.age||'Adulte', 'Catégorie d\'âge', {icon:'🎂'});
   if(v!==null) updGuest(id,'age',v);
+}
+function toggleInvitation(id){
+  const g = GUESTS.find(x=>x.id===id); if(!g) return;
+  updGuest(id,'invitation', g.invitation==='envoyée' ? 'non envoyée' : 'envoyée');
 }
 async function pickGuestInvitation(id){
   const g = GUESTS.find(x=>x.id===id); if(!g) return;
@@ -1933,7 +1937,9 @@ function renderTablePlan(){
       <button id="tp-shape-square" onclick="setTpShape(\'square\')" style="background:#fff;color:#b07a90;border:1.5px solid #f5d5e0;border-radius:9px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;font-family:Lora,serif;">■ Carrée</button>
     </div>
     <button class="btn" onclick="addTable()">+ Table</button>
-    <button class="btn" onclick="openAutoPlaceModal()" style="background:linear-gradient(135deg,#c9a84c,#a8872e);">✨ Placement auto</button>
+    <button class="btn" onclick="openAutoPlaceModal()" style="background:linear-gradient(135deg,#d4607a,#8a4a60);">✨ Placement auto</button>
+    <button class="btn-sec" onclick="resetPlacement()" style="color:#c43a3a;border-color:#c43a3a55;">↺ Réinitialiser placement</button>
+    <button class="btn-sec" onclick="exportPlanPDF()">📄 Exporter PDF</button>
     <div style="display:flex;gap:6px;margin-left:auto;">
       <button onclick="tpZoom(0.2)" style="background:#fff;border:1.5px solid ${br};border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:18px;font-weight:700;color:${pk};">+</button>
       <button onclick="tpZoom(-0.2)" style="background:#fff;border:1.5px solid ${br};border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:18px;font-weight:700;color:${pk};">-</button>
@@ -2076,6 +2082,7 @@ function addTableEl(table){
   const mkBtn=(txt,fn)=>{
     const b=document.createElement('div');
     b.textContent=txt;
+    b.dataset.seatbtn='1';
     b.style.cssText=`width:18px;height:18px;border-radius:50%;background:#fff;border:1.5px solid ${pk};color:${pk};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;cursor:pointer;line-height:1;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,.15);`;
     b.addEventListener('pointerdown',e=>e.stopPropagation());
     b.addEventListener('click',e=>{e.stopPropagation();fn();});
@@ -2156,33 +2163,219 @@ function addTableEl(table){
   }
 
   // Drag — account for scale/pan transform
-  // CORRECTIF : on exclut aussi les sièges (.tp-seat) du déclenchement de drag,
-  // sinon setPointerCapture absorbe le clic et openSeatModal ne se déclenche
-  // jamais (= impossible d'ajouter un invité à une chaise).
-  div.addEventListener('pointerdown',e=>{
+  // Le drag démarre depuis n'importe quelle zone de la table SAUF les boutons
+  // interactifs (label, suppression, input, chaises, boutons +/− de chaises).
+  let dragStarted=false, downPt=null;
+  const startDrag=e=>{
     if(tpPanMode)return;
-    if(e.target===lbl||e.target===del||e.target.tagName==='INPUT')return;
-    // Exclure les sièges : ils ont leur propre onclick
-    if(e.target.classList && e.target.classList.contains('tp-seat'))return;
+    const tgt=e.target;
+    if(tgt===lbl||tgt===del||tgt.tagName==='INPUT')return;
+    if(tgt.classList && tgt.classList.contains('tp-seat'))return;
+    if(tgt.dataset && tgt.dataset.seatbtn)return; // boutons +/- chaises
     div.setPointerCapture(e.pointerId);
     const rect=canvas.getBoundingClientRect();
     const t=TABLES.find(t=>t.id===table.id);
-    // Convert screen coords to inner (scaled) coords
     tpDrag={id:table.id,ox:(e.clientX-rect.left-tpPanX)/tpScale-t.x,oy:(e.clientY-rect.top-tpPanY)/tpScale-t.y};
-  });
+    downPt={x:e.clientX,y:e.clientY};
+    dragStarted=false;
+  };
+  div.addEventListener('pointerdown',startDrag);
   div.addEventListener('pointermove',e=>{
     if(!tpDrag||tpDrag.id!==table.id)return;
+    if(downPt && !dragStarted){
+      const dx=Math.abs(e.clientX-downPt.x), dy=Math.abs(e.clientY-downPt.y);
+      if(dx<3 && dy<3) return; // micro-mouvement : pas encore un drag
+      dragStarted=true;
+    }
     const rect=canvas.getBoundingClientRect();
     const nx=Math.max(0,(e.clientX-rect.left-tpPanX)/tpScale-tpDrag.ox);
     const ny=Math.max(0,(e.clientY-rect.top-tpPanY)/tpScale-tpDrag.oy);
     const i=TABLES.findIndex(t=>t.id===table.id);if(i>=0){TABLES[i].x=nx;TABLES[i].y=ny;}
     div.style.left=nx+'px';div.style.top=ny+'px';
   });
-  div.addEventListener('pointerup',()=>{if(tpDrag&&tpDrag.id===table.id){saveTables();tpDrag=null;}});
-  div.addEventListener('pointercancel',()=>{tpDrag=null;});
+  div.addEventListener('pointerup',e=>{
+    if(tpDrag&&tpDrag.id===table.id){saveTables();}
+    // Si pas de déplacement réel = un tap sur la table → afficher la liste des invités
+    if(tpDrag&&tpDrag.id===table.id&&!dragStarted){
+      const tgt=e.target;
+      const isInteractive = tgt===lbl||tgt===del||tgt.tagName==='INPUT'||(tgt.classList&&tgt.classList.contains('tp-seat'))||(tgt.dataset&&tgt.dataset.seatbtn);
+      if(!isInteractive){ openTableGuestsModal(table.id); }
+    }
+    tpDrag=null;dragStarted=false;downPt=null;
+  });
+  div.addEventListener('pointercancel',()=>{tpDrag=null;dragStarted=false;downPt=null;});
   inner.appendChild(div);
 }
+// Réinitialise tous les placements d'invités (laisse les tables en place)
+async function resetPlacement(){
+  const placedCount=GUESTS.filter(g=>g.seatTableId!=null).length;
+  if(placedCount===0){ appAlert('Aucun invité n\'est placé pour l\'instant.','Réinitialiser'); return; }
+  const ok=await appConfirm(`Retirer les ${placedCount} invité(s) de leurs chaises ? Les tables restent en place, mais toutes les chaises seront vidées.`,'Réinitialiser le placement');
+  if(!ok)return;
+  GUESTS=GUESTS.map(g=>({...g,seatTableId:null,seatIdx:null}));
+  saveGuests();renderTablePlan();
+}
+
+// Exporte le plan de table en PDF : page 1 = plan visuel, page 2+ = liste par table
+async function exportPlanPDF(){
+  appAlert('Préparation du PDF en cours…','Export');
+  try{
+    const jsPDF = await loadJsPDF();
+    const pdf = new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+
+    // ─── PAGE 1 : plan visuel ───
+    pdf.setFillColor(253,240,245); pdf.rect(0,0,pw,ph,'F');
+    pdf.setTextColor(184,64,96); pdf.setFont('helvetica','bold'); pdf.setFontSize(20);
+    pdf.text('Plan de table',pw/2,16,{align:'center'});
+    pdf.setFontSize(11); pdf.setTextColor(90,26,48);
+    pdf.text(`Mariage de ${USER.p1} & ${USER.p2}`,pw/2,24,{align:'center'});
+
+    // Cadre du plan
+    const m=14, top=30, planW=pw-2*m, planH=ph-top-12;
+    // Bornes des tables pour adapter l'échelle
+    let maxX=400,maxY=300;
+    TABLES.forEach(t=>{maxX=Math.max(maxX,t.x+180);maxY=Math.max(maxY,t.y+180);});
+    const scale=Math.min(planW/maxX,planH/maxY);
+    pdf.setDrawColor(216,160,184); pdf.setLineWidth(0.3);
+    pdf.rect(m,top,planW,planH);
+
+    TABLES.forEach(t=>{
+      const placed=GUESTS.filter(g=>g.seatTableId===t.id);
+      const n=Math.min(t.seats,12);
+      const cx=m+(t.x+60)*scale, cy=top+(t.y+60)*scale;
+      const r=22*scale;
+      // Table
+      pdf.setFillColor(245,212,224); pdf.setDrawColor(212,96,122); pdf.setLineWidth(0.4);
+      if(t.shape==='round'){ pdf.circle(cx,cy,r,'FD'); }
+      else { pdf.rect(cx-r,cy-r*0.7,r*2,r*1.4,'FD'); }
+      // Nom de la table
+      pdf.setTextColor(90,26,48); pdf.setFont('helvetica','bold'); pdf.setFontSize(7);
+      pdf.text(t.nom||'Table',cx,cy-1,{align:'center',maxWidth:r*2});
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(6);
+      pdf.text(`${placed.length}/${n}`,cx,cy+3,{align:'center'});
+      // Chaises autour (points)
+      for(let i=0;i<n;i++){
+        const a=(i/n)*2*Math.PI-Math.PI/2;
+        const sx=cx+(r+3.5)*Math.cos(a), sy=cy+(r+3.5)*Math.sin(a);
+        const g=placed.find(x=>x.seatIdx===i);
+        if(g){ pdf.setFillColor(g.cote==='p1'?232:160, g.cote==='p1'?160:176, g.cote==='p1'?176:232); }
+        else { pdf.setFillColor(245,224,232); }
+        pdf.circle(sx,sy,1.6*Math.max(scale,0.6),'F');
+      }
+    });
+
+    // ─── PAGES SUIVANTES : liste par table ───
+    pdf.addPage();
+    let y=20;
+    pdf.setFillColor(253,240,245); pdf.rect(0,0,pw,ph,'F');
+    pdf.setTextColor(184,64,96); pdf.setFont('helvetica','bold'); pdf.setFontSize(18);
+    pdf.text('Répartition des invités par table',pw/2,y,{align:'center'}); y+=12;
+
+    pdf.setFontSize(11);
+    const colW=(pw-2*m)/2; let col=0; let yStart=y;
+    const tablesToList=[...TABLES];
+    // Tables sans placement à la fin
+    tablesToList.forEach(t=>{
+      const placed=GUESTS.filter(g=>g.seatTableId===t.id).sort((a,b)=>(a.seatIdx||0)-(b.seatIdx||0));
+      const x=m+col*colW;
+      // saut de colonne/page si besoin
+      const needed=10+placed.length*6+8;
+      if(y+needed>ph-12){
+        if(col===0){ col=1; y=yStart; }
+        else { pdf.addPage(); pdf.setFillColor(253,240,245); pdf.rect(0,0,pw,ph,'F'); col=0; y=20; yStart=20; }
+      }
+      const cx=m+col*colW;
+      pdf.setTextColor(184,64,96); pdf.setFont('helvetica','bold'); pdf.setFontSize(12);
+      pdf.text(`${t.nom||'Table'} (${placed.length})`,cx,y); y+=6;
+      pdf.setTextColor(45,10,24); pdf.setFont('helvetica','normal'); pdf.setFontSize(10);
+      if(placed.length){
+        placed.forEach(g=>{ pdf.text(`• ${g.nom}`,cx+2,y); y+=5.5; });
+      } else {
+        pdf.setTextColor(150,120,130); pdf.text('(vide)',cx+2,y); y+=5.5;
+      }
+      y+=4;
+    });
+
+    // Invités non placés
+    const nonPlaces=GUESTS.filter(g=>g.presence==='confirmée'&&g.seatTableId==null);
+    if(nonPlaces.length){
+      if(y+20>ph-12){ if(col===0){col=1;y=yStart;}else{pdf.addPage();pdf.setFillColor(253,240,245);pdf.rect(0,0,pw,ph,'F');col=0;y=20;} }
+      const cx=m+col*colW;
+      pdf.setTextColor(196,58,58); pdf.setFont('helvetica','bold'); pdf.setFontSize(12);
+      pdf.text(`Non placés (${nonPlaces.length})`,cx,y); y+=6;
+      pdf.setTextColor(45,10,24); pdf.setFont('helvetica','normal'); pdf.setFontSize(10);
+      nonPlaces.forEach(g=>{ pdf.text(`• ${g.nom}`,cx+2,y); y+=5.5; });
+    }
+
+    pdf.save(`plan_de_table_${USER.p1}_${USER.p2}.pdf`);
+  }catch(err){
+    appAlert('Impossible de générer le PDF (une connexion internet est nécessaire la première fois). Réessaie connectée.','Export PDF');
+  }
+}
+
+// Charge jsPDF à la demande (CDN, avec fallback)
+let _jsPDFPromise=null;
+function loadJsPDF(){
+  if(window.jspdf&&window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if(window.jsPDF) return Promise.resolve(window.jsPDF);
+  if(_jsPDFPromise) return _jsPDFPromise;
+  const urls=[
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+    'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+  ];
+  _jsPDFPromise=new Promise((resolve,reject)=>{
+    let idx=0;
+    const tryNext=()=>{
+      if(idx>=urls.length){reject(new Error('jsPDF indisponible'));return;}
+      const s=document.createElement('script');
+      s.src=urls[idx++];
+      s.onload=()=>{ const j=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF; if(j)resolve(j); else tryNext(); };
+      s.onerror=()=>{ s.remove(); tryNext(); };
+      document.head.appendChild(s);
+    };
+    tryNext();
+  });
+  return _jsPDFPromise;
+}
+
 function addTable(){TABLES.push({id:Date.now(),nom:`Table ${TABLES.length+1}`,shape:window.tpSelectedShape||'round',seats:6,x:80+Math.random()*150,y:80+Math.random()*80,hiddenSeats:[]});saveTables();renderTablePlan();}
+
+// Affiche la liste des invités placés autour d'une table (au tap sur la table)
+function openTableGuestsModal(tableId){
+  const table=TABLES.find(t=>t.id===tableId);if(!table)return;
+  const placed=GUESTS.filter(g=>g.seatTableId===tableId).sort((a,b)=>(a.seatIdx||0)-(b.seatIdx||0));
+  let root=document.getElementById('app-modal-root');
+  if(!root){root=document.createElement('div');root.id='app-modal-root';root.style.cssText='position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(45,10,24,0.55);backdrop-filter:blur(6px);padding:18px;';document.body.appendChild(root);}
+  const rows = placed.length
+    ? placed.map(g=>{
+        const initials=g.nom.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+        const cote=g.cote==='p1'?'#e8a0b0':'#a0b0e8';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid ${sf};">
+          <div style="width:28px;height:28px;border-radius:50%;background:${cote};display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold;flex-shrink:0;">${initials}</div>
+          <div style="flex:1;font-size:13px;color:${tx};font-weight:600;">${h(g.nom)}</div>
+          <button onclick="GUESTS=GUESTS.map(x=>x.id===${g.id}?{...x,seatTableId:null,seatIdx:null}:x);saveGuests();renderTablePlan();openTableGuestsModal(${tableId});" style="background:none;border:none;color:${tl};font-size:11px;cursor:pointer;text-decoration:underline;">retirer</button>
+        </div>`;
+      }).join('')
+    : `<div style="padding:18px;text-align:center;color:${tl};font-size:13px;font-style:italic;">Aucun invité placé à cette table pour l'instant.<br>Touche une chaise pour y placer quelqu'un.</div>`;
+  root.innerHTML=`
+    <div style="background:#fff;border-radius:18px;max-width:400px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(154,40,72,0.35);overflow:hidden;">
+      <div style="background:linear-gradient(135deg,${pk},${tm});padding:14px 18px;color:#fff;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">🪑</span>
+        <div style="flex:1;font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:700;">${h(table.nom)}</div>
+        <div style="font-size:12px;opacity:.9;">${placed.length}/${Math.min(table.seats,12)}</div>
+      </div>
+      <div style="overflow-y:auto;flex:1;">${rows}</div>
+      <div style="padding:12px 16px;background:${sf};border-top:1px solid ${br};">
+        <button data-close style="width:100%;background:linear-gradient(135deg,${pk},${tm});color:#fff;border:none;border-radius:9px;padding:11px;font-family:Lora,serif;font-size:13px;font-weight:700;cursor:pointer;">Fermer</button>
+      </div>
+    </div>`;
+  root.style.display='flex';
+  const close=()=>{root.style.display='none';root.innerHTML='';};
+  root.querySelector('[data-close]').addEventListener('click',close);
+  root.addEventListener('click',e=>{if(e.target===root)close();});
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PLACEMENT AUTOMATIQUE DES INVITÉS
@@ -2221,7 +2414,7 @@ function openAutoPlaceModal(){
   }
   root.innerHTML = `
     <div style="background:#fff;border-radius:18px;max-width:440px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(154,40,72,0.35);overflow:hidden;">
-      <div style="background:linear-gradient(135deg,${gd},${am});padding:14px 18px;color:#fff;display:flex;align-items:center;gap:10px;">
+      <div style="background:linear-gradient(135deg,${pk},${tm});padding:14px 18px;color:#fff;display:flex;align-items:center;gap:10px;">
         <span style="font-size:20px;">✨</span>
         <div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:700;flex:1;">Placement automatique</div>
       </div>
@@ -2252,7 +2445,7 @@ function openAutoPlaceModal(){
       </div>
       <div style="padding:12px 16px;background:${sf};border-top:1px solid ${br};display:flex;gap:8px;">
         <button data-cancel style="flex:1;background:none;border:1.5px solid ${br};color:${tm};border-radius:9px;padding:10px;font-family:Lora,serif;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>
-        <button data-run style="flex:2;background:linear-gradient(135deg,${gd},${am});color:#fff;border:none;border-radius:9px;padding:10px;font-family:Lora,serif;font-size:13px;font-weight:700;cursor:pointer;">✨ Lancer le placement</button>
+        <button data-run style="flex:2;background:linear-gradient(135deg,${pk},${tm});color:#fff;border:none;border-radius:9px;padding:10px;font-family:Lora,serif;font-size:13px;font-weight:700;cursor:pointer;">✨ Lancer le placement</button>
       </div>
     </div>`;
   root.style.display = 'flex';
