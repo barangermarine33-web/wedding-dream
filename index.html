@@ -2302,43 +2302,85 @@ async function exportPlanPDF(){
     setText(C_TL); pdf.setFont('times','italic'); pdf.setFontSize(11);
     pdf.text('Disposition de la salle',pw/2,45,{align:'center'});
 
-    // Zone de plan : on calcule les bornes réelles des tables pour bien cadrer
+    // Géométrie IDENTIQUE à l'application (mêmes constantes en px, puis mise à l'échelle)
+    const RND=68, SQ=72, TW=120, TH=58, SEAT=24, GAP=10;
+    // Boîte englobante d'une table (en px app), centre de surface placé à (t.x+70, t.y+70)
+    // Bornes réelles de tout le plan, chaises comprises
     const m=18, top=50, planW=pw-2*m, planH=ph-top-14;
     let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-    TABLES.forEach(t=>{minX=Math.min(minX,t.x);minY=Math.min(minY,t.y);maxX=Math.max(maxX,t.x+140);maxY=Math.max(maxY,t.y+140);});
+    TABLES.forEach(t=>{
+      const cx=t.x+70, cy=t.y+70;
+      // demi-encombrement max (table + orbite chaises)
+      const reach=Math.max(RND/2, SQ/2, TW/2) + GAP + SEAT;
+      minX=Math.min(minX,cx-reach); minY=Math.min(minY,cy-reach);
+      maxX=Math.max(maxX,cx+reach); maxY=Math.max(maxY,cy+reach);
+    });
     if(!isFinite(minX)){minX=0;minY=0;maxX=400;maxY=300;}
     const spanX=Math.max(maxX-minX,200), spanY=Math.max(maxY-minY,150);
-    const scale=Math.min(planW/spanX,planH/spanY)*0.92;
+    const scale=Math.min(planW/spanX,planH/spanY)*0.95;
     const offX=m+(planW-spanX*scale)/2-minX*scale;
     const offY=top+(planH-spanY*scale)/2-minY*scale;
+    // Conversion px app -> mm PDF
+    const PX=(x)=>offX+x*scale, PY=(y)=>offY+y*scale;
 
-    // Fond du plan (parquet doux)
+    // Fond du plan
     setFill([255,250,252]); setStroke(C_SF); pdf.setLineWidth(0.5);
     pdf.roundedRect(m,top,planW,planH,4,4,'FD');
 
-    TABLES.forEach((t,ti)=>{
+    TABLES.forEach(t=>{
       const placed=GUESTS.filter(g=>g.seatTableId===t.id);
       const n=Math.min(t.seats,12);
-      const cx=offX+(t.x+70)*scale, cy=offY+(t.y+70)*scale;
-      const r=Math.max(14,32*scale);
-      // Chaises
+      const isR=t.shape==='round', isSq=t.shape==='square';
+      const cx=t.x+70, cy=t.y+70;            // centre surface (px app)
+      const seatR=Math.max(1.8,(SEAT/2)*scale);
+
+      // ─── Chaises : MÊME logique que addTableEl ───
       for(let i=0;i<n;i++){
-        const a=(i/n)*2*Math.PI-Math.PI/2;
-        const sx=cx+(r+6)*Math.cos(a), sy=cy+(r+6)*Math.sin(a);
+        let sx,sy;
+        if(isR){
+          const orbit=RND/2+GAP+SEAT/2;
+          const a=(i/n)*2*Math.PI-Math.PI/2;
+          sx=cx+orbit*Math.cos(a); sy=cy+orbit*Math.sin(a);
+        } else if(isSq){
+          const perSide=Math.ceil(n/4);
+          const side=Math.floor(i/perSide);
+          const idxOnSide=i%perSide;
+          const realPerSide=(side===3)?(n-3*perSide):perSide;
+          const step=SQ/(realPerSide+1);
+          const pos=step*(idxOnSide+1);
+          const off=SQ/2+GAP;
+          if(side===0){ sx=cx-SQ/2+pos; sy=cy-off; }
+          else if(side===1){ sx=cx+off; sy=cy-SQ/2+pos; }
+          else if(side===2){ sx=cx-SQ/2+pos; sy=cy+off; }
+          else { sx=cx-off; sy=cy-SQ/2+pos; }
+        } else {
+          const half=Math.ceil(n/2);
+          const isTop=i<half;
+          const idx=isTop?i:i-half;
+          const cnt=isTop?half:(n-half);
+          const step=TW/(cnt+1);
+          sx=cx-TW/2+step*(idx+1);
+          sy=isTop?(cy-TH/2-GAP):(cy+TH/2+GAP);
+        }
         const g=placed.find(x=>x.seatIdx===i);
         setFill(g?C_TB:[242,226,233]); setStroke([255,255,255]); pdf.setLineWidth(0.3);
-        pdf.circle(sx,sy,Math.max(2.4,3.2*scale),'FD');
+        pdf.circle(PX(sx),PY(sy),seatR,'FD');
       }
-      // Table avec ombre
-      setFill([225,180,196]); 
-      if(t.shape==='round'){ pdf.circle(cx+0.8,cy+0.8,r,'F'); }
-      else { pdf.roundedRect(cx-r+0.8,cy-r*0.7+0.8,r*2,r*1.4,2,2,'F'); }
+
+      // ─── Table (même forme/dimensions que l'app) ───
+      // ombre légère
+      setFill([225,180,196]);
+      if(isR){ pdf.circle(PX(cx)+0.6,PY(cy)+0.6,(RND/2)*scale,'F'); }
+      else if(isSq){ pdf.roundedRect(PX(cx-SQ/2)+0.6,PY(cy-SQ/2)+0.6,SQ*scale,SQ*scale,1.5,1.5,'F'); }
+      else { pdf.roundedRect(PX(cx-TW/2)+0.6,PY(cy-TH/2)+0.6,TW*scale,TH*scale,1.5,1.5,'F'); }
       setFill(C_SF); setStroke(C_PK); pdf.setLineWidth(0.7);
-      if(t.shape==='round'){ pdf.circle(cx,cy,r,'FD'); }
-      else if(t.shape==='square'){ pdf.roundedRect(cx-r,cy-r,r*2,r*2,2,2,'FD'); }
-      else { pdf.roundedRect(cx-r*1.35,cy-r*0.65,r*2.7,r*1.3,2,2,'FD'); }
-      setText(C_TM); pdf.setFont('times','bold'); pdf.setFontSize(Math.max(9,12*scale));
-      pdf.text(t.nom||'Table',cx,cy,{align:'center',baseline:'middle',maxWidth:r*1.9});
+      if(isR){ pdf.circle(PX(cx),PY(cy),(RND/2)*scale,'FD'); }
+      else if(isSq){ pdf.roundedRect(PX(cx-SQ/2),PY(cy-SQ/2),SQ*scale,SQ*scale,1.5,1.5,'FD'); }
+      else { pdf.roundedRect(PX(cx-TW/2),PY(cy-TH/2),TW*scale,TH*scale,1.5,1.5,'FD'); }
+      // Nom
+      setText(C_TM); pdf.setFont('times','bold');
+      pdf.setFontSize(Math.max(7,11*scale));
+      pdf.text(t.nom||'Table',PX(cx),PY(cy),{align:'center',baseline:'middle',maxWidth:(isR?RND:isSq?SQ:TW)*scale*0.95});
     });
 
     // ─── PAGE 2+ : liste des invités par table (toutes ensemble, en cartes) ───
@@ -4966,37 +5008,41 @@ const ASSIST_KB = {
 
   // ─── 5. TIMELINE JOUR J ─────────────────────────────────────────────────
   timeline: {
-    // Générée dynamiquement en fonction de l'heure de la cérémonie
+    // Générée dynamiquement, calée sur l'heure de la cérémonie civile (mairie)
     generate: (heureCer, lieuCer, lieuRecep) => {
-      // heureCer ex: "15:00"
       const [h, m] = heureCer.split(':').map(n=>parseInt(n,10));
-      const minMatin = (h * 60 + m) - 60*5; // début 5h avant la cérémonie
+      const cer = h*60 + (m||0); // minutes de la cérémonie civile
       function tt(min){
-        const hh = Math.floor(min/60), mm = min%60;
-        return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+        min=((min%1440)+1440)%1440; // rester sur 24h
+        const hh=Math.floor(min/60), mm=min%60;
+        return String(hh).padStart(2,'0')+'h'+String(mm).padStart(2,'0');
       }
-      const cer = h*60+m;
+      // Décalages (en minutes) calqués sur le modèle où la mairie est à 14h00
       return [
-        {time:tt(cer-300), action:'Réveil tranquille avec un petit déjeuner copieux. Hydratez-vous.'},
-        {time:tt(cer-240), action:'Douche, soins et début de la coiffure de la mariée.'},
-        {time:tt(cer-180), action:'Maquillage de la mariée. Marié(e) commence à se préparer en parallèle.'},
-        {time:tt(cer-150), action:'Photos des préparatifs avec photographe (robe, accessoires, ambiance).'},
-        {time:tt(cer-90), action:'Habillage de la mariée. Témoins et famille proche présents.'},
-        {time:tt(cer-60), action:'First look (si prévu) — moment intime entre les futurs mariés avant la cérémonie.'},
-        {time:tt(cer-30), action:'Départ vers le lieu de cérémonie ('+lieuCer+'). Prévoir 15 min de marge.'},
-        {time:tt(cer-15), action:'Arrivée sur place. Cocktail de bienvenue pour les invités.'},
-        {time:tt(cer), action:'🎵 CÉRÉMONIE — entrée de la mariée, échange des vœux, alliances.'},
-        {time:tt(cer+45), action:'Photos de groupe sur le parvis. Lancer de pétales / riz.'},
-        {time:tt(cer+75), action:'Départ vers '+lieuRecep+' pour le vin d\'honneur.'},
-        {time:tt(cer+90), action:'🥂 Vin d\'honneur (1h30 environ). Animation, photos, échanges.'},
-        {time:tt(cer+180), action:'Entrée en salle. Annonce des mariés. Verre de bienvenue.'},
-        {time:tt(cer+210), action:'🍽️ Dîner — entrée. Discours du papa de la mariée traditionnellement.'},
-        {time:tt(cer+270), action:'Plat principal. Discours des témoins (10-15 min total max).'},
-        {time:tt(cer+330), action:'Fromages et animations (jeux, surprises, vidéos).'},
-        {time:tt(cer+390), action:'Découpe du wedding cake. Première danse des mariés.'},
-        {time:tt(cer+420), action:'🎶 Ouverture du bal. Ambiance dansante.'},
-        {time:tt(cer+480), action:'Service du brunch / nuit blanche / cocktails de fin.'},
-        {time:tt(cer+600), action:'🌙 Fin officielle. Photos avec les derniers invités.'}
+        {time:tt(cer-360), action:'🌅 Réveil & petit-déjeuner calme. Petit-déjeuner léger, hydratation, playlist agréable, ambiance détendue.'},
+        {time:tt(cer-330), action:'💄 Début coiffure / maquillage de la mariée. Prévoir large : cela prend souvent plus de temps que prévu.'},
+        {time:tt(cer-300), action:'📸 Arrivée du photographe / vidéaste (optionnel). Photos des détails : robe, alliances, papeterie, parfum, chaussures, bouquet.'},
+        {time:tt(cer-240), action:'🤵 Préparatifs du marié. Habillage et photos avec les témoins.'},
+        {time:tt(cer-150), action:'👰 Habillage de la mariée. Moment robe + photos avec les proches.'},
+        {time:tt(cer-120), action:'💑 First look (optionnel). Découverte des mariés avant la cérémonie + photos de couple pour gagner du temps.'},
+        {time:tt(cer-90), action:'🥪 Pause déjeuner légère.'},
+        {time:tt(cer-30), action:'🚗 Départ vers '+lieuCer+'.'},
+        {time:tt(cer), action:'🏛️ Cérémonie civile à la mairie (20 à 40 min en général).'},
+        {time:tt(cer+60), action:'📷 Déplacements + photos de groupe rapides.'},
+        {time:tt(cer+120), action:'⛪ Cérémonie laïque ou religieuse (30 min à 1h selon le format).'},
+        {time:tt(cer+180), action:'🥂 Vin d\'honneur / cocktail à '+lieuRecep+'. Boissons, animations et photos avec les invités (photos de groupe, livre d\'or, photobooth, jeux, photos de couple au coucher du soleil).'},
+        {time:tt(cer+270), action:'🍽️ Ouverture de la salle pour le dîner. Les invités prennent place.'},
+        {time:tt(cer+300), action:'✨ Entrée des mariés.'},
+        {time:tt(cer+315), action:'🍴 Début du repas — entrée.'},
+        {time:tt(cer+360), action:'🎤 Animation / discours.'},
+        {time:tt(cer+390), action:'🍖 Plat principal.'},
+        {time:tt(cer+435), action:'🎁 Animations / surprises.'},
+        {time:tt(cer+480), action:'🧀 Fromage / dessert.'},
+        {time:tt(cer+510), action:'🎂 Pièce montée ou wedding cake. Moment photos + champagne.'},
+        {time:tt(cer+540), action:'💃 Ouverture du bal.'},
+        {time:tt(cer+570), action:'🪩 Soirée dansante.'},
+        {time:tt(cer+630), action:'🌭 Snack de nuit (optionnel) : mini-burgers, pizza, bar à crêpes, hot-dogs…'},
+        {time:tt(cer+750), action:'🌙 Fin de soirée (selon le lieu, entre 2h et 4h du matin).'}
       ];
     }
   },
@@ -5160,52 +5206,27 @@ const ASSIST_KB = {
       items: [
         {nom:'Wedding cake classique élégant', pin:'classic elegant wedding cake'},
         {nom:'Wedding cake romantique', pin:'romantic wedding cake'},
-        {nom:'Wedding cake traditionnel à étages', pin:'traditional tiered wedding cake'},
+        {nom:'Ombré wedding cake', pin:'ombre wedding cake'},
         {nom:'Wedding cake luxe / chic', pin:'luxury chic wedding cake'},
         {nom:'Wedding cake moderne', pin:'modern wedding cake'},
-        {nom:'Wedding cake minimaliste', pin:'minimalist wedding cake'},
-        {nom:'Wedding cake contemporain', pin:'contemporary wedding cake'}
+        {nom:'Wedding cake minimaliste', pin:'minimalist wedding cake'}
       ]
     },
     'rustiques': {
       label: 'Rustiques & naturels',
       items: [
-        {nom:'Naked cake (sans glaçage visible)', pin:'naked wedding cake'},
         {nom:'Semi-naked cake', pin:'semi naked wedding cake'},
-        {nom:'Rustic / champêtre wedding cake', pin:'rustic wedding cake'},
+        {nom:'Champêtre wedding cake', pin:'rustic wedding cake'},
         {nom:'Woodland / forêt wedding cake', pin:'woodland forest wedding cake'},
         {nom:'Garden party wedding cake', pin:'garden party wedding cake'},
-        {nom:'Cottagecore wedding cake', pin:'cottagecore wedding cake'}
-      ]
-    },
-    'floraux': {
-      label: 'Floraux',
-      items: [
-        {nom:'Floral wedding cake (fleurs fraîches)', pin:'fresh flower wedding cake'},
-        {nom:'Sugar flower wedding cake (fleurs en sucre)', pin:'sugar flower wedding cake'},
-        {nom:'Pressed flower wedding cake (fleurs pressées)', pin:'pressed flower wedding cake'},
-        {nom:'Dried flower wedding cake (fleurs séchées)', pin:'dried flower wedding cake'},
-        {nom:'Wildflower wedding cake (fleurs sauvages)', pin:'wildflower wedding cake'},
-        {nom:'Cascade floral wedding cake (cascade de fleurs)', pin:'cascading floral wedding cake'},
-        {nom:'Botanical / greenery cake (feuillage, eucalyptus)', pin:'greenery botanical wedding cake'}
-      ]
-    },
-    'bohemes': {
-      label: 'Bohèmes',
-      items: [
-        {nom:'Boho wedding cake', pin:'boho wedding cake'},
-        {nom:'Pampas wedding cake', pin:'pampas grass wedding cake'},
-        {nom:'Terracotta boho wedding cake', pin:'terracotta boho wedding cake'},
-        {nom:'Desert / earthy wedding cake', pin:'desert earthy wedding cake'}
+        {nom:'Terracotta boho wedding cake', pin:'terracotta boho wedding cake'}
       ]
     },
     'vintage': {
       label: 'Vintage & rétro',
       items: [
-        {nom:'Lambeth wedding cake (glaçage rétro travaillé)', pin:'lambeth wedding cake'},
-        {nom:'Vintage piping cake', pin:'vintage piping wedding cake'},
         {nom:'Victorian wedding cake', pin:'victorian wedding cake'},
-        {nom:'Regency / Bridgerton wedding cake', pin:'bridgerton regency wedding cake'},
+        {nom:'Bridgerton wedding cake', pin:'bridgerton regency wedding cake'},
         {nom:'Retro wedding cake (années 50-80)', pin:'retro wedding cake'},
         {nom:'Heart wedding cake (vintage/coquette)', pin:'heart shaped wedding cake'}
       ]
@@ -5214,41 +5235,24 @@ const ASSIST_KB = {
       label: 'Artistiques & design',
       items: [
         {nom:'Marble wedding cake (effet marbre)', pin:'marble wedding cake'},
-        {nom:'Textured buttercream cake (texture crème)', pin:'textured buttercream wedding cake'},
         {nom:'Palette knife cake (effet peinture)', pin:'palette knife wedding cake'},
         {nom:'Watercolor wedding cake (aquarelle)', pin:'watercolor wedding cake'},
         {nom:'Brushstroke wedding cake', pin:'brushstroke wedding cake'},
         {nom:'Geometric wedding cake', pin:'geometric wedding cake'},
-        {nom:'Architectural wedding cake', pin:'architectural wedding cake'},
         {nom:'Sculptural / statement wedding cake', pin:'sculptural statement wedding cake'},
         {nom:'Asymmetrical wedding cake', pin:'asymmetrical wedding cake'},
-        {nom:'3D embossed cake (relief 3D)', pin:'3d embossed wedding cake'},
-        {nom:'Metallic wedding cake (doré, argenté, chrome)', pin:'metallic wedding cake'},
         {nom:'Concrete effect cake (effet béton)', pin:'concrete effect wedding cake'}
       ]
     },
     'glamour': {
-      label: 'Glamour / couture',
+      label: 'Glamour',
       items: [
         {nom:'Pearl wedding cake (perles)', pin:'pearl wedding cake'},
         {nom:'Gold luxe wedding cake', pin:'gold luxe wedding cake'},
         {nom:'Lace wedding cake (effet dentelle)', pin:'lace wedding cake'},
-        {nom:'Haute couture / fashion-inspired cake', pin:'haute couture wedding cake'},
         {nom:'Draped fabric cake (effet tissu drapé)', pin:'draped fabric wedding cake'},
-        {nom:'Black tie wedding cake (très chic)', pin:'black tie wedding cake'},
-        {nom:'Quiet luxury wedding cake', pin:'quiet luxury wedding cake'}
-      ]
-    },
-    'tendance': {
-      label: 'Tendance',
-      items: [
-        {nom:'Korean minimalist cake', pin:'korean minimalist wedding cake'},
-        {nom:'Coquette wedding cake', pin:'coquette wedding cake'},
-        {nom:'Bow cake (avec nœuds)', pin:'bow wedding cake'},
-        {nom:'Vintage pearl cake', pin:'vintage pearl wedding cake'},
         {nom:'Monochrome wedding cake', pin:'monochrome wedding cake'},
-        {nom:'Ombré wedding cake', pin:'ombre wedding cake'},
-        {nom:'Maximalist wedding cake', pin:'maximalist wedding cake'}
+        {nom:'Bow cake (avec nœuds)', pin:'bow wedding cake'}
       ]
     },
     'destination': {
@@ -5257,7 +5261,6 @@ const ASSIST_KB = {
         {nom:'Coastal / beach wedding cake', pin:'coastal beach wedding cake'},
         {nom:'Tropical wedding cake', pin:'tropical wedding cake'},
         {nom:'Italian wedding cake (Dolce Vita)', pin:'italian dolce vita wedding cake'},
-        {nom:'Mediterranean wedding cake', pin:'mediterranean wedding cake'},
         {nom:'Parisian / French wedding cake', pin:'parisian french wedding cake'},
         {nom:'Winter wedding cake', pin:'winter wedding cake'},
         {nom:'Autumn wedding cake', pin:'autumn wedding cake'}
@@ -5266,11 +5269,10 @@ const ASSIST_KB = {
     'audacieux': {
       label: 'Audacieux',
       items: [
-        {nom:'Gothic wedding cake', pin:'gothic wedding cake'},
-        {nom:'Dark romance wedding cake', pin:'dark romance wedding cake'},
         {nom:'Black wedding cake', pin:'black wedding cake'},
         {nom:'Colorful wedding cake', pin:'colorful wedding cake'},
-        {nom:'Jewel tones wedding cake', pin:'jewel tones wedding cake'}
+        {nom:'Jewel tones wedding cake', pin:'jewel tones wedding cake'},
+        {nom:'Maximalist wedding cake', pin:'maximalist wedding cake'}
       ]
     }
   },
@@ -5405,10 +5407,9 @@ const ASSIST_KB = {
     styles: [
       {nom: 'Costume trois-pièces classique', desc: 'Veste + gilet + pantalon, cravate ou nœud papillon. Élégant et intemporel.'},
       {nom: 'Smoking', desc: 'Pour mariage chic ou soirée. Noir avec col cranté ou châle, nœud papillon noir.'},
-      {nom: 'Costume couleur (bleu nuit, bordeaux)', desc: 'Plus original et très tendance. Apporte du caractère à la silhouette.'},
+      {nom: 'Costume de couleur', desc: 'Plus original et très tendance. Apporte du caractère à la silhouette.'},
       {nom: 'Costume bohème / lin', desc: 'Léger et décontracté. Idéal pour un mariage en été ou sur la plage.'},
       {nom: 'Frac / queue de pie', desc: 'Très formel. Pour un mariage très chic et solennel.'},
-      {nom: 'Costume traditionnel régional', desc: 'Kilt écossais, costume basque, tenue traditionnelle africaine. À adapter selon vos origines.'},
       {nom: 'Tenue casual chic', desc: 'Chino + chemise + veste. Pour un mariage très décontracté.'},
       {nom: 'Sur-mesure', desc: 'Costume fait sur mesure pour un ajustement parfait. Compter plusieurs séances d\'essayage.'}
     ],
@@ -6011,7 +6012,6 @@ function renderAssistant(){
         {key:'weddingDay',    label:'Conseils jour J',      icon:'⭐', desc:'Pas-à-pas du jour J'},
         {key:'tenueMarie',    label:'Costume',              icon:'🤵', desc:'Costumes et accessoires'},
         {key:'decoration',    label:'Décoration mariage',   icon:'🎀', desc:'Inspiration selon style'},
-        {key:'discours',      label:'Discours témoin',      icon:'🎤', desc:'Trames de discours complets'},
         {key:'enfants',       label:'Enfants au mariage',   icon:'🧒', desc:'Rôles et animations'},
         {key:'fairepart',     label:'Faire-part',           icon:'✉️', desc:'12 modèles prêts à utiliser'},
         {key:'stress',        label:'Gestion du stress',    icon:'🧘', desc:'Avant, pendant, après'},
@@ -6050,7 +6050,6 @@ function assistOpen(service){
   setTimeout(()=>{cont.scrollIntoView({behavior:'smooth',block:'start'});}, 50);
   if(service === 'menu')           return assistMenu(cont);
   if(service === 'fairepart')      return assistFairepart(cont);
-  if(service === 'discours')       return assistDiscours(cont);
   if(service === 'budget')         return assistBudget(cont);
   if(service === 'timeline')       return assistTimeline(cont);
   if(service === 'decoration')     return assistDecoration(cont);
@@ -6086,51 +6085,35 @@ function assistMenu(cont){
   const RESTRIC_OPTS = ['vegetarien','vegan','sansgluten','sanslactose','halal','casher','allergie-noix'];
   const RESTRIC_LABELS = {vegetarien:'Végétarien',vegan:'Vegan',sansgluten:'Sans gluten',sanslactose:'Sans lactose',halal:'Halal',casher:'Casher','allergie-noix':'Allergie fruits à coque'};
   const savedRestric = gv('restric', []);
-  const savedStyle = gv('style','romantique');
   const savedSaison = gv('saison','printemps');
   const savedBudget = gv('budget','standard');
   const savedFormat = gv('format','assiette');
-  const savedBoissons = gv('boissons','classiques');
   const savedInvites = gv('invites',80);
   cont.innerHTML = `
     <div class="card" style="padding:16px;">
-      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:14px;font-weight:700;">🍽️ Menu personnalisé</div>
+      <div style="font-family:Playfair Display,serif;font-size:18px;color:${tm};margin-bottom:4px;font-weight:700;">🍽️ Menu personnalisé</div>
+      <div style="font-size:11px;color:${tl};font-style:italic;margin-bottom:14px;">Des menus composés avec les produits de saison, adaptés à ton budget et à ton format de réception.</div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <div>
-          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Style</label>
-          <select id="menu-style" class="inp" style="margin-top:4px;">
-            ${[['romantique','Romantique'],['boheme','Bohème'],['champetre','Champêtre'],['chic','Chic / Luxe'],['moderne','Moderne'],['minimaliste','Minimaliste']].map(o=>`<option value="${o[0]}" ${savedStyle===o[0]?'selected':''}>${o[1]}</option>`).join('')}
-          </select>
-        </div>
         <div>
           <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Saison</label>
           <select id="menu-saison" class="inp" style="margin-top:4px;">
             ${[['printemps','Printemps'],['ete','Été'],['automne','Automne'],['hiver','Hiver']].map(o=>`<option value="${o[0]}" ${savedSaison===o[0]?'selected':''}>${o[1]}</option>`).join('')}
           </select>
         </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
           <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Budget / personne</label>
           <select id="menu-budget" class="inp" style="margin-top:4px;">
             ${[['eco','Économique (45-70€)'],['standard','Standard (70-120€)'],['luxe','Luxe (120€+)']].map(o=>`<option value="${o[0]}" ${savedBudget===o[0]?'selected':''}>${o[1]}</option>`).join('')}
           </select>
         </div>
-        <div>
-          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Format</label>
-          <select id="menu-format" class="inp" style="margin-top:4px;">
-            ${[['assiette','Service à l\'assiette'],['buffet','Buffet'],['cocktail','Cocktail dînatoire'],['foodtruck','Food truck'],['garden','Garden party']].map(o=>`<option value="${o[0]}" ${savedFormat===o[0]?'selected':''}>${o[1]}</option>`).join('')}
-          </select>
-        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
-          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Boissons</label>
-          <select id="menu-boissons" class="inp" style="margin-top:4px;">
-            ${[['classiques','Classiques'],['premium','Premium'],['sansalcool','Sans alcool'],['cocktailsignature','Cocktails signature']].map(o=>`<option value="${o[0]}" ${savedBoissons===o[0]?'selected':''}>${o[1]}</option>`).join('')}
+          <label style="font-size:11px;color:${tl};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Format</label>
+          <select id="menu-format" class="inp" style="margin-top:4px;">
+            ${[['assiette','Service à l\'assiette'],['buffet','Buffet'],['cocktail','Cocktail dînatoire'],['foodtruck','Food truck'],['garden','Garden party']].map(o=>`<option value="${o[0]}" ${savedFormat===o[0]?'selected':''}>${o[1]}</option>`).join('')}
           </select>
         </div>
         <div>
@@ -6158,15 +6141,18 @@ function assistMenu(cont){
 }
 
 function assistGenerateMenu(){
-  const style = el('menu-style').value;
   const saison = el('menu-saison').value;
   const budget = el('menu-budget').value;
   const format = el('menu-format').value;
-  const boissons = el('menu-boissons').value;
   const invites = parseInt(el('menu-invites').value,10) || 80;
   const restrictions = Array.from(document.querySelectorAll('.menu-restric-cb:checked')).map(c=>c.value);
-  sv('assist_menu_style',style); sv('assist_menu_saison',saison); sv('assist_menu_budget',budget);
-  sv('assist_menu_format',format); sv('assist_menu_boissons',boissons); sv('assist_menu_invites',invites);
+  // Le style n'est plus un critère : on en tire un au hasard à chaque génération
+  // pour maximiser la variété tout en gardant des plats cohérents avec la saison.
+  const STYLES=['romantique','boheme','champetre','chic','moderne','minimaliste'];
+  const style = STYLES[Math.floor(Math.random()*STYLES.length)];
+  const boissons = 'classiques';
+  sv('assist_menu_saison',saison); sv('assist_menu_budget',budget);
+  sv('assist_menu_format',format); sv('assist_menu_invites',invites);
   sv('assist_menu_restric',restrictions);
 
   const menu = MENU_ENGINE.generate({style,saison,budget,format,boissons,restrictions,invites});
@@ -6194,19 +6180,11 @@ function assistGenerateMenu(){
       ${restricChips}
       <div style="margin:14px 0;">${sectionsHtml}</div>
 
-      <div style="background:linear-gradient(135deg,#fff8ec,#fef5e0);padding:12px;border-radius:10px;margin-bottom:12px;border:1px solid ${gd}40;">
-        <div style="font-size:11px;font-weight:700;color:${gd};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🍷 Boissons</div>
-        <div style="font-size:12px;color:${tx};margin-bottom:3px;"><strong>Vin d'honneur :</strong> ${b.vinHonneur.join(', ')}</div>
-        <div style="font-size:12px;color:${tx};margin-bottom:3px;"><strong>Repas :</strong> ${h(b.repas)}</div>
-        <div style="font-size:12px;color:${tx};margin-bottom:3px;"><strong>Sans alcool :</strong> ${h(b.soft)}</div>
-        <div style="font-size:12px;color:${tx};"><strong>Digestif :</strong> ${h(b.digestif)}</div>
-      </div>
-
       <div style="display:flex;gap:8px;">
         <button onclick="assistGenerateMenu()" class="btn-sec" style="flex:1;font-size:12px;">🔄 Autre proposition</button>
         <button onclick="assistCopyMenu()" class="btn" style="flex:1;font-size:12px;">📋 Copier</button>
       </div>
-      <div style="font-size:10px;color:${tl};font-style:italic;text-align:center;margin-top:8px;">Chaque génération propose une variante différente.</div>
+      <div style="font-size:10px;color:${tl};font-style:italic;text-align:center;margin-top:8px;">Chaque génération propose une variante différente, avec des produits de saison.</div>
     </div>
   `;
   window._lastMenu = {menu, format:FORMAT_LABELS[format], budget:BUDGET_LABELS[budget], invites, restrictions:restrictions.map(r=>RESTRIC_LABELS[r])};
@@ -6224,8 +6202,6 @@ async function assistCopyMenu(){
     sec.items.forEach(it=> text += '  - ' + it + '\n');
     text += '\n';
   });
-  const b = m.boissons;
-  text += `BOISSONS\n  - Vin d'honneur : ${b.vinHonneur.join(', ')}\n  - Repas : ${b.repas}\n  - Sans alcool : ${b.soft}\n  - Digestif : ${b.digestif}\n`;
   try { await navigator.clipboard.writeText(text); appAlert('Menu copié dans le presse-papier !', 'Copié'); }
   catch{ appAlert(text, 'Menu (copie manuelle)'); }
 }
@@ -7283,7 +7259,7 @@ function assistPlaylistAmbi(cont){
     <div style="font-family:Playfair Display,serif;font-style:italic;font-size:16px;color:${tm};text-align:center;margin-bottom:4px;">${h(list.title)}</div>
     <div style="text-align:center;font-size:11px;color:${tl};font-style:italic;margin-bottom:14px;">${h(list.desc)}</div>
     <ol style="margin:0;padding-left:24px;font-size:13px;color:${tx};line-height:1.9;">
-      ${list.tracks.map(t=>`<li>${h(t)}</li>`).join('')}
+      ${list.tracks.map(t=>t.replace(/\s*—\s*/g,' - ')).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).map(t=>`<li>${h(t)}</li>`).join('')}
     </ol>
     <div style="margin-top:14px;padding:10px 12px;background:${sf};border-radius:8px;font-size:11px;color:${tm};font-style:italic;">
       💡 Donne cette playlist à ton DJ ou crée la directement dans ton application de musique préférée.
