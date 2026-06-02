@@ -2063,6 +2063,14 @@ function addTableEl(table){
   });
   div.appendChild(lbl);
 
+  // Poignée de déplacement (en haut à gauche) — zone dédiée au glissement, fiable au doigt
+  const handle=document.createElement('div');
+  handle.className='tp-drag-handle';
+  handle.textContent='✥';
+  handle.title='Glisser pour déplacer la table';
+  handle.style.cssText=`position:absolute;top:-8px;left:-8px;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,${pk},${tm});color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:move;z-index:15;box-shadow:0 2px 6px rgba(154,40,72,.4);touch-action:none;user-select:none;`;
+  div.appendChild(handle);
+
   // Delete
   const del=document.createElement('div');
   del.style.cssText=`position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid ${br};display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;color:${rd};z-index:10;`;
@@ -2167,7 +2175,8 @@ function addTableEl(table){
   }
 
   // Drag — déplacement de la table au doigt (touch) ou souris.
-  // On utilise les événements touch natifs (fiables sur mobile) + mouse pour desktop.
+  // On utilise les événements touch/mouse au niveau DOCUMENT (les plus fiables).
+  // Le déplacement se déclenche depuis la POIGNÉE (✥) ou la surface de la table.
   let dragStarted=false, downPt=null, dragging=false;
 
   const isInteractive=tgt=>(
@@ -2175,10 +2184,12 @@ function addTableEl(table){
     (tgt.classList&&tgt.classList.contains('tp-seat'))||
     (tgt.dataset&&tgt.dataset.seatbtn)
   );
+  const isHandle=tgt=>tgt===handle;
 
   const beginDrag=(clientX,clientY,tgt)=>{
     if(tpPanMode)return false;
-    if(isInteractive(tgt))return false;
+    // La poignée déclenche toujours ; sinon, la surface si pas un élément interactif
+    if(!isHandle(tgt) && isInteractive(tgt))return false;
     const rect=canvas.getBoundingClientRect();
     const t=TABLES.find(t=>t.id===table.id);
     tpDrag={id:table.id,ox:(clientX-rect.left-tpPanX)/tpScale-t.x,oy:(clientY-rect.top-tpPanY)/tpScale-t.y};
@@ -2187,7 +2198,7 @@ function addTableEl(table){
     return true;
   };
   const moveDrag=(clientX,clientY)=>{
-    if(!tpDrag||tpDrag.id!==table.id)return;
+    if(!dragging||!tpDrag||tpDrag.id!==table.id)return;
     if(downPt && !dragStarted){
       if(Math.abs(clientX-downPt.x)<3 && Math.abs(clientY-downPt.y)<3) return;
       dragStarted=true;
@@ -2198,39 +2209,45 @@ function addTableEl(table){
     const i=TABLES.findIndex(t=>t.id===table.id);if(i>=0){TABLES[i].x=nx;TABLES[i].y=ny;}
     div.style.left=nx+'px';div.style.top=ny+'px';
   };
-  const endDrag=(tgt)=>{
-    if(tpDrag&&tpDrag.id===table.id){
+  const endDrag=(tgt,wasHandle)=>{
+    if(dragging && tpDrag && tpDrag.id===table.id){
       if(dragStarted){ saveTables(); }
-      else if(!isInteractive(tgt)){ openTableGuestsModal(table.id); } // tap = liste invités
+      else if(!wasHandle && !isInteractive(tgt)){ openTableGuestsModal(table.id); } // tap = liste invités
     }
     tpDrag=null;dragStarted=false;downPt=null;dragging=false;
   };
 
-  // ── TOUCH (mobile) ──
-  div.addEventListener('touchstart',e=>{
+  // ── TOUCH ──
+  const onTouchStart=e=>{
     if(e.touches.length!==1)return;
     const t=e.touches[0];
+    const startedHandle=isHandle(e.target);
     if(beginDrag(t.clientX,t.clientY,e.target)){
-      // ne pas bloquer le tap sur boutons, mais empêcher le scroll de la page
+      div._wasHandle=startedHandle;
+      if(startedHandle) e.preventDefault();
     }
-  },{passive:true});
-  div.addEventListener('touchmove',e=>{
-    if(!dragging||e.touches.length!==1)return;
-    e.preventDefault(); // empêche le scroll pendant le déplacement de la table
-    const t=e.touches[0];
-    moveDrag(t.clientX,t.clientY);
-  },{passive:false});
-  div.addEventListener('touchend',e=>{
+  };
+  const onTouchMove=e=>{
     if(!dragging)return;
-    const tgt=(e.changedTouches&&e.changedTouches[0])?document.elementFromPoint(e.changedTouches[0].clientX,e.changedTouches[0].clientY):e.target;
-    endDrag(tgt||e.target);
-  });
+    e.preventDefault();
+    const t=e.touches[0]; if(t) moveDrag(t.clientX,t.clientY);
+  };
+  const onTouchEnd=e=>{
+    if(!dragging)return;
+    const ct=e.changedTouches&&e.changedTouches[0];
+    const tgt=ct?document.elementFromPoint(ct.clientX,ct.clientY):e.target;
+    endDrag(tgt||e.target, div._wasHandle);
+    div._wasHandle=false;
+  };
+  div.addEventListener('touchstart',onTouchStart,{passive:false});
+  div.addEventListener('touchmove',onTouchMove,{passive:false});
+  div.addEventListener('touchend',onTouchEnd);
   div.addEventListener('touchcancel',()=>{tpDrag=null;dragStarted=false;downPt=null;dragging=false;});
 
-  // ── MOUSE (desktop) ──
-  div.addEventListener('mousedown',e=>{ beginDrag(e.clientX,e.clientY,e.target); });
+  // ── MOUSE ──
+  div.addEventListener('mousedown',e=>{ const wh=isHandle(e.target); if(beginDrag(e.clientX,e.clientY,e.target)){div._wasHandle=wh; e.preventDefault();} });
   document.addEventListener('mousemove',e=>{ if(dragging&&tpDrag&&tpDrag.id===table.id) moveDrag(e.clientX,e.clientY); });
-  div.addEventListener('mouseup',e=>{ if(dragging&&tpDrag&&tpDrag.id===table.id) endDrag(e.target); });
+  document.addEventListener('mouseup',e=>{ if(dragging&&tpDrag&&tpDrag.id===table.id){ endDrag(e.target, div._wasHandle); div._wasHandle=false; } });
 
   inner.appendChild(div);
 }
@@ -2251,92 +2268,90 @@ async function exportPlanPDF(){
     const jsPDF = await loadJsPDF();
     const pdf = new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
     const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
-    // Couleurs de l'app (RGB)
     const C_PK=[184,64,96], C_TM=[90,26,48], C_TL=[138,74,96], C_GD=[201,168,76],
-          C_SF=[245,212,224], C_BG=[253,243,248], C_TX=[45,10,24], C_P1=[232,160,176], C_P2=[160,176,232];
+          C_SF=[245,212,224], C_BG=[253,243,248], C_TX=[45,10,24], C_TB=[232,160,176];
     const setFill=c=>pdf.setFillColor(c[0],c[1],c[2]);
     const setText=c=>pdf.setTextColor(c[0],c[1],c[2]);
-    const setDraw=c=>pdf.setDrawColor(c[0],c[1],c[2]);
+    const setDraw=c=>pdf.setDraw=pdf.setDrawColor(c[0],c[1],c[2]);
 
-    // En-tête commun (style faire-part)
-    const drawHeader=(subtitle)=>{
+    // Grand en-tête "faire-part" — uniquement en haut de la PAGE 1
+    const drawMainHeader=()=>{
       setFill(C_BG); pdf.rect(0,0,pw,ph,'F');
-      // Bandeau rose pâle en haut
-      setFill(C_SF); pdf.rect(0,0,pw,26,'F');
+      setFill(C_SF); pdf.rect(0,0,pw,34,'F');
+      setText(C_GD); pdf.setFont('times','bold'); pdf.setFontSize(34);
+      pdf.text('Wedding Dream',pw/2,17,{align:'center'});
+      setText(C_TM); pdf.setFont('times','italic'); pdf.setFontSize(16);
+      pdf.text(`Mariage de ${USER.p1} & ${USER.p2}`,pw/2,28,{align:'center'});
       // Filets dorés
-      setDraw(C_GD); pdf.setLineWidth(0.6); pdf.line(12,30,pw-12,30);
-      pdf.setLineWidth(0.3); pdf.line(12,31.5,pw-12,31.5);
-      setText(C_GD); pdf.setFont('times','bold'); pdf.setFontSize(24);
-      pdf.text('Wedding Dream',pw/2,13,{align:'center'});
-      setText(C_TM); pdf.setFont('times','italic'); pdf.setFontSize(12);
-      pdf.text(`Mariage de ${USER.p1} & ${USER.p2}`,pw/2,21,{align:'center'});
-      setText(C_PK); pdf.setFont('times','bold'); pdf.setFontSize(15);
-      pdf.text(subtitle,pw/2,39,{align:'center'});
+      setDraw(C_GD); pdf.setLineWidth(0.8); pdf.line(14,38,pw-14,38);
+      pdf.setLineWidth(0.4); pdf.line(14,39.8,pw-14,39.8);
+    };
+    // Petit en-tête pour les pages suivantes (juste le titre de section)
+    const drawSectionTitle=(title)=>{
+      setFill(C_BG); pdf.rect(0,0,pw,ph,'F');
+      setText(C_PK); pdf.setFont('times','bold'); pdf.setFontSize(22);
+      pdf.text(title,pw/2,18,{align:'center'});
+      setDraw(C_GD); pdf.setLineWidth(0.6); pdf.line(14,23,pw-14,23);
     };
 
-    // ─── PAGE 1 : plan visuel ───
-    drawHeader('Plan de salle');
-    const m=16, top=45, planW=pw-2*m, planH=ph-top-12;
-    let maxX=400,maxY=300;
-    TABLES.forEach(t=>{maxX=Math.max(maxX,t.x+200);maxY=Math.max(maxY,t.y+200);});
+    // ─── PAGE 1 : titre + plan visuel ───
+    drawMainHeader();
+    setText(C_PK); pdf.setFont('times','bold'); pdf.setFontSize(18);
+    pdf.text('Plan de salle',pw/2,50,{align:'center'});
+
+    const m=16, top=56, planW=pw-2*m, planH=ph-top-12;
+    let maxX=420,maxY=320;
+    TABLES.forEach(t=>{maxX=Math.max(maxX,t.x+220);maxY=Math.max(maxY,t.y+220);});
     const scale=Math.min(planW/maxX,planH/maxY);
-    // Fond du plan
-    setFill([255,250,252]); setDraw(C_BG); pdf.setLineWidth(0.5);
-    pdf.roundedRect(m,top,planW,planH,3,3,'F');
+    setFill([255,250,252]); pdf.roundedRect(m,top,planW,planH,3,3,'F');
 
     TABLES.forEach(t=>{
       const placed=GUESTS.filter(g=>g.seatTableId===t.id);
       const n=Math.min(t.seats,12);
-      const cx=m+(t.x+70)*scale, cy=top+(t.y+70)*scale;
-      const r=Math.max(8,24*scale);
-      // Chaises (points colorés selon le côté)
+      const cx=m+(t.x+80)*scale, cy=top+(t.y+80)*scale;
+      const r=Math.max(13,30*scale);
+      // Chaises (toutes même couleur rose, plus de distinction de côté)
       for(let i=0;i<n;i++){
         const a=(i/n)*2*Math.PI-Math.PI/2;
-        const sx=cx+(r+4)*Math.cos(a), sy=cy+(r+4)*Math.sin(a);
+        const sx=cx+(r+5)*Math.cos(a), sy=cy+(r+5)*Math.sin(a);
         const g=placed.find(x=>x.seatIdx===i);
-        setFill(g?(g.cote==='p1'?C_P1:C_P2):[240,220,228]);
-        pdf.circle(sx,sy,Math.max(1.5,2*scale),'F');
+        setFill(g?C_TB:[240,222,230]);
+        pdf.circle(sx,sy,Math.max(2.2,3*scale),'F');
       }
       // Table
-      setFill(C_SF); setDraw(C_PK); pdf.setLineWidth(0.5);
+      setFill(C_SF); pdf.setDrawColor(C_PK[0],C_PK[1],C_PK[2]); pdf.setLineWidth(0.6);
       if(t.shape==='round'){ pdf.circle(cx,cy,r,'FD'); }
       else if(t.shape==='square'){ pdf.roundedRect(cx-r,cy-r,r*2,r*2,2,2,'FD'); }
-      else { pdf.roundedRect(cx-r*1.3,cy-r*0.6,r*2.6,r*1.2,2,2,'FD'); }
-      setText(C_TM); pdf.setFont('times','bold'); pdf.setFontSize(Math.max(6,8*scale));
-      pdf.text(t.nom||'Table',cx,cy,{align:'center',baseline:'middle',maxWidth:r*1.8});
-      setText(C_TL); pdf.setFont('times','normal'); pdf.setFontSize(Math.max(5,6*scale));
-      pdf.text(`${placed.length}/${n}`,cx,cy+r*0.45,{align:'center'});
+      else { pdf.roundedRect(cx-r*1.35,cy-r*0.65,r*2.7,r*1.3,2,2,'FD'); }
+      setText(C_TM); pdf.setFont('times','bold'); pdf.setFontSize(Math.max(9,11*scale));
+      pdf.text(t.nom||'Table',cx,cy,{align:'center',baseline:'middle',maxWidth:r*1.9});
     });
-    // Légende
-    setText(C_TL); pdf.setFont('times','italic'); pdf.setFontSize(9);
-    pdf.text(`● ${USER.p1}    ● ${USER.p2}`,pw/2,ph-6,{align:'center'});
 
-    // ─── PAGES SUIVANTES : liste par table ───
+    // ─── PAGE 2+ : liste par table (cartes plus grandes) ───
     pdf.addPage();
-    drawHeader('Liste des invités par table');
-    const mm=16; let y=50;
-    const colW=(pw-2*mm)/3; let col=0; const yTop=50;
+    drawSectionTitle('Invités par table');
+    const mm=16; const yTop=32; let y=yTop;
+    const colW=(pw-2*mm)/2; let col=0;   // 2 colonnes (plus larges, texte plus grand)
 
     const ensureSpace=(needed)=>{
       if(y+needed>ph-12){
         col++;
-        if(col>2){ pdf.addPage(); drawHeader('Liste des invités par table'); col=0; }
+        if(col>1){ pdf.addPage(); drawSectionTitle('Invités par table'); col=0; }
         y=yTop;
       }
     };
     const drawTableBlock=(title,names,titleColor)=>{
-      const blockH=9+Math.max(names.length,1)*5.5+7;
+      const lineH=7.5, blockH=12+Math.max(names.length,1)*lineH+9;
       ensureSpace(blockH);
       const cx=mm+col*colW;
-      // Carte
-      setFill([255,250,252]); setDraw(C_SF); pdf.setLineWidth(0.4);
-      pdf.roundedRect(cx,y-5,colW-6,blockH,2,2,'FD');
-      setText(titleColor||C_PK); pdf.setFont('times','bold'); pdf.setFontSize(12);
-      pdf.text(title,cx+3,y+1); y+=7;
-      setText(C_TX); pdf.setFont('times','normal'); pdf.setFontSize(10);
-      if(names.length){ names.forEach(nm=>{ pdf.text('•  '+nm,cx+4,y); y+=5.5; }); }
-      else { setText(C_TL); pdf.setFont('times','italic'); pdf.text('(aucun invité placé)',cx+4,y); y+=5.5; }
-      y+=7;
+      setFill([255,250,252]); pdf.setDrawColor(C_SF[0],C_SF[1],C_SF[2]); pdf.setLineWidth(0.5);
+      pdf.roundedRect(cx,y-6,colW-8,blockH,3,3,'FD');
+      setText(titleColor||C_PK); pdf.setFont('times','bold'); pdf.setFontSize(16);
+      pdf.text(title,cx+4,y+2); y+=10;
+      setText(C_TX); pdf.setFont('times','normal'); pdf.setFontSize(13);
+      if(names.length){ names.forEach(nm=>{ pdf.text('•  '+nm,cx+6,y); y+=lineH; }); }
+      else { setText(C_TL); pdf.setFont('times','italic'); pdf.text('(aucun invité placé)',cx+6,y); y+=lineH; }
+      y+=11;
     };
 
     TABLES.forEach(t=>{
