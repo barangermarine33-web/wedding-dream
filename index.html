@@ -6140,22 +6140,99 @@ function assistMenu(cont){
   `;
 }
 
+// ════════════ BANQUE DE MENUS CURATÉS PAR RESTRICTION ════════════
+// Pools composés à la main, conformes à chaque régime. Le constructeur
+// pioche un élément par section pour produire 20+ menus distincts et cohérents.
+const RESTRIC_MENUS = {
+  vegan: {
+    cocktail: ['Verrines avocat-mangue','Houmous de betterave et gressins','Mini-brochettes de légumes grillés','Falafels miniatures','Gaspacho tomate-basilic','Toasts vegan à l\'avocat','Mini-wraps végétaux','Verrines quinoa-légumes','Guacamole et chips de maïs','Tartare de tomates et basilic'],
+    entree: ['Tartare d\'avocat et concombre','Carpaccio de betteraves multicolores','Millefeuille de légumes grillés','Velouté de petits pois à la menthe','Salade de lentilles et grenade','Houmous trio et crudités'],
+    plat: ['Risotto aux asperges et champignons (sans lait)','Curry de légumes au lait de coco et riz parfumé','Aubergine rôtie et polenta crémeuse végétale','Wok de légumes et tofu mariné','Légumes primeurs rôtis et boulgour aux herbes','Dahl de lentilles corail et riz basmati'],
+    dessert: ['Wedding cake vegan aux fruits rouges','Entremets chocolat vegan','Tarte vegan aux fruits rouges','Mousse au chocolat noir vegan','Panna cotta vegan au lait de coco','Salade de fruits frais de saison'],
+  },
+  vegetarien: {
+    cocktail: ['Gougères au fromage','Tartelettes chèvre-miel','Verrines tomate-mozzarella','Mini-quiches aux légumes','Brochettes mozzarella-tomate','Feuilletés au fromage','Mini-pizzas artisanales','Bruschettas tomate-basilic','Arancini croustillants','Verrines de gaspacho'],
+    entree: ['Burrata et tomates anciennes','Œuf parfait et crème de parmesan','Tarte fine aux légumes','Salade de chèvre chaud','Velouté de potimarron à la truffe','Asperges, œuf mollet et parmesan'],
+    plat: ['Ravioles ricotta-épinards, sauce aux morilles','Risotto à la truffe','Lasagnes aux légumes','Gnocchis crème de sauge et parmesan','Aubergine parmigiana','Wellington végétal aux champignons'],
+    dessert: ['Wedding cake citron-framboise','Pavlova aux fruits rouges','Cheesecake aux fruits rouges','Tiramisu','Fraisier à la vanille','Tarte au citron meringuée'],
+  },
+  sansgluten: {
+    cocktail: ['Verrines saumon-avocat','Brochettes crevettes-mangue','Verrines de crevettes','Mini-brochettes de poulet','Tartare de thon en verrine','Guacamole et bâtonnets de légumes','Verrines avocat-agrumes','Cuillères de tartare de saumon'],
+    entree: ['Tartare de saumon aux agrumes','Carpaccio de bœuf','Carpaccio de Saint-Jacques','Ceviche de daurade','Salade de gambas et avocat','Velouté de légumes de saison'],
+    plat: ['Filet de veau et purée truffée','Magret de canard et pommes grenailles','Filet de bar et riz sauvage','Suprême de volaille rôti et légumes glacés','Filet de bœuf et écrasé de pommes de terre','Dos de cabillaud et légumes primeurs'],
+    dessert: ['Fraisier sans gluten','Pavlova aux fruits rouges','Entremets chocolat sans gluten','Mousse au chocolat','Crème brûlée à la vanille','Sorbets et fruits frais'],
+  },
+  sanslactose: {
+    cocktail: ['Verrines avocat-crevettes','Gaspacho andalou','Brochettes de saumon fumé','Mini-brochettes de poulet','Tartare de tomates','Guacamole et chips','Verrines de légumes croquants'],
+    entree: ['Carpaccio de Saint-Jacques','Tartare de daurade','Ceviche de poisson','Salade de gambas et agrumes','Tartare de saumon à la mangue','Carpaccio de bœuf et roquette'],
+    plat: ['Suprême de volaille, sauce coco-citron','Filet de bar et riz pilaf','Filet de bœuf et pommes grenailles','Magret de canard, sauce au miel','Curry de légumes au lait de coco','Dos de cabillaud et légumes du soleil'],
+    dessert: ['Wedding cake sans lactose','Panna cotta au lait de coco','Mousse au chocolat végétale','Salade de fruits frais','Sorbets plein fruit','Tarte fine aux pommes'],
+  },
+  halal: {
+    cocktail: ['Brochettes de poulet halal','Verrines avocat-crevettes','Mini-pastillas','Feuilletés aux légumes','Mini-burgers halal','Houmous et pita','Samoussas aux légumes','Briouates au fromage'],
+    entree: ['Salade fleurie et burrata','Tartare de saumon','Salade méditerranéenne','Velouté de potimarron','Carpaccio de Saint-Jacques','Assiette de mezze'],
+    plat: ['Suprême de volaille halal et gratin dauphinois','Souris d\'agneau halal et purée de patates douces','Filet de veau halal et légumes glacés','Tajine de volaille halal et semoule','Brochettes de bœuf halal et riz parfumé','Couscous royal halal (volaille, agneau)'],
+    dessert: ['Wedding cake vanille-fruits rouges','Entremets à la fleur d\'oranger','Fraisier','Pavlova aux fruits rouges','Tarte au citron meringuée','Assortiment de pâtisseries orientales'],
+  },
+  casher: {
+    cocktail: ['Blinis de saumon','Verrines de légumes','Toasts de poisson fumé','Verrines avocat-poisson','Mini-brochettes de légumes','Houmous et crudités','Tartare de saumon en cuillère'],
+    entree: ['Carpaccio de bœuf casher','Tartare de saumon','Ceviche de daurade','Salade d\'agrumes et avocat','Gravlax de saumon','Velouté de légumes'],
+    plat: ['Filet de bœuf casher et haricots verts','Filet de bar rôti et riz pilaf','Volaille casher rôtie et pommes grenailles','Brochettes de bœuf casher et légumes grillés','Daurade rôtie et légumes du soleil','Suprême de volaille casher et purée'],
+    dessert: ['Mousse au chocolat parvé','Wedding cake parvé aux fruits rouges','Sorbets artisanaux','Salade de fruits frais','Tarte fine aux pommes parvé','Pavlova aux fruits rouges'],
+  },
+  'allergie-noix': {
+    cocktail: ['Mini-burgers','Verrines saumon-avocat','Brochettes mozzarella-tomate','Verrines crevettes-agrumes','Mini-quiches','Bruschettas tomate-basilic','Guacamole et chips','Toasts de chèvre frais'],
+    entree: ['Burrata et tomates anciennes','Saumon gravlax','Tartare de thon','Carpaccio de Saint-Jacques','Œuf parfait et crème de parmesan','Velouté de potimarron'],
+    plat: ['Filet de veau et purée maison','Magret de canard et gratin dauphinois','Filet de bar et riz sauvage','Suprême de volaille et légumes glacés','Filet de bœuf, sauce au poivre','Dos de cabillaud et beurre blanc'],
+    dessert: ['Wedding cake vanille-framboise','Pavlova aux fruits rouges','Crème brûlée','Tarte au citron meringuée','Fraisier','Tiramisu'],
+  }
+};
+
+// Mélange + sélection sans répétition pour composer un menu varié
+function buildRestrictionMenu(restric, format){
+  const pool = RESTRIC_MENUS[restric];
+  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+  const pickN = (arr,n) => { const c=[...arr]; const out=[]; while(out.length<n && c.length){ out.push(c.splice(Math.floor(Math.random()*c.length),1)[0]); } return out; };
+
+  const sections = [];
+  // Vin d'honneur / cocktail : 3 à 4 bouchées (sauf format assiette où on en met 3)
+  const nbBouchees = (format==='cocktail') ? 6 : 3;
+  sections.push({titre:'Vin d\'honneur', items: pickN(pool.cocktail, Math.min(nbBouchees, pool.cocktail.length))});
+
+  if(format==='cocktail'){
+    // Cocktail dînatoire : pas d'assiette, on étoffe les bouchées + mini-desserts
+    sections.push({titre:'Pièces salées', items: pickN(pool.entree.concat(pool.plat), 4)});
+    sections.push({titre:'Douceurs', items: pickN(pool.dessert, 3)});
+  } else {
+    sections.push({titre:'Entrée', items:[pick(pool.entree)]});
+    sections.push({titre:'Plat principal', items:[pick(pool.plat)]});
+    sections.push({titre:'Dessert', items:[pick(pool.dessert)]});
+  }
+  return {sections, boissons:null};
+}
+
 function assistGenerateMenu(){
   const saison = el('menu-saison').value;
   const budget = el('menu-budget').value;
   const format = el('menu-format').value;
   const invites = parseInt(el('menu-invites').value,10) || 80;
   const restrictions = Array.from(document.querySelectorAll('.menu-restric-cb:checked')).map(c=>c.value);
-  // Le style n'est plus un critère : on en tire un au hasard à chaque génération
-  // pour maximiser la variété tout en gardant des plats cohérents avec la saison.
-  const STYLES=['romantique','boheme','champetre','chic','moderne','minimaliste'];
-  const style = STYLES[Math.floor(Math.random()*STYLES.length)];
-  const boissons = 'classiques';
+
   sv('assist_menu_saison',saison); sv('assist_menu_budget',budget);
   sv('assist_menu_format',format); sv('assist_menu_invites',invites);
   sv('assist_menu_restric',restrictions);
 
-  const menu = MENU_ENGINE.generate({style,saison,budget,format,boissons,restrictions,invites});
+  let menu;
+  // Si UNE SEULE restriction est cochée et qu'on a une banque curatée pour elle,
+  // on pioche un menu soigné composé à la main (cohérence garantie).
+  if(restrictions.length===1 && typeof RESTRIC_MENUS!=='undefined' && RESTRIC_MENUS[restrictions[0]]){
+    menu = buildRestrictionMenu(restrictions[0], format);
+  } else {
+    // Sinon : moteur dynamique (style aléatoire pour varier).
+    const STYLES=['romantique','boheme','champetre','chic','moderne','minimaliste'];
+    const style = STYLES[Math.floor(Math.random()*STYLES.length)];
+    menu = MENU_ENGINE.generate({style,saison,budget,format,boissons:'classiques',restrictions,invites});
+  }
 
   const FORMAT_LABELS = {assiette:'Service à l\'assiette',buffet:'Buffet',cocktail:'Cocktail dînatoire',foodtruck:'Food truck',garden:'Garden party'};
   const BUDGET_LABELS = {eco:'Économique',standard:'Standard',luxe:'Luxe'};
