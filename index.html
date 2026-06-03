@@ -983,56 +983,18 @@ async function doForgotPassword(){
   const link=document.getElementById('forgot-link');
   if(link){link.textContent='Envoi en cours...';link.style.pointerEvents='none';link.style.opacity='0.6';}
   try{
-    const {sendPasswordResetEmail, fetchSignInMethodsForEmail}=window.firebaseAuthLib;
+    const {sendPasswordResetEmail}=window.firebaseAuthLib;
 
-    // ─── ÉTAPE 1 : Vérifier que le compte existe vraiment dans Firebase Auth ───
-    // sendPasswordResetEmail peut retourner un "succès" silencieux même pour
-    // un email qui n'a pas de compte (sécurité Firebase pour pas révéler
-    // qui est inscrit). Du coup l'utilisateur ne reçoit rien et croit que
-    // ça marche. On vérifie d'abord avec fetchSignInMethodsForEmail.
-    if(fetchSignInMethodsForEmail){
-      try{
-        const methods = await fetchSignInMethodsForEmail(window.firebaseAuth, email);
-        console.log('[doForgotPassword] sign-in methods for', email, ':', methods);
-        if(!methods || methods.length===0){
-          err.style.background='#fff0f0';err.style.borderColor='#ffccd0';err.style.color='#c43a3a';
-          err.innerHTML='⚠️ Aucun compte trouvé avec <b>'+email+'</b>.<br>'+
-            '<span style="font-size:11px;">Vérifie l\'orthographe ou crée un compte avec "Créer un compte".</span>';
-          err.style.display='block';
-          if(link){link.textContent='Mot de passe oublié ?';link.style.pointerEvents='auto';link.style.opacity='1';}
-          return;
-        }
-        // Si le compte existe mais n'a pas de méthode 'password' (compte créé via
-        // Google par exemple), prévenir.
-        if(methods.indexOf('password')<0 && methods.length>0){
-          err.style.background='#fff8e1';err.style.borderColor='#ffd700';err.style.color='#8a6010';
-          err.innerHTML='⚠️ Ce compte n\'utilise pas de mot de passe (méthode : '+methods.join(', ')+').<br>'+
-            '<span style="font-size:11px;">Connecte-toi avec cette méthode au lieu d\'utiliser le mot de passe.</span>';
-          err.style.display='block';
-          if(link){link.textContent='Mot de passe oublié ?';link.style.pointerEvents='auto';link.style.opacity='1';}
-          return;
-        }
-      }catch(checkErr){
-        // Si la vérification échoue, on continue quand même avec l'envoi
-        // (peut-être que fetchSignInMethodsForEmail est désactivé côté projet).
-        console.warn('[doForgotPassword] fetchSignInMethodsForEmail failed (continuing anyway):', checkErr.code, checkErr.message);
-      }
-    }
+    // NOTE : on n'utilise PLUS fetchSignInMethodsForEmail pour vérifier le compte.
+    // Depuis la protection "Email Enumeration Protection" (activée par défaut
+    // sur Firebase), cette fonction renvoie toujours une liste vide même pour
+    // un compte existant — ce qui bloquait l'envoi à tort. On laisse donc
+    // Firebase gérer l'envoi directement (il ignore en silence les emails
+    // sans compte, ce qui est le comportement sécurisé standard).
 
-    // ─── ÉTAPE 2 : Envoi de l'email de reset ───
-    let continueUrl;
-    try{
-      // Origine actuelle de l'app (sert de page de retour après reset)
-      continueUrl=window.location.origin+window.location.pathname;
-    } catch(_){
-      continueUrl='https://wedding-dream-eb422.firebaseapp.com';
-    }
-    const actionCodeSettings={
-      url: continueUrl,
-      handleCodeInApp: false
-    };
-    console.log('[doForgotPassword] Sending reset to', email, 'with continueUrl:', continueUrl);
-    await sendPasswordResetEmail(window.firebaseAuth, email, actionCodeSettings);
+    // ─── Envoi de l'email de réinitialisation ───
+    console.log('[doForgotPassword] Sending reset to', email);
+    await sendPasswordResetEmail(window.firebaseAuth, email);
     console.log('[doForgotPassword] sendPasswordResetEmail OK (Firebase accepted)');
     err.style.background='#f0fff0';err.style.borderColor='#c8e6c9';err.style.color='#2e7d32';
     err.innerHTML='✓ Email de réinitialisation envoyé à <b>'+email+'</b>.<br>'+
