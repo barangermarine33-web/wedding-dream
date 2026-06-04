@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-<title>Wedding Dream</title>
+<title>Weddilya</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f6cddf" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a0818" media="(prefers-color-scheme: dark)">
@@ -11,7 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,700;1,400&family=Josefin+Sans:wght@300;400&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
 
@@ -22,8 +22,8 @@
   --sab:env(safe-area-inset-bottom,0px);
   --sal:env(safe-area-inset-left,0px);
   /* Light theme — contraste augmenté sur les roses pâles, doré conservé */
-  --bg:#fbe6ee;    /* fond général : rose pâle plus marqué (avant #fff9fb très blanc) */
-  --bg2:#f5d4e0;   /* fond secondaire : plus rosé (avant #fef2f6) */
+  --bg:#fdf8f5;    /* fond général : blanc chaud */
+  --bg2:#fdf8f5;   /* fond secondaire : blanc chaud */
   --bg3:#fff;      /* blanc pur conservé pour les cartes */
   --text:#2d0a18;  /* texte principal : presque bordeaux pour contraste max (avant #3e1828) */
   --text2:#5a1a30; /* texte secondaire (avant #7a3a52) */
@@ -64,7 +64,7 @@
 /* ── OVERSCROLL ── */
 html{overscroll-behavior-y:none;}
 body{overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;background:var(--bg);font-family:Lora,serif;color:var(--text);min-height:100vh;padding-top:var(--sat);padding-left:var(--sal);padding-right:var(--sar);}
-body{background:#fff9fb;font-family:Lora,serif;color:#3e1828;min-height:100vh;}
+body{background:#fdf8f5;font-family:Lora,serif;color:#3e1828;min-height:100vh;}
 
 /* ── RESPONSIVE DESKTOP ──
    Sur PC, on garde la page pleine largeur (comme un site normal).
@@ -113,8 +113,8 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
 </style>
 </head>
 <body>
-<div id="auth-screen" style="min-height:100vh;background:linear-gradient(160deg,var(--bg),var(--bg2) 40%,var(--bg3));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;padding-top:calc(var(--sat)+20px);">
-  <div style="font-family:Playfair Display,serif;font-size:42px;font-weight:700;text-align:center;" class="gold-text">Wedding Dream</div>
+<div id="auth-screen" style="min-height:100vh;background:#fdf8f5;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;padding-top:calc(var(--sat)+20px);">
+  <div style="font-family:'Josefin Sans',sans-serif;font-size:32px;font-weight:300;letter-spacing:6px;text-transform:uppercase;text-align:center;color:#d4607a;">Weddilya</div>
   <div style="margin:12px 0;line-height:1;display:flex;justify-content:center;">
     <svg width="110" height="76" viewBox="0 0 110 76" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -186,7 +186,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
 <div id="app" style="display:none;">
   <div id="app-header" style="background:var(--bg2);border-bottom:1.5px solid var(--border);padding:12px 14px;position:sticky;top:0;z-index:200;padding-top:calc(var(--sat) + 12px);">
     <div style="position:relative;text-align:center;">
-      <div class="gold-text" style="font-family:Playfair Display,serif;font-size:26px;font-weight:700;">Wedding Dream</div>
+      <div style="font-family:'Josefin Sans',sans-serif;font-size:22px;font-weight:300;letter-spacing:5px;text-transform:uppercase;color:#d4607a;">Weddilya</div>
       <div id="hdr-sub" style="font-size:13px;font-style:italic;color:#b07a90;margin-top:2px;"></div>
       <div id="power-wrap" style="position:absolute;top:2px;right:0;">
         <button onclick="toggleMenu()" style="background:#ffffff;border:1.5px solid #f5d5e0;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
@@ -467,7 +467,7 @@ function appModal(opts){
         // Header
         '<div style="background:'+headerBg+';padding:14px 18px;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;">'+
           (icon ? '<span style="font-size:18px;">'+icon+'</span>' : '')+
-          '<span>'+(opts.title || 'Wedding Dream')+'</span>'+
+          '<span>'+(opts.title || 'Weddilya')+'</span>'+
         '</div>'+
         // Body
         '<div style="padding:16px 18px;color:'+tx+';font-size:14px;line-height:1.45;">'+
@@ -1137,7 +1137,7 @@ function updateHeader(){
   const ds=USER.wDate?new Date(USER.wDate).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
   el('hdr-sub').innerHTML=`Mariage de <strong style="color:${tx}">${h(USER.p1)}</strong> &amp; <strong style="color:${tx}">${h(USER.p2)}</strong>${ds?` — <span style="color:${pk}">${ds}</span>`:''}`;
   const slug=(USER.email.split('@')[0]||'user').replace(/[^a-z0-9]/gi,'-');
-  window._shareLink=`https://wedding-dream.app/album/${slug}`;
+  window._shareLink=`https://weddilya.fr/album/${slug}`;
 }
 
 function startCountdown(){
@@ -5963,7 +5963,7 @@ function pinterestUrl(query){
 function renderAssistant(){
   el('page-7').innerHTML = `
     <div class="card" style="padding:18px 16px;margin-bottom:16px;background:linear-gradient(135deg,${sf},#fff);">
-      <h2 style="font-family:Playfair Display,Georgia,serif;font-size:22px;color:${tm};margin:0 0 6px;text-align:center;font-weight:700;">✨ Assistant Wedding Dream</h2>
+      <h2 style="font-family:Playfair Display,Georgia,serif;font-size:22px;color:${tm};margin:0 0 6px;text-align:center;font-weight:700;">✨ Assistant Weddilya</h2>
       <p style="text-align:center;font-size:12px;color:${tl};margin:0;font-style:italic;line-height:1.5;">Tous les conseils dont tu as besoin pour ton mariage.</p>
     </div>
 
@@ -7335,7 +7335,7 @@ window.addEventListener('load', async function(){
     const authScreen = document.getElementById('auth-screen');
     if(authScreen){
       authScreen.innerHTML = `
-        <div style="font-family:Playfair Display,serif;font-size:36px;font-weight:700;text-align:center;margin-bottom:24px;" class="gold-text">Wedding Dream</div>
+        <div style="font-family:'Josefin Sans',sans-serif;font-size:28px;font-weight:300;letter-spacing:6px;text-transform:uppercase;text-align:center;color:#d4607a;margin-bottom:24px;">Weddilya</div>
         <div style="background:#fff;border-radius:18px;padding:28px 24px;width:100%;max-width:380px;box-shadow:0 4px 24px rgba(154,40,72,0.12);">
           <div style="font-family:Lora,serif;font-size:18px;font-weight:700;color:#3e1828;margin-bottom:6px;text-align:center;">Nouveau mot de passe</div>
           <div style="font-size:13px;color:#8a4a60;margin-bottom:20px;text-align:center;font-family:Lora,serif;">Choisis un nouveau mot de passe pour ton compte.</div>
@@ -13945,7 +13945,7 @@ function sendCakeOrder(){
 
 function shareCake(via){
   const data=getCakeData();
-  const txt=`🎂 Mon gâteau de mariage : ${data.etages} étage${data.etages>1?'s':''} ${data.forme||'rond'}, ${(data.layers[0]||{}).parfum||'Vanille'} - créé avec Wedding Dream ✨`;
+  const txt=`🎂 Mon gâteau de mariage : ${data.etages} étage${data.etages>1?'s':''} ${data.forme||'rond'}, ${(data.layers[0]||{}).parfum||'Vanille'} - créé avec Weddilya ✨`;
   if(via==='whatsapp'){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
   else if(via==='email'){window.location.href='mailto:?subject='+encodeURIComponent('Mon gâteau de mariage')+'&body='+encodeURIComponent(txt);}
 }
