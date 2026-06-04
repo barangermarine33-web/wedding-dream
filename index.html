@@ -100,8 +100,8 @@ body{background:#fdf8f5;font-family:Lora,serif;color:#3e1828;min-height:100vh;}
 .inp:focus{border-color:var(--accent);}
 .lbl{display:block;font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;}
 .card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;margin-bottom:12px;}
-.tab-btn{border:1.5px solid var(--gold);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;font-family:Lora,serif;cursor:pointer;white-space:nowrap;color:var(--gold2);background:var(--bg3) !important;transition:all .2s;min-height:36px;}
-.tab-btn.active{background:linear-gradient(135deg,var(--gold),var(--gold2)) !important;color:#fff !important;border-color:transparent !important;box-shadow:0 2px 8px rgba(180,140,40,0.30) !important;}
+.tab-btn{border:none;border-bottom:2px solid transparent;border-radius:0;padding:7px 14px 6px;font-size:12px;font-weight:700;font-family:Lora,serif;cursor:pointer;white-space:nowrap;color:#c8809a;background:transparent !important;transition:all .2s;min-height:36px;}
+.tab-btn.active{background:transparent !important;color:#b84060 !important;border-bottom:2px solid #b84060 !important;box-shadow:none !important;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .gold-text{background:linear-gradient(135deg,#a8872e,#c9a84c 45%,#96711a);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 /* Native-like select */
@@ -232,6 +232,19 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
       <button class="btn-sec" onclick="closeSettings()" style="flex:1;">Annuler</button>
     </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">
+    <div style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;color:#3e1828;font-family:Lora,serif;margin-bottom:10px;">👫 Partenaire</div>
+      <div id="partner-status" style="font-size:12px;color:#8a4a60;margin-bottom:10px;font-family:Lora,serif;font-style:italic;">Chargement...</div>
+      <div id="partner-invite-wrap">
+        <input class="inp" id="partner-email" type="email" placeholder="Email de votre partenaire" style="margin-bottom:8px;">
+        <div id="partner-err" style="display:none;padding:8px 12px;border-radius:8px;font-size:12px;font-family:Lora,serif;margin-bottom:8px;border:1px solid;"></div>
+        <button class="btn" onclick="sendPartnerInvite()" style="width:100%;font-size:13px;">Envoyer l'invitation</button>
+      </div>
+      <div id="partner-revoke-wrap" style="display:none;">
+        <button onclick="revokePartnerAccess()" style="width:100%;background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:11px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;">Révoquer l'accès</button>
+      </div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">
     <button onclick="doLogout()" style="width:100%;background:var(--bg2);color:var(--accent);border:1.5px solid var(--border);border-radius:11px;padding:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;margin-bottom:8px;">
       🔓 Se déconnecter
     </button>
@@ -252,7 +265,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
 <script type="module">
 
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, addDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import {
     getAuth,
     createUserWithEmailAndPassword,
@@ -287,7 +300,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
   window.firebaseDB = db;
   window.firebaseAuth = auth;
 
-  window.firebaseLib = { collection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, addDoc, serverTimestamp };
+  window.firebaseLib = { collection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, addDoc, deleteDoc, serverTimestamp };
   window.firebaseAuthLib = {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -358,7 +371,7 @@ async function _flushFirestoreSync(){
       const sess = localStorage.getItem('sess');
       const email = sess ? JSON.parse(sess) : null;
       if(!email) continue;
-      const docId = _emailToDocId(email);
+      const docId = window._activeDataDocId || _emailToDocId(email);
       // Stockage : userData/{docId} = un seul document avec tous les items en champs
       // (plus simple que sub-collection items et économise les requêtes)
       await setDoc(doc(window.firebaseDB, 'userData', docId), {
@@ -394,7 +407,13 @@ async function loadUserDataFromFirestore(email){
   if(!window.firebaseDB || !window.firebaseLib || !email) return false;
   try{
     const {doc, getDoc} = window.firebaseLib;
-    const docId = _emailToDocId(email);
+    let docId = _emailToDocId(email);
+    // Vérifier si cet utilisateur est un partenaire lié à un autre compte
+    const mySnap = await getDoc(doc(window.firebaseDB, 'userData', docId));
+    if(mySnap.exists() && mySnap.data()._sharedOwnerDocId){
+      docId = mySnap.data()._sharedOwnerDocId; // lire les données du propriétaire
+    }
+    window._activeDataDocId = docId; // mémoriser pour les écritures
     const snap = await getDoc(doc(window.firebaseDB, 'userData', docId));
     if(!snap.exists()) return false;
     const data = snap.data() || {};
@@ -1018,6 +1037,174 @@ async function doForgotPassword(){
   if(link){link.textContent='Mot de passe oublié ?';link.style.pointerEvents='auto';link.style.opacity='1';}
 }
 
+// ── PARTAGE PARTENAIRE ────────────────────────────────────────────────────────
+
+// Génère un token aléatoire
+function _genToken(){
+  return Math.random().toString(36).substring(2,10)+Math.random().toString(36).substring(2,10);
+}
+
+// Traite un token d'invitation en attente après login
+async function _processInviteToken(email){
+  let token = null;
+  try{ token = localStorage.getItem('_pendingInviteToken'); }catch{}
+  if(!token || !window.firebaseDB || !window.firebaseLib) return;
+  try{
+    localStorage.removeItem('_pendingInviteToken');
+    const {doc, getDoc, setDoc} = window.firebaseLib;
+    const invSnap = await getDoc(doc(window.firebaseDB, 'invitations', token));
+    if(!invSnap.exists()){ return; }
+    const inv = invSnap.data();
+    // Vérifier que l'invitation est valide et destinée à cet email
+    if(inv.status !== 'pending') return;
+    if(Date.now() - inv.createdAt > 7*24*60*60*1000) return; // expiré
+    if(inv.partnerEmail && inv.partnerEmail !== email.toLowerCase()) return;
+    const myDocId = _emailToDocId(email);
+    // Lier le compte partenaire au compte owner
+    await setDoc(doc(window.firebaseDB, 'userData', myDocId), {
+      _sharedOwnerEmail: inv.ownerEmail,
+      _sharedOwnerDocId: inv.ownerDocId
+    }, {merge: true});
+    // Mettre à jour le compte owner
+    await setDoc(doc(window.firebaseDB, 'userData', inv.ownerDocId), {
+      _partnerEmail: email,
+      _pendingPartnerEmail: null,
+      _inviteToken: token
+    }, {merge: true});
+    // Marquer l'invitation comme acceptée
+    await setDoc(doc(window.firebaseDB, 'invitations', token), {status:'accepted'}, {merge:true});
+    window._activeDataDocId = inv.ownerDocId;
+    await appAlert('✅ Invitation acceptée ! Vous accédez maintenant à l\'espace partagé.');
+  } catch(e){ console.error('_processInviteToken:', e); }
+}
+
+// Charge le statut partenaire dans la modale settings
+async function loadPartnerStatus(){
+  const statusEl = document.getElementById('partner-status');
+  const inviteWrap = document.getElementById('partner-invite-wrap');
+  const revokeWrap = document.getElementById('partner-revoke-wrap');
+  if(!statusEl) return;
+  if(!window.firebaseDB || !window.firebaseLib || !USER){
+    statusEl.textContent = 'Non disponible hors connexion.'; return;
+  }
+  try{
+    const {doc, getDoc} = window.firebaseLib;
+    const docId = _emailToDocId(USER.email);
+    const snap = await getDoc(doc(window.firebaseDB, 'userData', docId));
+    const data = snap.exists() ? snap.data() : {};
+    const partnerEmail = data._partnerEmail || null;
+    const pendingEmail = data._pendingPartnerEmail || null;
+    if(partnerEmail){
+      statusEl.innerHTML = '✅ <b>'+partnerEmail+'</b> a accès à votre espace.';
+      inviteWrap.style.display = 'none';
+      revokeWrap.style.display = 'block';
+    } else if(pendingEmail){
+      statusEl.innerHTML = '⏳ Invitation envoyée à <b>'+pendingEmail+'</b>, en attente d\'acceptation.';
+      inviteWrap.style.display = 'none';
+      revokeWrap.style.display = 'block';
+    } else {
+      statusEl.textContent = 'Aucun partenaire pour l\'instant.';
+      inviteWrap.style.display = 'block';
+      revokeWrap.style.display = 'none';
+    }
+  } catch(e){
+    statusEl.textContent = 'Impossible de charger le statut.';
+  }
+}
+
+// Envoie une invitation par email via EmailJS (ou lien direct)
+async function sendPartnerInvite(){
+  const emailInput = document.getElementById('partner-email');
+  const errEl = document.getElementById('partner-err');
+  const email = (emailInput ? emailInput.value.trim() : '').toLowerCase();
+  function showErr(msg){ errEl.style.background='#fff0f0';errEl.style.borderColor='#ffccd0';errEl.style.color='#c43a3a';errEl.textContent=msg;errEl.style.display='block'; }
+  function showOk(msg){ errEl.style.background='#f0fff0';errEl.style.borderColor='#c8e6c9';errEl.style.color='#2e7d32';errEl.textContent=msg;errEl.style.display='block'; }
+  errEl.style.display='none';
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showErr('Adresse email invalide.'); return; }
+  if(email === USER.email){ showErr('Vous ne pouvez pas vous inviter vous-même.'); return; }
+  if(!window.firebaseDB || !window.firebaseLib){ showErr('Service indisponible.'); return; }
+  try{
+    const {doc, setDoc, getDoc} = window.firebaseLib;
+    const token = _genToken();
+    const docId = _emailToDocId(USER.email);
+    // Stocker l'invitation dans Firestore
+    await setDoc(doc(window.firebaseDB, 'invitations', token), {
+      ownerEmail: USER.email,
+      ownerDocId: docId,
+      partnerEmail: email,
+      createdAt: Date.now(),
+      status: 'pending'
+    });
+    // Mettre à jour userData de l'owner avec l'email en attente
+    await setDoc(doc(window.firebaseDB, 'userData', docId), {
+      _pendingPartnerEmail: email,
+      _inviteToken: token
+    }, {merge: true});
+    // Construire le lien d'invitation
+    const inviteUrl = 'https://barangermarine33-web.github.io/wedding-dream/?invite='+token;
+    // Ouvrir le client email avec le lien
+    const subject = encodeURIComponent(USER.p1 ? USER.p1+' vous invite sur Weddilya' : 'Invitation sur Weddilya');
+    const body = encodeURIComponent(
+      'Bonjour,\n\n'+
+      (USER.p1 || 'Votre partenaire')+' vous invite à accéder à l\'application Weddilya pour préparer votre mariage ensemble.\n\n'+
+      'Cliquez sur ce lien pour créer votre compte et rejoindre l\'espace partagé :\n'+
+      inviteUrl+'\n\n'+
+      'Ce lien est valable 7 jours.\n\nÀ bientôt sur Weddilya !'
+    );
+    window.location.href = 'mailto:'+email+'?subject='+subject+'&body='+body;
+    showOk('✓ Email préparé ! Envoyez-le depuis votre messagerie.');
+    setTimeout(()=>loadPartnerStatus(), 1500);
+  } catch(e){
+    console.error('sendPartnerInvite:', e);
+    showErr('Une erreur est survenue. Réessaie.');
+  }
+}
+
+// Révoque l'accès du partenaire
+async function revokePartnerAccess(){
+  if(!await appConfirm('Révoquer l\'accès de votre partenaire ? Il ne pourra plus accéder à votre espace.')) return;
+  if(!window.firebaseDB || !window.firebaseLib) return;
+  try{
+    const {doc, setDoc, getDoc, deleteDoc} = window.firebaseLib;
+    const docId = _emailToDocId(USER.email);
+    const snap = await getDoc(doc(window.firebaseDB, 'userData', docId));
+    const data = snap.exists() ? snap.data() : {};
+    const partnerEmail = data._partnerEmail;
+    const token = data._inviteToken;
+    // Supprimer le lien côté partenaire
+    if(partnerEmail){
+      const partnerDocId = _emailToDocId(partnerEmail);
+      await setDoc(doc(window.firebaseDB, 'userData', partnerDocId), {
+        _sharedOwnerEmail: null, _sharedOwnerDocId: null
+      }, {merge: true});
+    }
+    // Supprimer l'invitation
+    if(token){ try{ await deleteDoc(doc(window.firebaseDB, 'invitations', token)); }catch{} }
+    // Nettoyer userData owner
+    await setDoc(doc(window.firebaseDB, 'userData', docId), {
+      _partnerEmail: null, _pendingPartnerEmail: null, _inviteToken: null
+    }, {merge: true});
+    loadPartnerStatus();
+  } catch(e){
+    console.error('revokePartnerAccess:', e);
+    await appAlert('Erreur lors de la révocation. Réessaie.');
+  }
+}
+
+// Vérifie au login si l'utilisateur est un partenaire invité
+async function checkPartnerLink(email){
+  if(!window.firebaseDB || !window.firebaseLib || !email) return null;
+  try{
+    const {doc, getDoc} = window.firebaseLib;
+    const docId = _emailToDocId(email);
+    const snap = await getDoc(doc(window.firebaseDB, 'userData', docId));
+    if(!snap.exists()) return null;
+    const data = snap.data();
+    if(data._sharedOwnerDocId) return data._sharedOwnerDocId;
+    return null;
+  } catch(e){ return null; }
+}
+
 async function doConfirmReset(oobCode){
   const p1 = document.getElementById('new-pass-1').value;
   const p2 = document.getElementById('new-pass-2').value;
@@ -1155,7 +1342,7 @@ function startCountdown(){
 
 function buildTabs(){
   const bar=el('tabs-bar');
-  bar.innerHTML=TABS.map((t,i)=>`<button class="tab-btn${i===0?' active':''}" onclick="showTab(${i})" style="${i===0?'background:linear-gradient(135deg,#c9a84c,#a8872e);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(180,140,40,0.30);':'background:#fff;color:#a07828;border-color:#c9a84c;'}">${h(t)}</button>`).join('');
+  bar.innerHTML=TABS.map((t,i)=>`<button class="tab-btn${i===0?' active':''}" onclick="showTab(${i})">${h(t)}</button>`).join('');
 }
 function showTab(i){
   const prev=currentTab;
@@ -1168,6 +1355,7 @@ function showTab(i){
     }
   });
   document.querySelectorAll('#tabs-bar .tab-btn').forEach((b,j)=>{
+    b.style.cssText='';
     b.classList.toggle('active',j===i);
     b.style.background='';b.style.color='';b.style.borderColor='';b.style.boxShadow='';
   });
@@ -1216,6 +1404,7 @@ function closeMenuOutside(e){
 }
 
 function openSettings(){history.pushState({settings:true},'',location.href);window._settingsOpen=true;
+  loadPartnerStatus();
   el('set-p1').value=USER.p1; el('set-p2').value=USER.p2; el('set-date').value=USER.wDate||'';
   el('set-pass').value=''; el('set-pass2').value=''; el('set-pass2-wrap').style.display='none';
   el('set-err').style.display='none'; el('settings-modal').style.display='block';
@@ -7330,6 +7519,23 @@ window.addEventListener('load', async function(){
 
   // ── GESTION LIEN DE RÉINITIALISATION MOT DE PASSE ──────────────────────────
   const urlParams = new URLSearchParams(window.location.search);
+
+  // ── GESTION LIEN D'INVITATION PARTENAIRE ──────────────────────────────────
+  const inviteToken = urlParams.get('invite');
+  if(inviteToken){
+    // Stocker le token pour l'utiliser après inscription/connexion
+    try{ localStorage.setItem('_pendingInviteToken', inviteToken); }catch{}
+    // Afficher un message sur l'écran de connexion
+    setTimeout(()=>{
+      const errEl = document.getElementById('err-login');
+      if(errEl){
+        errEl.style.background='#f0f8ff';errEl.style.borderColor='#b0d4f0';errEl.style.color='#1a5a8a';
+        errEl.textContent='💌 Invitation reçue ! Créez un compte ou connectez-vous pour rejoindre l\'espace partagé.';
+        errEl.style.display='block';
+      }
+    }, 500);
+  }
+
   if(urlParams.get('mode') === 'resetPassword'){
     const oobCode = urlParams.get('oobCode');
     const authScreen = document.getElementById('auth-screen');
@@ -7357,6 +7563,7 @@ window.addEventListener('load', async function(){
     if(u){
       // Charger les données Firestore avant de démarrer (sync entre appareils)
       try { await loadUserDataFromFirestore(sess); } catch(_){}
+      await _processInviteToken(u.email);
       startApp(u);
       return;
     }
