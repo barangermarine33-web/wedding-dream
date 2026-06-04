@@ -993,12 +993,17 @@ async function doForgotPassword(){
     // sans compte, ce qui est le comportement sécurisé standard).
 
     // ─── Envoi de l'email de réinitialisation ───
+    // actionCodeSettings force l'URL d'action Firebase correcte
+    // (évite un éventuel continueUrl invalide dans le template Firebase)
+    const actionCodeSettings = {
+      url: 'https://wedding-dream-eb422.firebaseapp.com',
+      handleCodeInApp: false
+    };
     console.log('[doForgotPassword] Sending reset to', email);
-    await sendPasswordResetEmail(window.firebaseAuth, email);
+    await sendPasswordResetEmail(window.firebaseAuth, email, actionCodeSettings);
     console.log('[doForgotPassword] sendPasswordResetEmail OK (Firebase accepted)');
     err.style.background='#f0fff0';err.style.borderColor='#c8e6c9';err.style.color='#2e7d32';
-    err.innerHTML='✓ Un email de réinitialisation a été envoyé à <b>'+email+'</b>.<br>'+
-      '<span style="font-size:11px;">Pense à vérifier tes spams si tu ne le vois pas tout de suite.</span>';
+    err.innerHTML='✓ Email envoyé, vérifie dans tes spams.';
     err.style.display='block';
   } catch(e){
     console.error('[doForgotPassword] code:', e.code, '| message:', e.message);
