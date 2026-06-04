@@ -996,7 +996,7 @@ async function doForgotPassword(){
 
     // ─── Envoi de l'email de réinitialisation ───
     console.log('[doForgotPassword] Sending reset to', email);
-    const actionCodeSettings={url:'https://barangermarine33-web.github.io/wedding-dream/',handleCodeInApp:false};
+    const actionCodeSettings={url:'https://barangermarine33-web.github.io/wedding-dream/',handleCodeInApp:true};
     await sendPasswordResetEmail(window.firebaseAuth, email, actionCodeSettings);
     console.log('[doForgotPassword] sendPasswordResetEmail OK (Firebase accepted)');
     err.style.background='#f0fff0';err.style.borderColor='#c8e6c9';err.style.color='#2e7d32';
@@ -1910,7 +1910,7 @@ function renderTablePlan(){
     <button class="btn" onclick="addTable()" style="font-size:12px;padding:7px 12px;">+ Table</button>
     <button class="btn" onclick="openAutoPlaceModal()" style="background:linear-gradient(135deg,#d4607a,#8a4a60);font-size:12px;padding:7px 12px;">✨ Placement auto</button>
     <button class="btn-sec" onclick="resetPlacement()" style="color:#c43a3a;border-color:#c43a3a55;font-size:12px;padding:7px 12px;">↺ Réinitialiser</button>
-    <button class="btn-sec" onclick="exportPlanPDF()" style="font-size:12px;padding:7px 12px;">📄 PDF</button>
+    <button class="btn-sec" onclick="exportPlanPDF()" style="font-size:12px;padding:7px 12px;">PDF</button>
     <div style="display:flex;gap:6px;margin-left:auto;">
       <button onclick="tpZoom(0.2)" style="background:#fff;border:1.5px solid ${br};border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:18px;font-weight:700;color:${pk};">+</button>
       <button onclick="tpZoom(-0.2)" style="background:#fff;border:1.5px solid ${br};border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:18px;font-weight:700;color:${pk};">-</button>
