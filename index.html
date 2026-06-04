@@ -267,7 +267,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
 
 
   const firebaseConfig = {
-    apiKey: "AIzaSyAkFVPcIYIeSJc2uCbpyR9GNuQpVMow4WA",
+    apiKey: "AIzaSyC8Hn86vWDfrMLQAS_LTMFNt-SUdoTi_ic",
     authDomain: "wedding-dream-eb422.firebaseapp.com",
     projectId: "wedding-dream-eb422",
     storageBucket: "wedding-dream-eb422.firebasestorage.app",
@@ -993,14 +993,8 @@ async function doForgotPassword(){
     // sans compte, ce qui est le comportement sécurisé standard).
 
     // ─── Envoi de l'email de réinitialisation ───
-    // actionCodeSettings force l'URL d'action Firebase correcte
-    // (évite un éventuel continueUrl invalide dans le template Firebase)
-    const actionCodeSettings = {
-      url: 'https://wedding-dream-eb422.firebaseapp.com',
-      handleCodeInApp: false
-    };
     console.log('[doForgotPassword] Sending reset to', email);
-    await sendPasswordResetEmail(window.firebaseAuth, email, actionCodeSettings);
+    await sendPasswordResetEmail(window.firebaseAuth, email);
     console.log('[doForgotPassword] sendPasswordResetEmail OK (Firebase accepted)');
     err.style.background='#f0fff0';err.style.borderColor='#c8e6c9';err.style.color='#2e7d32';
     err.innerHTML='✓ Email envoyé, vérifie dans tes spams.';
