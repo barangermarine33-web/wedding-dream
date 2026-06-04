@@ -258,6 +258,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
+    confirmPasswordReset,
     fetchSignInMethodsForEmail,
     signOut,
     onAuthStateChanged,
@@ -291,6 +292,7 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
+    confirmPasswordReset,
     fetchSignInMethodsForEmail,
     signOut,
     onAuthStateChanged
@@ -994,7 +996,8 @@ async function doForgotPassword(){
 
     // ─── Envoi de l'email de réinitialisation ───
     console.log('[doForgotPassword] Sending reset to', email);
-    await sendPasswordResetEmail(window.firebaseAuth, email);
+    const actionCodeSettings={url:'https://barangermarine33-web.github.io/wedding-dream/',handleCodeInApp:false};
+    await sendPasswordResetEmail(window.firebaseAuth, email, actionCodeSettings);
     console.log('[doForgotPassword] sendPasswordResetEmail OK (Firebase accepted)');
     err.style.background='#f0fff0';err.style.borderColor='#c8e6c9';err.style.color='#2e7d32';
     err.innerHTML='✓ Email envoyé, vérifie dans tes spams.';
@@ -1013,6 +1016,31 @@ async function doForgotPassword(){
     err.style.display='block';
   }
   if(link){link.textContent='Mot de passe oublié ?';link.style.pointerEvents='auto';link.style.opacity='1';}
+}
+
+async function doConfirmReset(oobCode){
+  const p1 = document.getElementById('new-pass-1').value;
+  const p2 = document.getElementById('new-pass-2').value;
+  const msg = document.getElementById('reset-msg');
+  function showErr(txt){
+    msg.style.background='#fff0f0';msg.style.borderColor='#ffccd0';msg.style.color='#c43a3a';
+    msg.textContent=txt;msg.style.display='block';
+  }
+  if(!p1||p1.length<6){showErr('Le mot de passe doit faire au moins 6 caractères.');return;}
+  if(p1!==p2){showErr('Les deux mots de passe ne correspondent pas.');return;}
+  try{
+    const {confirmPasswordReset} = window.firebaseAuthLib;
+    await confirmPasswordReset(window.firebaseAuth, oobCode, p1);
+    msg.style.background='#f0fff0';msg.style.borderColor='#c8e6c9';msg.style.color='#2e7d32';
+    msg.textContent='✓ Mot de passe mis à jour ! Tu peux te connecter.';msg.style.display='block';
+    setTimeout(()=>{ window.location.href='https://barangermarine33-web.github.io/wedding-dream/'; }, 2000);
+  } catch(e){
+    console.error('confirmPasswordReset:', e.code, e.message);
+    if(e.code==='auth/expired-action-code') showErr('Ce lien a expiré. Redemande un email de réinitialisation.');
+    else if(e.code==='auth/invalid-action-code') showErr('Lien invalide ou déjà utilisé. Redemande un email.');
+    else if(e.code==='auth/weak-password') showErr('Mot de passe trop faible. Minimum 6 caractères.');
+    else showErr('Une erreur est survenue. Réessaie.');
+  }
 }
 
 function doLogout(){
@@ -7299,6 +7327,29 @@ function renderNotes(){
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', async function(){
+
+  // ── GESTION LIEN DE RÉINITIALISATION MOT DE PASSE ──────────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  if(urlParams.get('mode') === 'resetPassword'){
+    const oobCode = urlParams.get('oobCode');
+    const authScreen = document.getElementById('auth-screen');
+    if(authScreen){
+      authScreen.innerHTML = `
+        <div style="font-family:Playfair Display,serif;font-size:36px;font-weight:700;text-align:center;margin-bottom:24px;" class="gold-text">Wedding Dream</div>
+        <div style="background:#fff;border-radius:18px;padding:28px 24px;width:100%;max-width:380px;box-shadow:0 4px 24px rgba(154,40,72,0.12);">
+          <div style="font-family:Lora,serif;font-size:18px;font-weight:700;color:#3e1828;margin-bottom:6px;text-align:center;">Nouveau mot de passe</div>
+          <div style="font-size:13px;color:#8a4a60;margin-bottom:20px;text-align:center;font-family:Lora,serif;">Choisis un nouveau mot de passe pour ton compte.</div>
+          <label class="lbl">NOUVEAU MOT DE PASSE</label>
+          <input id="new-pass-1" type="password" class="inp" placeholder="Minimum 6 caractères" style="margin-bottom:12px;">
+          <label class="lbl">CONFIRMER LE MOT DE PASSE</label>
+          <input id="new-pass-2" type="password" class="inp" placeholder="Répète le mot de passe" style="margin-bottom:16px;">
+          <div id="reset-msg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;font-family:Lora,serif;margin-bottom:14px;border:1.5px solid;"></div>
+          <button class="btn" style="width:100%;" onclick="doConfirmReset('${oobCode}')">Valider le nouveau mot de passe</button>
+        </div>`;
+    }
+    return;
+  }
+
   // Check active session
   const sess = ld('sess', null);
   if(sess){
