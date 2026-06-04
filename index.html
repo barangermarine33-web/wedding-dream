@@ -114,40 +114,12 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
 </head>
 <body>
 <div id="auth-screen" style="min-height:100vh;background:#fdf8f5;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;padding-top:calc(var(--sat)+20px);">
-  <div style="font-family:'Josefin Sans',sans-serif;font-size:32px;font-weight:300;letter-spacing:6px;text-transform:uppercase;text-align:center;color:#d4607a;">Weddilya</div>
+  <!-- Logo Weddilya -->
+  <div style="font-family:'Josefin Sans',sans-serif;font-size:32px;font-weight:300;letter-spacing:6px;text-transform:uppercase;text-align:center;color:#d4607a;">WEDDILYA</div>
   <div style="margin:12px 0;line-height:1;display:flex;justify-content:center;">
-    <svg width="110" height="76" viewBox="0 0 110 76" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="gG" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#FFF5B0"/>
-          <stop offset="40%" stop-color="#E8C84C"/>
-          <stop offset="100%" stop-color="#8A6810"/>
-        </linearGradient>
-        <linearGradient id="rG" x1="1" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#FFE8E0"/>
-          <stop offset="40%" stop-color="#E8A090"/>
-          <stop offset="100%" stop-color="#904848"/>
-        </linearGradient>
-      </defs>
-
-      <!-- ÉTAPE 1 : Anneau ROSE complet (derrière) -->
-      <circle cx="68" cy="38" r="22" stroke="url(#rG)" stroke-width="9" fill="none"/>
-
-      <!-- ÉTAPE 2 : Anneau OR complet (par-dessus le rose) -->
-      <circle cx="42" cy="38" r="22" stroke="url(#gG)" stroke-width="9" fill="none"/>
-
-      <!-- ÉTAPE 3 : Arc droit du ROSE repassé devant l'or
-           stroke-dasharray = moitié circonférence = 69.1
-           stroke-dashoffset = -quart = -34.6 pour commencer en haut à droite -->
-      <circle cx="68" cy="38" r="22" stroke="url(#rG)" stroke-width="9" fill="none"
-              stroke-dasharray="69.1 69.1"
-              stroke-dashoffset="-34.6"/>
-
-      <!-- Reflets -->
-      <circle cx="42" cy="38" r="19" stroke="rgba(255,255,255,0.25)" stroke-width="2" fill="none"
-              stroke-dasharray="18 120" stroke-dashoffset="-50"/>
-      <circle cx="68" cy="38" r="19" stroke="rgba(255,255,255,0.22)" stroke-width="2" fill="none"
-              stroke-dasharray="18 120" stroke-dashoffset="-50"/>
+    <svg width="90" height="62" viewBox="0 0 52 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="19" cy="18" r="13" stroke="#d4607a" stroke-width="2.5" fill="none"/>
+      <circle cx="33" cy="18" r="13" stroke="#d4607a" stroke-width="2.5" fill="none"/>
     </svg>
   </div>
   <div style="font-style:italic;color:#b07a90;margin-bottom:28px;font-size:15px;">Organisez le plus beau jour de votre vie</div>
@@ -249,10 +221,39 @@ button,label,.tab-btn,.card{-webkit-user-select:none;user-select:none;}
       🔓 Se déconnecter
     </button>
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="openRGPD('privacy')" style="flex:1;background:none;border:none;font-family:Lora,serif;font-size:11px;color:var(--text3);cursor:pointer;text-decoration:underline;padding:4px;">Politique de confidentialité</button>
+      <button onclick="openRGPD('cgu')" style="flex:1;background:none;border:none;font-family:Lora,serif;font-size:11px;color:var(--text3);cursor:pointer;text-decoration:underline;padding:4px;">CGU</button>
+      <button onclick="openRGPD('cookies')" style="flex:1;background:none;border:none;font-family:Lora,serif;font-size:11px;color:var(--text3);cursor:pointer;text-decoration:underline;padding:4px;">Cookies</button>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">
     <div style="font-size:12px;color:var(--text3);margin-bottom:8px;line-height:1.5;">⚠️ La suppression de compte est définitive. Toutes vos données seront effacées.</div>
     <button onclick="confirmDeleteAccount()" style="width:100%;background:#fff0f0;color:#c43a3a;border:1.5px solid #ffccd0;border-radius:11px;padding:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Lora,serif;">
       🗑️ Supprimer mon compte
     </button>
+  </div>
+</div>
+
+<!-- Modale RGPD -->
+<div id="rgpd-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100;overflow-y:auto;padding:20px;padding-top:calc(var(--sat)+20px);">
+  <div style="background:var(--card);border-radius:20px;margin:0 auto;padding:24px;max-width:500px;border:1px solid var(--border);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div id="rgpd-title" style="font-family:Lora,serif;font-size:18px;font-weight:700;color:#3e1828;"></div>
+      <button onclick="closeRGPD()" style="background:none;border:none;cursor:pointer;font-size:24px;color:#b07a90;line-height:1;padding:0 4px;">×</button>
+    </div>
+    <div id="rgpd-content" style="font-family:Lora,serif;font-size:13px;color:#3e1828;line-height:1.7;"></div>
+    <button onclick="closeRGPD()" class="btn" style="width:100%;margin-top:20px;">Fermer</button>
+  </div>
+</div>
+
+<!-- Bannière cookies -->
+<div id="cookie-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#3e1828;color:#fdf8f5;padding:14px 18px;z-index:2000;font-family:Lora,serif;font-size:12px;line-height:1.5;">
+  <div style="max-width:600px;margin:0 auto;">
+    <div style="margin-bottom:10px;">🍪 Weddilya utilise des cookies essentiels pour fonctionner et Firebase (Google) pour stocker vos données de façon sécurisée. <button onclick="openRGPD('cookies')" style="background:none;border:none;color:#f0c0d0;text-decoration:underline;cursor:pointer;font-family:Lora,serif;font-size:12px;">En savoir plus</button></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="acceptCookies()" style="background:#d4607a;color:#fff;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;font-family:Lora,serif;font-size:12px;font-weight:700;">Accepter</button>
+      <button onclick="refuseCookies()" style="background:transparent;color:#f0c0d0;border:1px solid #f0c0d0;border-radius:8px;padding:8px 18px;cursor:pointer;font-family:Lora,serif;font-size:12px;">Refuser les non-essentiels</button>
+    </div>
   </div>
 </div>
 
@@ -1015,7 +1016,7 @@ async function doForgotPassword(){
 
     // ─── Envoi de l'email de réinitialisation ───
     console.log('[doForgotPassword] Sending reset to', email);
-    const actionCodeSettings={url:'https://barangermarine33-web.github.io/wedding-dream/',handleCodeInApp:true};
+    const actionCodeSettings={url:'https://weddilya.fr/',handleCodeInApp:true};
     await sendPasswordResetEmail(window.firebaseAuth, email, actionCodeSettings);
     console.log('[doForgotPassword] sendPasswordResetEmail OK (Firebase accepted)');
     err.style.background='#f0fff0';err.style.borderColor='#c8e6c9';err.style.color='#2e7d32';
@@ -1141,7 +1142,7 @@ async function sendPartnerInvite(){
       _inviteToken: token
     }, {merge: true});
     // Construire le lien d'invitation
-    const inviteUrl = 'https://barangermarine33-web.github.io/wedding-dream/?invite='+token;
+    const inviteUrl = 'https://weddilya.fr/?invite='+token;
     // Ouvrir le client email avec le lien
     const subject = encodeURIComponent(USER.p1 ? USER.p1+' vous invite sur Weddilya' : 'Invitation sur Weddilya');
     const body = encodeURIComponent(
@@ -1220,7 +1221,7 @@ async function doConfirmReset(oobCode){
     await confirmPasswordReset(window.firebaseAuth, oobCode, p1);
     msg.style.background='#f0fff0';msg.style.borderColor='#c8e6c9';msg.style.color='#2e7d32';
     msg.textContent='✓ Mot de passe mis à jour ! Tu peux te connecter.';msg.style.display='block';
-    setTimeout(()=>{ window.location.href='https://barangermarine33-web.github.io/wedding-dream/'; }, 2000);
+    setTimeout(()=>{ window.location.href='https://weddilya.fr/'; }, 2000);
   } catch(e){
     console.error('confirmPasswordReset:', e.code, e.message);
     if(e.code==='auth/expired-action-code') showErr('Ce lien a expiré. Redemande un email de réinitialisation.');
@@ -1228,6 +1229,84 @@ async function doConfirmReset(oobCode){
     else if(e.code==='auth/weak-password') showErr('Mot de passe trop faible. Minimum 6 caractères.');
     else showErr('Une erreur est survenue. Réessaie.');
   }
+}
+
+// ── RGPD ─────────────────────────────────────────────────────────────────────
+
+const RGPD_CONTENT = {
+  privacy: {
+    title: 'Politique de confidentialité',
+    html: `
+      <p style="margin-bottom:10px;"><strong>Dernière mise à jour :</strong> juin 2026</p>
+      <p style="margin-bottom:10px;"><strong>Responsable du traitement :</strong> Weddilya — contact@weddilya.fr</p>
+      <hr style="border:none;border-top:1px solid #f0d8e0;margin:12px 0;">
+      <p style="margin-bottom:8px;"><strong>Données collectées</strong></p>
+      <p style="margin-bottom:10px;">Weddilya collecte uniquement les données que vous saisissez : adresse email, mot de passe (chiffré), et données de planification (invités, budget, checklist, etc.).</p>
+      <p style="margin-bottom:8px;"><strong>Finalité</strong></p>
+      <p style="margin-bottom:10px;">Vos données sont utilisées exclusivement pour faire fonctionner votre espace de planification de mariage. Elles ne sont jamais vendues ni partagées à des tiers.</p>
+      <p style="margin-bottom:8px;"><strong>Hébergement</strong></p>
+      <p style="margin-bottom:10px;">Vos données sont stockées sur Firebase (Google LLC), dont les serveurs sont situés en Europe. Firebase est conforme au RGPD.</p>
+      <p style="margin-bottom:8px;"><strong>Durée de conservation</strong></p>
+      <p style="margin-bottom:10px;">Vos données sont conservées tant que votre compte est actif. Vous pouvez supprimer votre compte à tout moment depuis les Paramètres.</p>
+      <p style="margin-bottom:8px;"><strong>Vos droits</strong></p>
+      <p style="margin-bottom:10px;">Conformément au RGPD, vous disposez d\'un droit d\'accès, de rectification, d\'effacement et de portabilité de vos données. Pour exercer ces droits : <strong>contact@weddilya.fr</strong></p>
+    `
+  },
+  cgu: {
+    title: 'Conditions générales d\'utilisation',
+    html: `
+      <p style="margin-bottom:10px;"><strong>Dernière mise à jour :</strong> juin 2026</p>
+      <hr style="border:none;border-top:1px solid #f0d8e0;margin:12px 0;">
+      <p style="margin-bottom:8px;"><strong>1. Description du service</strong></p>
+      <p style="margin-bottom:10px;">Weddilya est une application web de planification de mariage accessible sur weddilya.fr. L\'accès nécessite la création d\'un compte gratuit.</p>
+      <p style="margin-bottom:8px;"><strong>2. Utilisation</strong></p>
+      <p style="margin-bottom:10px;">L\'application est destinée à un usage personnel. Toute utilisation commerciale sans autorisation est interdite.</p>
+      <p style="margin-bottom:8px;"><strong>3. Responsabilité</strong></p>
+      <p style="margin-bottom:10px;">Weddilya est fourni "tel quel". Nous ne pouvons être tenus responsables de pertes de données ou d\'interruptions de service.</p>
+      <p style="margin-bottom:8px;"><strong>4. Propriété intellectuelle</strong></p>
+      <p style="margin-bottom:10px;">Le contenu de l\'application (design, code, textes) est la propriété de Weddilya. Toute reproduction est interdite sans autorisation.</p>
+      <p style="margin-bottom:8px;"><strong>5. Contact</strong></p>
+      <p>Pour toute question : <strong>contact@weddilya.fr</strong></p>
+    `
+  },
+  cookies: {
+    title: 'Politique des cookies',
+    html: `
+      <p style="margin-bottom:10px;">Weddilya utilise uniquement des cookies <strong>essentiels</strong> au fonctionnement de l\'application.</p>
+      <hr style="border:none;border-top:1px solid #f0d8e0;margin:12px 0;">
+      <p style="margin-bottom:8px;"><strong>Cookies essentiels (toujours actifs)</strong></p>
+      <p style="margin-bottom:10px;">• Authentification Firebase (maintien de votre session)<br>• Préférences locales (thème, données hors-ligne)</p>
+      <p style="margin-bottom:8px;"><strong>Cookies analytiques</strong></p>
+      <p style="margin-bottom:10px;">Weddilya n\'utilise pas de cookies analytiques ou publicitaires.</p>
+      <p style="margin-bottom:8px;"><strong>Firebase (Google)</strong></p>
+      <p style="margin-bottom:10px;">Firebase peut déposer des cookies techniques pour l\'authentification. Firebase est conforme au RGPD. <a href="https://firebase.google.com/support/privacy" target="_blank" style="color:#d4607a;">En savoir plus</a></p>
+      <p>Contact : <strong>contact@weddilya.fr</strong></p>
+    `
+  }
+};
+
+function openRGPD(type){
+  const c = RGPD_CONTENT[type];
+  if(!c) return;
+  document.getElementById('rgpd-title').textContent = c.title;
+  document.getElementById('rgpd-content').innerHTML = c.html;
+  document.getElementById('rgpd-modal').style.display = 'block';
+}
+function closeRGPD(){ document.getElementById('rgpd-modal').style.display = 'none'; }
+
+function acceptCookies(){
+  try{ localStorage.setItem('cookie_consent','accepted'); }catch{}
+  document.getElementById('cookie-banner').style.display = 'none';
+}
+function refuseCookies(){
+  try{ localStorage.setItem('cookie_consent','refused'); }catch{}
+  document.getElementById('cookie-banner').style.display = 'none';
+}
+function checkCookieBanner(){
+  try{
+    const consent = localStorage.getItem('cookie_consent');
+    if(!consent) document.getElementById('cookie-banner').style.display = 'block';
+  }catch{}
 }
 
 function doLogout(){
@@ -1274,6 +1353,7 @@ async function deleteAccount(){
 // Check if guest album mode on load
 function startApp(u){
   USER = u;
+  checkCookieBanner();
   // Load driveUrl from Firebase if not in localStorage
   if(!ld('drive_url_'+u.email,'') && window.firebaseDB && window.firebaseLib){
     const {doc, getDoc} = window.firebaseLib;
@@ -1720,7 +1800,10 @@ function changeCote(id){const g=GUESTS.find(g=>g.id===id);updGuest(id,'cote',g.c
 function exportGuests(){
   let csv='\uFEFF'+'Nom complet,Email,Côté,Rôle,Régime particulier,Uniquement au vin d\'honneur,Invitation,Présence\n';
   GUESTS.forEach(g=>{csv+=`"${g.nom}","${g.email||''}","${g.cote==='p1'?USER.p1:USER.p2}","${g.role||''}","${g.regime||''}","${g.vinHonneur?'Oui':'Non'}","${g.invitation}","${g.presence}"\n`;});
-  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`invites_${USER.p1}_${USER.p2}.csv`;a.click();
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`invites_${USER.p1}_${USER.p2}.csv`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 async function deleteAllGuests(){
   if(!GUESTS.length){ showImportMsg('Aucun invité à supprimer.','err'); return; }
@@ -2430,33 +2513,37 @@ async function exportPlanPDF(){
     const jsPDF = await loadJsPDF();
     const pdf = new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
     const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
-    const C_PK=[184,64,96], C_TM=[90,26,48], C_TL=[138,74,96], C_GD=[201,168,76],
-          C_GL=[232,212,138], C_SF=[245,212,224], C_BG=[253,243,248], C_TX=[45,10,24], C_TB=[232,160,176];
+    // Couleurs exactes Weddilya
+    const C_PK=[212,96,122],   // #d4607a rose principal
+          C_TM=[62,24,40],     // #3e1828 bordeaux
+          C_TL=[138,74,96],    // #8a4a60 texte secondaire
+          C_SF=[251,230,238],  // #fbe6ee rose clair
+          C_BG=[253,248,245],  // #fdf8f5 fond
+          C_BD=[216,160,184],  // #d8a0b8 bordures
+          C_TX=[62,24,40],     // #3e1828 texte
+          C_WH=[255,255,255];  // blanc
     const setFill=c=>pdf.setFillColor(c[0],c[1],c[2]);
     const setText=c=>pdf.setTextColor(c[0],c[1],c[2]);
     const setStroke=c=>pdf.setDrawColor(c[0],c[1],c[2]);
 
-    // Fond crème + double cadre doré décoratif (commun à toutes les pages)
+    // Fond Weddilya sobre (commun à toutes les pages)
     const drawFrame=()=>{
       setFill(C_BG); pdf.rect(0,0,pw,ph,'F');
-      setStroke(C_GD); pdf.setLineWidth(0.8); pdf.rect(8,8,pw-16,ph-16);
-      setStroke(C_GL); pdf.setLineWidth(0.3); pdf.rect(10,10,pw-20,ph-20);
-      // petits cercles dorés aux coins
-      setFill(C_GD);
-      [[10,10],[pw-10,10],[10,ph-10],[pw-10,ph-10]].forEach(([x,y])=>{
-        pdf.circle(x,y,1.5,'F');
-      });
     };
 
     // ─── PAGE 1 : titre + plan visuel ───
     drawFrame();
-    setText(C_GD); pdf.setFont('times','italic'); pdf.setFontSize(13);
-    pdf.text('~ Plan de table ~',pw/2,22,{align:'center'});
-    setText(C_PK); pdf.setFont('times','bold'); pdf.setFontSize(32);
-    pdf.text(`${USER.p1} & ${USER.p2}`,pw/2,34,{align:'center'});
-    setStroke(C_GD); pdf.setLineWidth(0.5); pdf.line(pw/2-40,38,pw/2+40,38);
-    setText(C_TL); pdf.setFont('times','italic'); pdf.setFontSize(11);
-    pdf.text('Disposition de la salle',pw/2,45,{align:'center'});
+    // Brand
+    setText(C_PK); pdf.setFont('helvetica','normal'); pdf.setFontSize(8);
+    pdf.text('WEDDILYA',pw/2,14,{align:'center',charSpace:3});
+    // Titre
+    setText(C_TM); pdf.setFont('times','bold'); pdf.setFontSize(22);
+    pdf.text('Plan de table',pw/2,24,{align:'center'});
+    // Ligne séparatrice
+    setStroke(C_BD); pdf.setLineWidth(0.4); pdf.line(18,28,pw-18,28);
+    // Sous-titre
+    setText(C_TL); pdf.setFont('times','italic'); pdf.setFontSize(10);
+    pdf.text(`${USER.p1} & ${USER.p2}  ·  ${USER.wDate||''}`,pw/2,34,{align:'center'});
 
     // Géométrie IDENTIQUE à l'application (mêmes constantes en px, puis mise à l'échelle)
     const RND=68, SQ=72, TW=120, TH=58, SEAT=24, GAP=10;
@@ -2480,7 +2567,7 @@ async function exportPlanPDF(){
     const PX=(x)=>offX+x*scale, PY=(y)=>offY+y*scale;
 
     // Fond du plan
-    setFill([255,250,252]); setStroke(C_SF); pdf.setLineWidth(0.5);
+    setFill(C_WH); setStroke(C_BD); pdf.setLineWidth(0.4);
     pdf.roundedRect(m,top,planW,planH,4,4,'FD');
 
     TABLES.forEach(t=>{
@@ -2519,17 +2606,17 @@ async function exportPlanPDF(){
           sy=isTop?(cy-TH/2-GAP):(cy+TH/2+GAP);
         }
         const g=placed.find(x=>x.seatIdx===i);
-        setFill(g?C_TB:[242,226,233]); setStroke([255,255,255]); pdf.setLineWidth(0.3);
+        setFill(C_WH); setStroke(C_PK); pdf.setLineWidth(0.5);
         pdf.circle(PX(sx),PY(sy),seatR,'FD');
       }
 
       // ─── Table (même forme/dimensions que l'app) ───
       // ombre légère
-      setFill([225,180,196]);
+      setFill(C_BD);
       if(isR){ pdf.circle(PX(cx)+0.6,PY(cy)+0.6,(RND/2)*scale,'F'); }
       else if(isSq){ pdf.roundedRect(PX(cx-SQ/2)+0.6,PY(cy-SQ/2)+0.6,SQ*scale,SQ*scale,1.5,1.5,'F'); }
       else { pdf.roundedRect(PX(cx-TW/2)+0.6,PY(cy-TH/2)+0.6,TW*scale,TH*scale,1.5,1.5,'F'); }
-      setFill(C_SF); setStroke(C_PK); pdf.setLineWidth(0.7);
+      setFill(C_WH); setStroke(C_PK); pdf.setLineWidth(0.7);
       if(isR){ pdf.circle(PX(cx),PY(cy),(RND/2)*scale,'FD'); }
       else if(isSq){ pdf.roundedRect(PX(cx-SQ/2),PY(cy-SQ/2),SQ*scale,SQ*scale,1.5,1.5,'FD'); }
       else { pdf.roundedRect(PX(cx-TW/2),PY(cy-TH/2),TW*scale,TH*scale,1.5,1.5,'FD'); }
@@ -2541,9 +2628,13 @@ async function exportPlanPDF(){
 
     // ─── PAGE 2+ : liste des invités par table (toutes ensemble, en cartes) ───
     pdf.addPage(); drawFrame();
-    setText(C_PK); pdf.setFont('times','bold'); pdf.setFontSize(24);
+    setText(C_PK); pdf.setFont('helvetica','normal'); pdf.setFontSize(8);
+    pdf.text('WEDDILYA',pw/2,14,{align:'center',charSpace:3});
+    setText(C_TM); pdf.setFont('times','bold'); pdf.setFontSize(22);
     pdf.text('Invités par table',pw/2,24,{align:'center'});
-    setStroke(C_GD); pdf.setLineWidth(0.5); pdf.line(pw/2-45,29,pw/2+45,29);
+    setStroke(C_BD); pdf.setLineWidth(0.4); pdf.line(18,28,pw-18,28);
+    setText(C_TL); pdf.setFont('times','italic'); pdf.setFontSize(10);
+    pdf.text(`${USER.p1} & ${USER.p2}  ·  ${USER.wDate||''}`,pw/2,34,{align:'center'});
 
     const mm=16, yTop=38, colGap=8, nCols=3, colW=(pw-2*mm-(nCols-1)*colGap)/nCols;
     let col=0, y=yTop;
@@ -2554,9 +2645,11 @@ async function exportPlanPDF(){
       if(y+needed>ph-16){
         col++;
         if(col>=nCols){ pdf.addPage(); drawFrame();
-          setText(C_PK); pdf.setFont('times','bold'); pdf.setFontSize(24);
+          setText(C_PK); pdf.setFont('helvetica','normal'); pdf.setFontSize(8);
+          pdf.text('WEDDILYA',pw/2,14,{align:'center',charSpace:3});
+          setText(C_TM); pdf.setFont('times','bold'); pdf.setFontSize(22);
           pdf.text('Invités par table',pw/2,24,{align:'center'});
-          setStroke(C_GD); pdf.setLineWidth(0.5); pdf.line(pw/2-45,29,pw/2+45,29);
+          setStroke(C_BD); pdf.setLineWidth(0.4); pdf.line(18,28,pw-18,28);
           col=0; }
         y=yTop;
       }
@@ -2566,11 +2659,11 @@ async function exportPlanPDF(){
       newColumnOrPage(bh);
       const cx=mm+col*(colW+colGap);
       // Carte avec bande de titre
-      setFill([255,251,253]); setStroke(C_SF); pdf.setLineWidth(0.5);
+      setFill(C_WH); setStroke(C_BD); pdf.setLineWidth(0.4);
       pdf.roundedRect(cx,y,colW,bh,3,3,'FD');
       setFill(accent||C_SF);
       pdf.roundedRect(cx,y,colW,9,3,3,'F'); pdf.rect(cx,y+5,colW,4,'F');
-      setText([255,255,255]); pdf.setFont('times','bold'); pdf.setFontSize(12);
+      setText(C_WH); pdf.setFont('times','bold'); pdf.setFontSize(11);
       pdf.text(title,cx+colW/2,y+6.2,{align:'center'});
       let yy=y+15;
       setText(C_TX); pdf.setFont('times','normal'); pdf.setFontSize(11);
@@ -2582,7 +2675,8 @@ async function exportPlanPDF(){
     // TOUTES les tables dans la même série (pas de séparation)
     TABLES.forEach(t=>{
       const placed=GUESTS.filter(g=>g.seatTableId===t.id).sort((a,b)=>(a.seatIdx||0)-(b.seatIdx||0));
-      drawCard(`${t.nom||'Table'}`, placed.map(g=>g.nom), C_PK);
+      const accent = (t.nom||'').toLowerCase().includes('marié') ? C_TM : C_PK;
+      drawCard(`${t.nom||'Table'}`, placed.map(g=>g.nom), accent);
     });
     const nonPlaces=GUESTS.filter(g=>g.presence==='confirmée'&&g.seatTableId==null);
     if(nonPlaces.length){ drawCard('Sans table', nonPlaces.map(g=>g.nom), [196,58,58]); }
